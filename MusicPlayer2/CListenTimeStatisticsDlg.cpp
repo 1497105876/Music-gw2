@@ -65,21 +65,25 @@ void CListenTimeStatisticsDlg::ShowData(bool size_changed)
 	int index = 0;
 	for (const auto& data : m_data_list)
 	{
+        int row = index;
         if (size_changed)
-            m_list_ctrl.InsertItem(index, std::to_wstring(index + 1).c_str());
-        else
-            m_list_ctrl.SetItemText(index, COL_INDEX, std::to_wstring(index + 1).c_str());
+        {
+            int inserted = m_list_ctrl.InsertItem(index, std::to_wstring(index + 1).c_str());
+            if (inserted < 0) { index++; continue; }
+            row = inserted;
+        }
 
-		m_list_ctrl.SetItemText(index, COL_TRACK, data.name.c_str());
-		m_list_ctrl.SetItemText(index, COL_PATH, data.path.c_str());
-		m_list_ctrl.SetItemText(index, COL_TOTAL_TIME, data.total_time.toString3().c_str());
-		m_list_ctrl.SetItemText(index, COL_LENGTH, data.length.toString().c_str());
+		m_list_ctrl.SetItemText(row, COL_INDEX, std::to_wstring(index + 1).c_str());
+		m_list_ctrl.SetItemText(row, COL_TRACK, data.name.c_str());
+		m_list_ctrl.SetItemText(row, COL_PATH, data.path.c_str());
+		m_list_ctrl.SetItemText(row, COL_TOTAL_TIME, data.total_time.toString3().c_str());
+		m_list_ctrl.SetItemText(row, COL_LENGTH, data.length.toString().c_str());
         CString str;
 		str.Format(_T("%.1f"), data.times);
 		if (str.Right(2) == _T(".0"))
 			str = str.Left(str.GetLength() - 2);
 
-		m_list_ctrl.SetItemText(index, COL_TIMES, str);
+		m_list_ctrl.SetItemText(row, COL_TIMES, str);
         // 这里之前设置当前播放高亮，意义不大，去掉了
 		index++;
 	}
