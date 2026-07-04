@@ -1,0 +1,70 @@
+﻿#include "stdafx.h"
+#include "SpectralDataHelper.h"
+
+const int LINEAR_SAMPLE_COUNT{ FFT_SAMPLE * 110 / 256 };
+
+CSpectralDataHelper::CSpectralDataHelper()
+{
+    for (int i{}; i < LINEAR_SAMPLE_COUNT; i++)
+    {
+        int m = i / 2;
+        spectrum_map[i] = m;
+        if (m >= 0 && m < SPECTRUM_COL)
+            spectrum_map_count[m]++;
+    }
+
+    for (int i{ LINEAR_SAMPLE_COUNT }; i < FFT_SAMPLE; i++)
+    {
+        int m = static_cast<int>(std::log(i) / std::log(FFT_SAMPLE) * SPECTRUM_COL);
+        if (m >= 0 && m < SPECTRUM_COL)
+        {
+            spectrum_map[i] = m;
+            spectrum_map_count[m]++;
+        }
+    }
+}
+
+void CSpectralDataHelper::SpectralDataMapOld(float fft_data[FFT_SAMPLE], float spectral_data[SPECTRUM_COL], int scale)
+{
+    memset(spectral_data, 0, sizeof(float) * SPECTRUM_COL);
+    for (int i{}; i < FFT_SAMPLE; i++)
+    {
+        spectral_data[i / (FFT_SAMPLE / SPECTRUM_COL)] += fft_data[i];
+    }
+
+    for (int i{}; i < SPECTRUM_COL; i++)
+    {
+        spectral_data[i] /= (FFT_SAMPLE / SPECTRUM_COL);
+        spectral_data[i] = std::sqrtf(spectral_data[i]);		//对每个频谱柱形的值取平方根，以减少不同频率频谱值的差异
+        spectral_data[i] *= scale;
+    }
+}
+
+void CSpectralDataHelper::SpectralDataMap(float fft_data[FFT_SAMPLE], float spectral_data[SPECTRUM_COL], int scale)
+{
+    memset(spectral_data, 0, sizeof(float) * SPECTRUM_COL);
+    for (int i{}; i < FFT_SAMPLE; i++)
+    {
+        spectral_data[spectrum_map[i]] += fft_data[i];
+    }
+
+    for (int i{}; i < SPECTRUM_COL; i++)
+    {
+        spectral_data[i] = spectral_data[i] / spectrum_map_count[i];
+        spectral_data[i] = std::sqrtf(spectral_data[i]);		//对每个频谱柱形的值取平方根，以减少不同频率频谱值的差异
+        spectral_data[i] *= scale;
+    }
+}
+
+float CSpectralDataHelper::CalculateCompressedSpectralData(const float spectral_data[SPECTRUM_COL], int index, int col_num)
+{
+    float spetral_data = 0;
+    int COL_MIN{ SPECTRUM_COL / col_num * index };
+    int COL_MAX{ SPECTRUM_COL / col_num * (index + 1) };
+    for (int i = COL_MIN; i < COL_MAX; i++)
+    {
+        spetral_data += spectral_data[i];
+    }
+    spetral_data /= (SPECTRUM_COL / col_num);
+    return spetral_data;
+}

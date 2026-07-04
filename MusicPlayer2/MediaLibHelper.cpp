@@ -1,0 +1,239 @@
+﻿#include "stdafx.h"
+#include "MediaLibHelper.h"
+#include "MusicPlayer2.h"
+#include "SongDataManager.h"
+#include "FilePathHelper.h"
+
+
+bool StringComparerNoCase::operator()(const std::wstring& a, const std::wstring& b) const
+{
+    return CCommon::StringCompareInLocalLanguage(a, b, true) < 0;
+}
+
+CMediaClassifier::CMediaClassifier(ListItem::ClassificationType type, bool hide_only_one_classification)
+    : m_type(type), m_hide_only_one_classification(hide_only_one_classification)
+{
+}
+
+
+CMediaClassifier::~CMediaClassifier()
+{
+}
+
+const CMediaClassifier::MediaList& CMediaClassifier::GetMeidaList() const
+{
+    return m_media_list;
+}
+
+CMediaClassifier::MediaList& CMediaClassifier::GetMeidaList()
+{
+    return m_media_list;
+}
+
+void CMediaClassifier::ClassifyMedia()
+{
+    m_media_list.clear();
+    CSongDataManager::GetInstance().GetSongData([&](const CSongDataManager::SongDataMap& song_data_map)
+        {
+            for (const auto& song_info : song_data_map)
+            {
+                std::vector<std::wstring> item_names;
+                switch (m_type)
+                {
+                case ListItem::ClassificationType::CT_ARTIST:
+                {
+                    static const wstring& default_artist = theApp.m_str_table.LoadText(L"TXT_EMPTY_ARTIST");
+                    song_info.second.GetArtistList(item_names);   // 有的歌曲可能有多个艺术家，将解析到的艺术家保存到vector里
+                    for (auto& item_name : item_names)
+                        CCommon::StringNormalize(item_name);
+                    if (item_names.empty() || (item_names.size() == 1 && default_artist == item_names[0]))
+                    {
+                        item_names.clear();
+                        item_names.push_back(std::wstring());
+                    }
+                }
+                break;
+                case ListItem::ClassificationType::CT_ALBUM:
+                {
+                    static const wstring& default_album = theApp.m_str_table.LoadText(L"TXT_EMPTY_ALBUM");
+                    wstring str_album = song_info.second.album;
+                    if (default_album == str_album)
+                        str_album.clear();
+                    item_names.push_back(str_album);
+                }
+                break;
+                case ListItem::ClassificationType::CT_GENRE:
+                {
+                    static const wstring& default_genre = theApp.m_str_table.LoadText(L"TXT_EMPTY_GENRE");
+                    wstring str_genre = song_info.second.genre;
+                    if (default_genre == str_genre)
+                        str_genre.clear();
+                    item_names.push_back(str_genre);
+                }
+                break;
+                case ListItem::ClassificationType::CT_YEAR:
+                {
+                    static const wstring& default_year = theApp.m_str_table.LoadText(L"TXT_EMPTY_YEAR");
+                    wstring str_year = song_info.second.get_year();
+                    if (default_year == str_year)
+                        str_year.clear();
+                    if (str_year.size() > 4)
+                        str_year.resize(4);
+                    item_names.push_back(str_year);
+                }
+                break;
+                case ListItem::ClassificationType::CT_TYPE:
+                {
+                    wstring str_type = CFilePathHelper(song_info.first.path).GetFileExtension();
+                    item_names.push_back(str_type);
+                }
+                break;
+                case ListItem::ClassificationType::CT_BITRATE:
+                {
+                    wstring str_type;
+                    if (song_info.second.bitrate == 0)
+                        str_type = L"-";
+                    else if (song_info.second.bitrate < 32)
+                        str_type = L"<32";
+                    else if (song_info.second.bitrate < 64)
+                        str_type = L"32+";
+                    else if (song_info.second.bitrate < 128)
+                        str_type = L"64+";
+                    else if (song_info.second.bitrate < 192)
+                        str_type = L"128+";
+                    else if (song_info.second.bitrate < 300)
+                        str_type = L"192+";
+                    else if (song_info.second.bitrate < 512)
+                        str_type = L"300+";
+                    else if (song_info.second.bitrate < 1024)
+                        str_type = L"512+";
+                    else
+                        str_type = L"1024+";
+                    item_names.push_back(str_type);
+                }
+                break;
+                case ListItem::ClassificationType::CT_RATING:
+                {
+                    wstring str_type;
+                    if (song_info.second.rating >= 1 && song_info.second.rating <= 5)
+                        str_type = std::to_wstring(song_info.second.rating);
+                    else
+                        str_type = theApp.m_str_table.LoadText(L"TXT_EMPTY_RATED");
+                    item_names.push_back(str_type);
+                    break;
+                }
+                default:
+                    break;
+                }
+
+                for (const auto& item_name : item_names)
+                {
+                    auto iter = m_media_list.find(item_name);
+                    if (iter != m_media_list.end())
+                        iter->second.push_back(song_info.second);
+                    else
+                        m_media_list[item_name].push_back(song_info.second);
+                }
+            }
+        });
+
+    std::vector<SongInfo> other_list;
+
+    //查找只有一个项目的分类，将其归到“其他”类里
+    if (m_hide_only_one_classification && (m_type == ListItem::ClassificationType::CT_ARTIST || m_type == ListItem::ClassificationType::CT_ALBUM || m_type == ListItem::ClassificationType::CT_GENRE))
+    {
+        for (auto iter{ m_media_list.begin() }; iter != m_media_list.end();)
+        {
+            if (iter->second.size() == 1)
+            {
+                //确保其他类列表里的项目不会重复
+                if (!CCommon::IsItemInVector(other_list, [&](const SongInfo& item) {
+                    return item.file_path == iter->second[0].file_path;
+                    }))
+                {
+                    other_list.push_back(iter->second[0]);
+                }
+                    iter = m_media_list.erase(iter);
+            }
+            else
+            {
+                ++iter;
+            }
+        }
+        if (m_type == ListItem::ClassificationType::CT_ARTIST)
+            std::sort(other_list.begin(), other_list.end(), SongInfo::GetSortFunc(SM_U_ARTIST));
+        else if (m_type == ListItem::ClassificationType::CT_ALBUM)
+            std::sort(other_list.begin(), other_list.end(), SongInfo::GetSortFunc(SM_U_ALBUM));
+        else if (m_type == ListItem::ClassificationType::CT_GENRE)
+            std::sort(other_list.begin(), other_list.end(), SongInfo::GetSortFunc(SM_U_GENRE));
+        //else if (m_type == CT_YEAR)
+        //    std::sort(other_list.begin(), other_list.end(), SongInfo::GetSortFunc(SM_U_YEAR));
+        if (!other_list.empty())
+            m_media_list[ListItem::STR_OTHER_CLASSIFY_TYPE] = other_list;
+    }
+
+    //将年份不是4位数字的归到“其他”类里
+    if (m_type == ListItem::ClassificationType::CT_YEAR)
+    {
+        for (auto iter{ m_media_list.begin() }; iter != m_media_list.end();)
+        {
+            if (!iter->first.empty() && !IsStringYear(iter->first))     //如果年份不是4位数字，则添加到其他列表里
+            {
+                other_list.insert(other_list.end(), iter->second.begin(), iter->second.end());
+                iter = m_media_list.erase(iter);
+            }
+            else
+            {
+                ++iter;
+            }
+        }
+        if (!other_list.empty())
+            m_media_list[ListItem::STR_OTHER_CLASSIFY_TYPE] = other_list;
+    }
+
+    for (auto& item : m_media_list)
+    {
+        if (item.first != ListItem::STR_OTHER_CLASSIFY_TYPE)
+        {
+            if (m_type == ListItem::ClassificationType::CT_ALBUM)       //“唱片集”类别中，默认按音轨序号排序
+                std::sort(item.second.begin(), item.second.end(), SongInfo::GetSortFunc(SM_U_TRACK));
+            else    //其他类别默认按文件路径排序
+                std::sort(item.second.begin(), item.second.end(), SongInfo::GetSortFunc(SM_U_PATH));
+        }
+    }
+}
+
+bool CMediaClassifier::IsStringYear(std::wstring str)
+{
+    if (str.size() < 4)
+        return false;
+    str.resize(4);
+
+    for (size_t i = 0; i < 4; i++)
+    {
+        if (str[i] < L'0' || str[i] > L'9')
+            return false;
+    }
+
+    return str > L"1000" && str < L"3000";
+}
+
+void CMediaClassifier::ClearResult()
+{
+    m_media_list.clear();
+}
+
+void CMediaClassifier::RemoveFiles(std::vector<SongInfo> songs)
+{
+    auto isRemoved = [&](const SongInfo& song) { return std::find(songs.begin(), songs.end(), song) != songs.end(); };
+    for (auto& item : m_media_list)
+    {
+        auto iter_removed = std::remove_if(item.second.begin(), item.second.end(), isRemoved);
+        item.second.erase(iter_removed, item.second.end());
+    }
+}
+
+void CMediaClassifier::SetHideOnlyOneClassification(bool hide_only_one_classification)
+{
+    m_hide_only_one_classification = hide_only_one_classification;
+}

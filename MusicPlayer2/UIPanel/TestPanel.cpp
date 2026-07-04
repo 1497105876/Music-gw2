@@ -1,0 +1,121 @@
+﻿#include "stdafx.h"
+#include "TestPanel.h"
+#include "UserUi.h"
+
+CTestPanel::CTestPanel(CPlayerUIBase* ui)
+    : CPlayerUIPanel(ui, IDR_TEST_PANEL)
+{
+    m_ok_btn = m_root_element->FindElement<UiElement::Button>("okBtn");
+    if (m_ok_btn != nullptr)
+        m_ok_btn->SetClickedTrigger([&](UiElement::Button* sender) { OnOkClicked(sender); });
+
+    m_cancel_btn = m_root_element->FindElement<UiElement::Button>("cancelBtn");
+    if (m_cancel_btn != nullptr)
+        m_cancel_btn->SetClickedTrigger([&](UiElement::Button* sender) { OnCancelClicked(sender); });
+
+    m_check_box1 = m_root_element->FindElement<UiElement::CheckBox>("checkbox1");
+    if (m_check_box1 != nullptr)
+        m_check_box1->SetClickedTrigger([&](UiElement::AbstractToggleButton* sender) { OnCheckBox1Clicked(sender); });
+
+    m_toggle_btn = m_root_element->FindElement<UiElement::ToggleSettingGroup>("toggleBtn1")->GetToggleBtn();
+    if (m_toggle_btn != nullptr)
+        m_toggle_btn->SetClickedTrigger([&](UiElement::AbstractToggleButton* sender) { OnToggleBtnClicked(sender); });
+    m_toggle_btn->SetChecked(true);
+
+    m_radio1 = m_root_element->FindElement<UiElement::RadioButton>("radio1");
+    m_radio2 = m_root_element->FindElement<UiElement::RadioButton>("radio2");
+    m_toggle_group2 = m_root_element->FindElement<UiElement::ToggleSettingGroup>("toggleBtn2");
+
+    m_combobox1 = m_root_element->FindElement<UiElement::ComboBox>("combobox1");
+    m_combobox1->SetSelectionChangedTrigger([&](UiElement::ComboBox* sender) {
+        OnComboboxSelChanged(sender);
+    });
+    m_combobox1->AddString(L"测试下拉项1", IconMgr::IT_Album);
+    m_combobox1->AddString(L"测试下拉项2", IconMgr::IT_Artist);
+    m_combobox1->AddString(L"测试下拉项3", IconMgr::IT_Bitrate);
+    m_combobox1->AddString(L"测试下拉项4");
+    m_combobox1->AddString(L"测试下拉项5", IconMgr::IT_Download);
+    m_combobox1->AddString(L"测试下拉项6", IconMgr::IT_Statistics);
+    m_combobox1->SetCurSel(0);
+
+    m_tip_info_text = m_root_element->FindElement<UiElement::Text>("tipInfoText");
+    m_list1 = m_root_element->FindElement<UiElement::ListElement>("list1");
+    if (m_list1 != nullptr)
+    {
+        m_list1 = m_root_element->FindElement<UiElement::ListElement>("list1");
+        m_list1->SetColumnCount(2);
+        m_list1->SetColumnWidth(0, ui->DPI(80));
+    }
+
+    auto* add_btn = m_root_element->FindElement<UiElement::Button>("addBtn");
+    if (add_btn != nullptr)
+        add_btn->SetClickedTrigger([&](UiElement::Button* sender) { OnAddClicked(sender); });
+    auto* del_btn = m_root_element->FindElement<UiElement::Button>("deleteBtn");
+    if (del_btn != nullptr)
+        del_btn->SetClickedTrigger([&](UiElement::Button* sender) { OnDeleteClicked(sender); });
+}
+
+void CTestPanel::OnOkClicked(UiElement::Button* sender)
+{
+    m_ui->ShowUiTipInfo(L"点击了应用按钮。");
+}
+
+void CTestPanel::OnCancelClicked(UiElement::Button* sender)
+{
+    CUserUi* user_ui = dynamic_cast<CUserUi*>(m_ui);
+    user_ui->ClosePanel();
+}
+
+void CTestPanel::OnCheckBox1Clicked(UiElement::AbstractToggleButton* sender)
+{
+    bool checked = m_check_box1->Checked();
+    if (checked)
+        m_tip_info_text->SetText(_T("复选框已勾选。"));
+    else
+        m_tip_info_text->SetText(_T("复选框取消勾选。"));
+}
+
+void CTestPanel::OnToggleBtnClicked(UiElement::AbstractToggleButton* sender)
+{
+    bool checked = sender->Checked();
+    if (checked)
+        m_tip_info_text->SetText(_T("控件已启用"));
+    else
+        m_tip_info_text->SetText(_T("控件已禁用"));
+
+    //设置控件启用禁用状态
+    m_check_box1->SetEnable(checked);
+    m_radio1->SetEnable(checked);
+    m_radio2->SetEnable(checked);
+    m_toggle_group2->SetEnable(checked);
+    m_combobox1->SetEnable(checked);
+}
+
+void CTestPanel::OnAddClicked(UiElement::Button* sender)
+{
+    if (m_list1 != nullptr)
+    {
+        std::map<int, std::wstring> row_data;
+        int row = m_list1->GetRowCount();
+        row_data[0] = std::to_wstring(row + 1);
+        row_data[1] = L"第" + std::to_wstring(row + 1) + L"行";
+        m_list1->AddRow(row_data);
+    }
+}
+
+void CTestPanel::OnDeleteClicked(UiElement::Button* sender)
+{
+    if (m_list1 != nullptr)
+    {
+        int row = m_list1->GetItemSelected();
+        if (row >= 0 && row < m_list1->GetRowCount())
+            m_list1->DeleteRow(row);
+    }
+}
+
+void CTestPanel::OnComboboxSelChanged(UiElement::ComboBox* sender)
+{
+    std::wstring str_combo = m_combobox1->GetCurString();
+    m_tip_info_text->SetText(L"下拉框当前选择：" + str_combo);
+}
+

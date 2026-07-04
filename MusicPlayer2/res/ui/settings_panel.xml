@@ -1,0 +1,254 @@
+<root xmlns="https://github.com/zhongyang219/MusicPlayer2/skin" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://github.com/zhongyang219/MusicPlayer2/skin ../../skins/skin.xsd">
+  <panel>
+    <verticalLayout margin="8">
+      <placeHolder show_when_use_system_titlebar="true" height="28"/>
+      <!--标题-->
+      <!--<text type="userDefine" text="%(TITLE_OPT)" height="56" margin-left="16" font_size="12"/>-->
+      <horizontalLayout>
+        <!--左侧导航栏-->
+        <stackElement follow_child_width="true" size_change_to_switch="true" size_change_condition="widthLessThan" size_change_value="500">
+          <verticalLayout width="134">
+            <navigationBar orientation="vertical" icon_type="icon_and_text" item_space="4" item_height="36" stack_element_id="settings_stack_element">
+              <navigationItem icon="skin" text="%(TITLE_OPT_APC)"/>
+              <navigationItem icon="lyric" text="%(TITLE_OPT_LRC)"/>
+              <navigationItem icon="setting" text="%(TITLE_OPT_DATA)"/>
+              <navigationItem icon="play" text="%(TITLE_OPT_PLAY)"/>
+              <navigationItem icon="mediaLib" text="%(TITLE_OPT_MEDIA_LIB)"/>
+            </navigationBar>
+            <button key="settings" text="%(UI_TXT_MORE_SETTINGS)" show_text="true" height="32"/>
+          </verticalLayout>
+          <verticalLayout width="36">
+            <navigationBar orientation="vertical" icon_type="icon_only" item_space="4" item_height="36" stack_element_id="settings_stack_element">
+              <navigationItem icon="skin" text="%(TITLE_OPT_APC)"/>
+              <navigationItem icon="lyric" text="%(TITLE_OPT_LRC)"/>
+              <navigationItem icon="setting" text="%(TITLE_OPT_DATA)"/>
+              <navigationItem icon="play" text="%(TITLE_OPT_PLAY)"/>
+              <navigationItem icon="mediaLib" text="%(TITLE_OPT_MEDIA_LIB)"/>
+            </navigationBar>
+            <button key="settings" text="%(UI_TXT_MORE_SETTINGS)" height="32" width="32"/>
+          </verticalLayout>
+        </stackElement>
+        <stackElement margin-left="8" id="settings_stack_element">
+          <!--第1页 外观设置-->
+          <scrollArea>
+            <verticalLayout>
+              <!--深色模式-->
+              <toggleSettingGroup id="darkMode" height="60" icon="darkModeOn" mainText="%(TXT_OPT_APC_DARK_MODE)" subText="%(TXT_OPT_DESC_DARK_MODE)"/>
+              <!--显示频谱分析选项-->
+              <toggleSettingGroup id="showSpectrum" height="60" margin-top="4" icon="reverb" mainText="%(TXT_OPT_APC_SPECTRUM_SHOW)" subText="%(TXT_OPT_DESC_SHOW_SPECTRUM)"/>
+              <!--显示专辑封面选项-->
+              <toggleSettingGroup id="showAlbumCover" height="60" margin-top="4" icon="albumCover" mainText="%(TXT_OPT_APC_COVER_SHOW)" subText="%(TXT_OPT_DESC_SHOW_ALBUM_COVER)"/>
+              <!--使用圆角风格-->
+              <toggleSettingGroup id="roundCornerStyle" height="60" margin-top="4" icon="ok" mainText="%(TXT_OPT_APC_ROUND_CORNERS)"/>
+              <!--启用背景选项-->
+              <toggleSettingGroup id="enableBackground" height="60" margin-top="4" icon="background" mainText="%(TXT_OPT_APC_BG_ENABLE)" subText="%(TXT_OPT_DESC_SHOW_BACKGROUND)"/>
+              <!--显示状态栏选项-->
+              <toggleSettingGroup id="showStatusbar" height="60" margin-top="4" icon="setting" mainText="%(TXT_OPT_APC_ALWAYS_SHOW_STATUS_BAR)" subText="%(TXT_OPT_DESC_SHOW_TASKBAR)"/>
+              <!--显示系统标准标题栏-->
+              <toggleSettingGroup id="showStandardTitlebar" height="60" margin-top="4" icon="setting" mainText="%(TXT_OPT_APC_USE_SYSTEM_TITLE_BAR)" subText="%(TXT_OPT_DESC_USE_STANDARD_TITLEBAR)"/>
+              <!--在标题栏中显示的按钮-->
+              <rectangle height="60" margin-top="4">
+                <horizontalLayout>
+                  <icon icon="setting" width="52"/>
+                  <verticalLayout>
+                    <text font_size="10" text="%(TXT_OPT_APC_TITLE_BAR_BTN_SEL)" height="20"/>
+                    <text text="%(TXT_OPT_DESC_BUTTONS_DISPLAYED_IN_TITLABAR)" color_style="emphasis1" height="20"/>
+                  </verticalLayout>
+                  <button id="buttonsInTitlebarBtn" key="showHideElement" related_element_id="buttonsInTitlebarOptionGroup" icon="dropDown" height="28" width="28" margin-right="16"/>
+                </horizontalLayout>
+              </rectangle>
+              <verticalLayout id="buttonsInTitlebarOptionGroup" height="252">
+                <horizontalLayout margin-left="52" margin-right="16">
+                  <icon icon="setting" width="42"/>
+                  <text text="%(TXT_OPT_APC_TITLE_BAR_BTN_SETTING)"/>
+                  <toggleButton id="titlebarBtnSettings" width="80"/>
+                </horizontalLayout>
+                <horizontalLayout margin-left="52" margin-right="16">
+                  <icon icon="skin" width="42"/>
+                  <text text="%(TXT_OPT_APC_TITLE_BAR_BTN_SKIN)"/>
+                  <toggleButton id="titlebarBtnSkin" width="80"/>
+                </horizontalLayout>
+                <horizontalLayout margin-left="52" margin-right="16">
+                  <icon icon="darkModeOn" width="42"/>
+                  <text text="%(TXT_OPT_APC_TITLE_BAR_BTN_DARK_KIGHT)"/>
+                  <toggleButton id="titlebarBtnDarkMode" width="80"/>
+                </horizontalLayout>
+                <horizontalLayout margin-left="52" margin-right="16">
+                  <icon icon="miniOn" width="42"/>
+                  <text text="%(TXT_OPT_APC_TITLE_BAR_BTN_MINI_MODE)"/>
+                  <toggleButton id="titlebarBtnMiniMode" width="80"/>
+                </horizontalLayout>
+                <horizontalLayout margin-left="52" margin-right="16">
+                  <icon icon="fullScreenOn" width="42"/>
+                  <text text="%(TXT_OPT_APC_TITLE_BAR_BTN_FULLSCREEN)"/>
+                  <toggleButton id="titlebarBtnFullScreen" width="80"/>
+                </horizontalLayout>
+                <horizontalLayout margin-left="52" margin-right="16">
+                  <icon icon="minimize" width="42"/>
+                  <text text="%(TXT_OPT_APC_TITLE_BAR_BTN_MINIMIZE)"/>
+                  <toggleButton id="titlebarBtnMinimize" width="80"/>
+                </horizontalLayout>
+                <horizontalLayout margin-left="52" margin-right="16">
+                  <icon icon="maxmizeOn" width="42"/>
+                  <text text="%(TXT_OPT_APC_TITLE_BAR_BTN_MAXIMIZE)"/>
+                  <toggleButton id="titlebarBtnMaximize" width="80"/>
+                </horizontalLayout>
+              </verticalLayout>
+              <!--界面刷新时间间隔-->
+              <rectangle height="60" margin-top="4">
+                <horizontalLayout>
+                  <icon icon="internalLyric" width="52"/>
+                  <verticalLayout>
+                    <text font_size="10" text="%(TXT_OPT_APC_UI_REFRESH_INTERVAL)" height="20"/>
+                    <text text="%(TXT_OPT_DESC_UI_REFRESH_INTERVA)" color_style="emphasis1" height="20"/>
+                  </verticalLayout>
+                  <text id="uiRefreshIntervalValue" font_size="10" width="50" alignment="right" margin-right="8"/>
+                  <verticalLayout width="26" margin-right="16">
+                    <button id="intervalUpBtn" height="22" icon="triangleUp"/>
+                    <button id="intervalDownBtn" height="22" icon="triangleDown"/>
+                  </verticalLayout>
+                </horizontalLayout>
+              </rectangle>
+            </verticalLayout>
+          </scrollArea>
+          
+          <!--第2页 歌词设置-->
+          <scrollArea>
+            <verticalLayout>
+              <!--歌词卡拉OK样式显示-->
+              <toggleSettingGroup id="lyricKaraokeStyle" height="60" icon="karaoke" mainText="%(TXT_OPT_LRC_KARAOKE_DISP)" subText="%(TXT_OPT_DESC_LYRIC_KARAOKE)"/>
+              <!--窗口歌词字体-->
+              <rectangle height="60" margin-top="4">
+                <horizontalLayout>
+                  <icon icon="lyric" width="52"/>
+                  <verticalLayout>
+                    <text font_size="10" text="%(TXT_OPT_LYRIC_FONT_SETTING)" height="20"/>
+                    <text id="lyricFontSettingSubText" color_style="emphasis1" height="20"/>
+                  </verticalLayout>
+                  <button id="lyricFontSettingBtn" icon="shortcut" height="28" text="%(TXT_OPT_LRC_FONT_SEL)" show_text="true" margin-right="16"/>
+                </horizontalLayout>
+              </rectangle>
+              <!--显示桌面歌词-->
+              <toggleSettingGroup id="showDesktopLyric" height="60" margin-top="4" icon="lyric" mainText="%(TXT_OPT_LRC_DESKTOP_LRC_ENABLE)"/>
+            </verticalLayout>
+          </scrollArea>
+
+          <!--第3页 常规设置-->
+          <scrollArea>
+            <verticalLayout>
+              <!--语言-->
+              <rectangle height="60">
+                <horizontalLayout>
+                  <icon icon="setting" width="52"/>
+                  <verticalLayout>
+                    <text font_size="10" text="%(TXT_OPT_DATA_LANGUAGE_SEL)" height="20"/>
+                    <text text="%(MSG_OPT_DATA_LANGUAGE_CHANGE_INFO)" color_style="emphasis1" height="20"/>
+                  </verticalLayout>
+                  <comboBox id="languageCombo" width="140" height="28" margin-right="16"/>
+                </horizontalLayout>
+              </rectangle>
+              <!--数据和配置文件-->
+              <rectangle height="60" margin-top="4">
+                <horizontalLayout>
+                  <icon icon="fileRelate" width="52"/>
+                  <verticalLayout>
+                    <text font_size="10" text="%(TXT_OPT_DATA_DATA_FILE_CFG)" height="20"/>
+                    <text id="configFileDirPathText" color_style="emphasis1" height="20"/>
+                  </verticalLayout>
+                  <button id="openConfigDirBtn" icon="shortcut" height="28" text="%(TXT_OPT_DATA_DATA_FILE_DIR_OPEN)" show_text="true" margin-right="16"/>
+                </horizontalLayout>
+              </rectangle>
+              <!--没有歌词时自动下载-->
+              <toggleSettingGroup id="autoDownloadLyric" height="60" margin-top="4" icon="lyric" mainText="%(TXT_OPT_DATA_AUTO_DL_LYRIC)"/>
+              <!--没有专辑封面时自动下载-->
+              <toggleSettingGroup id="autoDownloadAlbumCover" height="60" margin-top="4" icon="albumCover" mainText="%(TXT_OPT_DATA_AUTO_DL_COVER)"/>
+              <!--歌词和专辑封面下载服务-->
+              <rectangle height="60" margin-top="4">
+                <horizontalLayout>
+                  <icon icon="online" width="52"/>
+                  <verticalLayout>
+                    <text font_size="10" text="%(TXT_OPT_DATA_LYRICS_AND_COVER_DL_SERVICE)" height="20"/>
+                    <!--<text color_style="emphasis1" height="20"/>-->
+                  </verticalLayout>
+                </horizontalLayout>
+              </rectangle>
+              <verticalLayout id="onlineServiceOptionGroup" margin-left="52" margin-right="16" height="72">
+                <radioButton id="onlineServiceNetEaseBtn" text="%(TXT_OPT_DATA_NETEASE_CLOUD_MUSIC)" group="2"/>
+                <radioButton id="onlineServiceQQMusicBtn" text="%(TXT_OPT_DATA_QQ_MUSIC)" group="2"/>
+              </verticalLayout>
+
+            </verticalLayout>
+          </scrollArea>
+          
+          <!--第4页 播放设置-->
+          <scrollArea>
+            <verticalLayout>
+              <toggleSettingGroup id="stopWhenErrorBtn" height="60" icon="stop" mainText="%(TXT_OPT_PLAY_STOP_WHEN_ERROR)"/>
+              <toggleSettingGroup id="autoPlayWhenStartBtn" height="60" margin-top="4" icon="play" mainText="%(TXT_OPT_PLAY_AUTO_PLAY_WHEN_START)"/>
+              <!--播放内核-->
+              <rectangle height="60" margin-top="4">
+                <horizontalLayout>
+                  <icon icon="setting" width="52"/>
+                  <verticalLayout>
+                    <text font_size="10" text="%(TXT_OPT_PLAY_CORE)" height="20"/>
+                    <text text="%(TXT_OPT_DESC_PLAY_CORE)" color_style="emphasis1" height="20"/>
+                  </verticalLayout>
+                  <button id="playCoreExpandBtn" key="showHideElement" related_element_id="playCoreOptionGroup" icon="dropDown" height="28" width="28" margin-right="16"/>
+                </horizontalLayout>
+              </rectangle>
+              <verticalLayout id="playCoreOptionGroup" margin-left="52" margin-right="16" height="108">
+                <radioButton id="playCoreBass" text="%(TXT_OPT_PLAY_CORE_BASS)" group="1"/>
+                <radioButton id="playCoreMCI" text="%(TXT_OPT_PLAY_CORE_MCI)" group="1"/>
+                <radioButton id="playCoreFFMPEG" text="%(TXT_OPT_PLAY_CORE_FFMPEG)" group="1"/>
+              </verticalLayout>
+            </verticalLayout>
+          </scrollArea>
+          
+          <!--第5页 媒体库设置-->
+          <scrollArea>
+            <verticalLayout>
+              <!--启动时自动更新媒体-->
+              <toggleSettingGroup id="updateMedialibWhenStart" height="60" icon="refresh" mainText="%(TXT_OPT_MEDIA_LIB_AUTO_UPDATE_WHEN_STARTUP)"/>
+              <!--清理媒体库-->
+              <rectangle height="60" margin-top="4">
+                <horizontalLayout>
+                  <icon icon="delete" width="52"/>
+                  <verticalLayout>
+                    <text font_size="10" text="%(TXT_OPT_MEDIA_LIB_CLEAN_MEDIA_LIB)" height="20"/>
+                    <text id="clearMedialibText" color_style="emphasis1" height="20"/>
+                  </verticalLayout>
+                  <button id="clearMedialibBtn" icon="shortcut" height="28" text="%(TXT_OPT_MEDIA_LIB_DATA_FILE_CLEAN)" show_text="true" margin-right="16"/>
+                </horizontalLayout>
+              </rectangle>
+              <!--媒体库目录-->
+              <rectangle height="60" margin-top="4">
+                <horizontalLayout>
+                  <icon icon="folder" width="52"/>
+                  <verticalLayout>
+                    <text font_size="10" text="%(TXT_OPT_MEDIA_LIB_MEDIA_LIB_DIR)" height="20"/>
+                    <text text="%(TXT_OPT_DESC_MEDIA_LIB_DIR)" color_style="emphasis1" height="20"/>
+                  </verticalLayout>
+                </horizontalLayout>
+              </rectangle>
+              <horizontalLayout margin-top="4" height="100">
+                <rectangle theme_color="false" margin-left="52">
+                  <listElement id="mediaLibFolderList"/>
+                </rectangle>
+                <verticalLayout width="90" margin-left="8">
+                  <button id="addMediaLibFolderBtn" height="30" icon="add" text="%(UI_TXT_PLAYLIST_TOOLBAR_ADD)" show_text="true"/>
+                  <button id="deleteMediaLibFolderBtn" height="30" margin-top="4" icon="close" text="%(UI_TXT_PLAYLIST_TOOLBAR_DELETE)" show_text="true"/>
+                  <placeHolder/>
+                </verticalLayout>
+              </horizontalLayout>
+              <!--插入到播放列表开头-->
+              <toggleSettingGroup id="insertToPlaylistFront" height="60" margin-top="4" icon="add" mainText="%(TXT_OPT_UI_INSERT_PLAYLIST_FRONT)" subText="%(TXT_OPT_DESC_INSERT_PLAYLIST_FRONT)"/>
+              <!--合并同一曲目的不同版本-->
+              <toggleSettingGroup id="mergeSongsOfDifferentVersion" height="60" margin-top="4" icon="music" mainText="%(TXT_OPT_UI_MERGE_DEFFERENT_VERSIONS)" subText="%(TXT_OPT_DESC_MERGE_DEFFERENT_VERSIONS)"/>
+            </verticalLayout>
+          </scrollArea>
+          
+        </stackElement>
+      </horizontalLayout>
+    </verticalLayout>
+  </panel>
+</root>

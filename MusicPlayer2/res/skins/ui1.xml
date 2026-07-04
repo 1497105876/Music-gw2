@@ -1,0 +1,133 @@
+﻿<root xmlns="https://github.com/zhongyang219/MusicPlayer2/skin" xmlns:xsi="http://www.w3.org/2101/XMLSchema-instance" xsi:schemaLocation="https://github.com/zhongyang219/MusicPlayer2/skin ./skin.xsd"
+  index="1">
+
+  <ui>
+    <verticalLayout margin="4">
+      <horizontalLayout height="90">
+        <rectangle width="118" no_corner_radius="true">
+          <albumCover margin="2">
+            <spectrum draw_reflex="false" fixed_width="true" alignment="left" height="60%" margin-bottom="0"/>
+          </albumCover>
+        </rectangle>
+        <verticalLayout margin-left="4">
+          <horizontalLayout height="36">
+            <verticalLayout>
+              <trackInfo/>
+              <horizontalLayout>
+                <text width="54" type="userDefine" color_style="emphasis1" text="%(TXT_TITLE):"/>
+                <text type="title" style="scroll"/>
+              </horizontalLayout>
+            </verticalLayout>
+            <placeHolder show_when_use_system_titlebar="true" height="28"/>
+          </horizontalLayout>
+          <horizontalLayout>
+            <text width="54" type="userDefine" color_style="emphasis1" text="%(TXT_ARTIST):"/>
+            <text type="artist" style="scroll"/>
+          </horizontalLayout>
+          <horizontalLayout>
+            <text width="54" type="userDefine" color_style="emphasis1" text="%(TXT_ALBUM):"/>
+            <text type="album" style="scroll"/>
+          </horizontalLayout>
+          <horizontalLayout>
+            <text width="54" type="userDefine" color_style="emphasis1" text="%(TXT_UI_FORMAT):"/>
+            <text type="format" style="scroll"/>
+          </horizontalLayout>
+        </verticalLayout>
+      </horizontalLayout>
+      <!--工具栏-->
+      <rectangle height="24" margin-top="6">
+        <horizontalLayout>
+          <button key="repeatMode" width="20" height="20" margin="2"/>
+          <button key="settings" width="20" height="20" margin="2"/>
+          <button key="equalizer" width="20" height="20" margin="2"/>
+          <button key="skin" width="20" height="20" margin="2"/>
+          <button key="miniMode" width="20" height="20" margin="2" hide-width="142"/>
+          <button key="info" width="20" height="20" margin="2" hide-width="166"/>
+          <button key="find" width="20" height="20" margin="2" hide-width="190"/>
+          <button key="darkLightMode" width="20" height="20" margin="2" hide-width="262"/>
+          <button key="abRepeat" width="20" height="20" margin="2" hide-width="286"/>
+          <button key="desktopLyric" width="20" height="20" margin="2" hide-width="238"/>
+          <placeHolder/>
+          <volume width="56" show_text="true"/>
+          <beatIndicator width="44" hide-width="336"/>
+        </horizontalLayout>
+      </rectangle>
+	  <classicalControlBar margin-top="4" show_switch_display_btn="true"/>
+      <stackElement>
+        <verticalLayout>
+          <horizontalLayout height="24" margin-left="6" margin-right="6">
+            <text type="userDefine" text="%(TXT_UI_LYRIC_SHOW):"/>
+            <placeHolder/>
+            <button key="karaoke" width="24" height="24"/>
+            <button key="lyricTranslate" width="24" height="24" margin-left="4"/>
+          </horizontalLayout>
+          <lyrics margin-top="4" margin-left="6" margin-right="6" margin-bottom="6"/>
+        </verticalLayout>
+        <verticalLayout margin="4">
+          <playlistIndicator height="30" margin-bottom="4"/>
+          <playlist/>
+        </verticalLayout>
+      </stackElement>
+    </verticalLayout>
+  </ui>
+
+  <ui type="small">
+    <verticalLayout margin="4">
+      <verticalLayout>
+        <horizontalLayout height="90">
+          <rectangle width="118" no_corner_radius="true">
+            <albumCover margin="2">
+              <spectrum draw_reflex="false" fixed_width="true" alignment="left" height="60%" margin-bottom="0"/>
+            </albumCover>
+          </rectangle>
+          <verticalLayout margin-left="4">
+            <horizontalLayout height="36">
+              <verticalLayout>
+                <trackInfo/>
+                <horizontalLayout>
+                  <text width="54" type="userDefine" color_style="emphasis1" text="%(TXT_TITLE):"/>
+                  <text type="title" style="scroll"/>
+                </horizontalLayout>
+              </verticalLayout>
+              <placeHolder show_when_use_system_titlebar="true" height="28"/>
+            </horizontalLayout>
+            <horizontalLayout>
+              <text width="54" type="userDefine" color_style="emphasis1" text="%(TXT_ARTIST):"/>
+              <text type="artist" style="scroll"/>
+            </horizontalLayout>
+            <horizontalLayout>
+              <text width="54" type="userDefine" color_style="emphasis1" text="%(TXT_ALBUM):"/>
+              <text type="album" style="scroll"/>
+            </horizontalLayout>
+            <horizontalLayout>
+              <text width="54" type="userDefine" color_style="emphasis1" text="%(TXT_UI_FORMAT):"/>
+              <text type="format" style="scroll"/>
+            </horizontalLayout>
+          </verticalLayout>
+        </horizontalLayout>
+        <!--工具栏-->
+        <rectangle height="24" margin-top="4">
+          <horizontalLayout>
+            <button key="repeatMode" width="20" height="20" margin="2"/>
+            <button key="settings" width="20" height="20" margin="2"/>
+            <button key="equalizer" width="20" height="20" margin="2"/>
+            <button key="skin" width="20" height="20" margin="2"/>
+            <button key="miniMode" width="20" height="20" margin="2" hide-width="174"/>
+            <button key="info" width="20" height="20" margin="2" hide-width="198"/>
+            <button key="find" width="20" height="20" margin="2" hide-width="222"/>
+            <button key="darkLightMode" width="20" height="20" margin="2" hide-width="294"/>
+            <button key="abRepeat" width="20" height="20" margin="2" hide-width="318"/>
+            <button key="desktopLyric" width="20" height="20" margin="2" hide-width="270"/>
+            <placeHolder/>
+            <volume width="56" show_text="true"/>
+            <beatIndicator width="44" hide-width="368"/>
+          </horizontalLayout>
+        </rectangle>
+        <lyrics margin-top="4" hide-height="192"/>
+	      <classicalControlBar/>
+      </verticalLayout>
+	  </verticalLayout>
+  </ui>
+
+
+</root>

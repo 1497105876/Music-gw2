@@ -1,0 +1,194 @@
+﻿<root xmlns="https://github.com/zhongyang219/MusicPlayer2/skin" xmlns:xsi="http://www.w3.org/2101/XMLSchema-instance" xsi:schemaLocation="https://github.com/zhongyang219/MusicPlayer2/skin ./skin.xsd"
+      index="2">
+
+  <ui type="big">
+    <verticalLayout>
+      <trackInfo height="20" margin="4" margin-bottom="0"/>
+      <text type="format" style="scroll" height="20" margin-left="4" margin-right="4"/>
+      <stackElement margin-left="4" margin-right="4" margin-bottom="8" show_indicator="true" indicator_offset="-8">
+        <!--第1页-->
+        <horizontalLayout>
+          <verticalLayout margin-bottom="12">
+            <albumCover square="true" margin="8"/>
+            <text type="title" alignment="center" style="scroll" height="26" font_size="10" />
+            <text type="artist" alignment="center" style="scroll" height="20" font_size="9" margin-top="0" />
+            <spectrum draw_reflex="true" fixed_width="true" alignment="center" height="15%" margin-top="-8" min-height="24" max-height="80"/>
+          </verticalLayout>
+          <lyrics margin="4" margin-left="8" margin-bottom="16"/>
+        </horizontalLayout>
+        <!--第2页-->
+        <horizontalLayout>
+          <!--左侧部分-->
+          <verticalLayout margin-bottom="12">
+            <albumCover square="true" margin="8"/>
+            <text type="title" alignment="center" style="scroll" height="26" font_size="10" />
+            <text type="artist" alignment="center" style="scroll" height="20" font_size="9" margin-top="0" />
+            <lyrics hide-height="200" height="18%" margin-top="4"/>
+            <spectrum draw_reflex="true" fixed_width="true" alignment="center" height="15%" margin-top="-8" min-height="24" max-height="80"/>
+          </verticalLayout>
+          <!--右侧部分-->
+          <verticalLayout margin="4" margin-left="8" margin-bottom="16">
+            <playlistIndicator height="30" margin-bottom="4"/>
+            <searchBox height="26" margin-bottom="4"/>
+            <playlist item_height="32"/>
+          </verticalLayout>
+        </horizontalLayout>
+        <!--第3页-->
+        <horizontalLayout>
+          <!--左侧部分-->
+          <verticalLayout margin-bottom="12">
+            <rectangle height="80" margin="8">
+              <horizontalLayout margin="4">
+                <albumCover square="true" width="64" margin-left="4"/>
+                <verticalLayout margin-left="16">
+                  <text type="title" font_size="10" style="scroll" height="28"/>
+                  <text type="artist" font_size="9" style="scroll" height="24"/>
+                </verticalLayout>
+              </horizontalLayout>
+            </rectangle>
+            <lyrics margin-top="4" margin-left="8" margin-right="8" hide-height="120"/>
+            <spectrum draw_reflex="true" fixed_width="true" alignment="center" height="15%" min-height="24" max-height="80"/>
+          </verticalLayout>
+          <!--右侧部分-->
+          <verticalLayout margin="4" margin-left="8" margin-bottom="16">
+            <playlistIndicator height="30" margin-bottom="4"/>
+            <searchBox height="26" margin-bottom="4"/>
+            <playlist item_height="32"/>
+          </verticalLayout>
+        </horizontalLayout>
+      </stackElement>
+      <!--工具栏-->
+      <rectangle height="24" margin="4" margin-bottom="0">
+        <horizontalLayout>
+          <button key="repeatMode" width="20" height="20" margin="2"/>
+          <button key="settings" width="20" height="20" margin="2"/>
+          <button key="equalizer" width="20" height="20" margin="2"/>
+          <button key="skin" width="20" height="20" margin="2"/>
+          <button key="miniMode" width="20" height="20" margin="2" hide-width="174"/>
+          <button key="info" width="20" height="20" margin="2" hide-width="198"/>
+          <button key="find" width="20" height="20" margin="2" hide-width="222"/>
+          <button key="lyricTranslate" width="20" height="20" margin="2" hide-width="246"/>
+          <button key="darkLightMode" width="20" height="20" margin="2" hide-width="294"/>
+          <button key="abRepeat" width="20" height="20" margin="2" hide-width="318"/>
+          <button key="desktopLyric" width="20" height="20" margin="2" hide-width="270"/>
+          <placeHolder/>
+          <volume width="56" show_text="true"/>
+          <beatIndicator width="44" hide-width="368"/>
+        </horizontalLayout>
+      </rectangle>
+      <!--控制条-->
+      <classicalControlBar margin="4"/>
+    </verticalLayout>
+  </ui>
+
+  <ui type="narrow">
+    <verticalLayout>
+      <verticalLayout margin="12">
+        <horizontalLayout height="20">
+          <trackInfo height="20"/>
+          <placeHolder show_when_use_system_titlebar="true"/>
+        </horizontalLayout>
+        <text type="format" style="scroll" height="20"/>
+        <stackElement click_to_switch="false" show_indicator="true" margin-bottom="4">
+          <!--第1页-->
+          <verticalLayout margin-bottom="4">
+            <albumCover square="true" margin="8"/>
+            <text type="title" alignment="center" style="scroll" height="26" font_size="10" />
+            <text type="artist" alignment="center" style="scroll" height="20" font_size="9" margin-top="0" />
+            <lyrics hide-height="200" height="18%" margin-top="4"/>
+          </verticalLayout>
+          <!--第2页-->
+          <verticalLayout margin="8">
+            <rectangle height="80">
+              <horizontalLayout margin="4">
+                <albumCover square="true" width="64" margin-left="4"/>
+                <verticalLayout margin-left="16">
+                  <text type="title" font_size="10" style="scroll" height="28"/>
+                  <text type="artist" font_size="9" style="scroll" height="24"/>
+                </verticalLayout>
+              </horizontalLayout>
+            </rectangle>
+            <lyrics margin-top="14" hide-height="120"/>
+          </verticalLayout>
+          <!--第1页-->
+          <playlist margin="8"/>
+        </stackElement>
+        <spectrum draw_reflex="true" fixed_width="true" alignment="center" height="15%" margin-top="-6" margin-bottom="-12" min-height="24" max-height="80"/>
+      </verticalLayout>
+      <rectangle height="24" margin="4" margin-bottom="0">
+        <horizontalLayout>
+          <button key="repeatMode" width="20" height="20" margin="2"/>
+          <button key="settings" width="20" height="20" margin="2"/>
+          <button key="equalizer" width="20" height="20" margin="2"/>
+          <button key="skin" width="20" height="20" margin="2"/>
+          <button key="miniMode" width="20" height="20" margin="2" hide-width="174"/>
+          <button key="info" width="20" height="20" margin="2" hide-width="198"/>
+          <button key="find" width="20" height="20" margin="2" hide-width="222"/>
+          <button key="lyricTranslate" width="20" height="20" margin="2" hide-width="246"/>
+          <button key="darkLightMode" width="20" height="20" margin="2" hide-width="294"/>
+          <button key="abRepeat" width="20" height="20" margin="2" hide-width="318"/>
+          <button key="desktopLyric" width="20" height="20" margin="2" hide-width="270"/>
+          <placeHolder/>
+          <volume width="56" show_text="true"/>
+          <beatIndicator width="44" hide-width="368"/>
+        </horizontalLayout>
+      </rectangle>
+      <classicalControlBar margin="4"/>
+    </verticalLayout>
+  </ui>
+
+  <ui type="small">
+    <verticalLayout margin="4">
+      <horizontalLayout height="20">
+        <trackInfo height="20" />
+        <placeHolder show_when_use_system_titlebar="true" height="20"/>
+      </horizontalLayout>
+      <horizontalLayout margin="4">
+        <rectangle max-height="80">
+          <horizontalLayout margin="6">
+            <albumCover square="true" width="64" margin-left="4">
+              <spectrum draw_reflex="false" fixed_width="true" alignment="center" height="50%" margin-bottom="0"/>
+            </albumCover>
+            <verticalLayout margin-left="16">
+              <text type="title" font_size="10" style="scroll" height="28"/>
+              <text type="artist" font_size="9" style="scroll" height="24"/>
+              <text type="format" font_size="8" style="scroll" height="22" hide-height="68"/>
+            </verticalLayout>
+          </horizontalLayout>
+        </rectangle>
+        <!--<albumCover square="true" margin-right="4" width="120">
+            <spectrum draw_reflex="false" fixed_width="true" alignment="center" height="50%" margin-bottom="0"/>
+          </albumCover>
+          <verticalLayout>
+            <trackInfo height="20"/>
+            <text type="format" height="20"/>
+            <text type="title" alignment="center" height="26" font_size="10" />
+            <text type="artist_album" alignment="center" height="20" font_size="9" margin-top="0" />
+            <lyrics height="20" />
+          </verticalLayout>-->
+      </horizontalLayout>
+      <lyrics margin-left="8" margin-right="8" max-height="28" hide-height="224"/>
+      <rectangle height="24" margin="4" margin-bottom="0">
+        <horizontalLayout>
+          <button key="repeatMode" width="20" height="20" margin="2"/>
+          <button key="settings" width="20" height="20" margin="2"/>
+          <button key="equalizer" width="20" height="20" margin="2"/>
+          <button key="skin" width="20" height="20" margin="2"/>
+          <button key="miniMode" width="20" height="20" margin="2" hide-width="174"/>
+          <button key="info" width="20" height="20" margin="2" hide-width="198"/>
+          <button key="find" width="20" height="20" margin="2" hide-width="222"/>
+          <button key="lyricTranslate" width="20" height="20" margin="2" hide-width="246"/>
+          <button key="darkLightMode" width="20" height="20" margin="2" hide-width="294"/>
+          <button key="abRepeat" width="20" height="20" margin="2" hide-width="318"/>
+          <button key="desktopLyric" width="20" height="20" margin="2" hide-width="270"/>
+          <placeHolder/>
+          <volume width="56" show_text="true"/>
+          <beatIndicator width="44" hide-width="368"/>
+        </horizontalLayout>
+      </rectangle>
+      <classicalControlBar margin-top="4"/>
+    </verticalLayout>
+
+  </ui>
+
+</root>

@@ -1,0 +1,161 @@
+﻿#include "stdafx.h"
+#include "MiniModeUserUi.h"
+#include "MiniModeDlg.h"
+#include "UIElement/ElementFactory.h"
+#include "UIElement/Button.h"
+#include "UIElement/StackElement.h"
+#include "UIElement/AbstractListElement.h"
+#include "UIElement/SearchBox.h"
+#include "ClosseMainWindowInqueryDlg.h"
+
+CMiniModeUserUi::CMiniModeUserUi(CWnd* pMainWnd, const std::wstring& xml_path, UIData& ui_data)
+    : CUserUi(pMainWnd, xml_path, ui_data)
+{
+    InitUiPlaylist();
+}
+
+CMiniModeUserUi::CMiniModeUserUi(CWnd* pMainWnd, UINT id, UIData& ui_data)
+    : CUserUi(pMainWnd, id, ui_data)
+{
+    InitUiPlaylist();
+}
+
+CMiniModeUserUi::~CMiniModeUserUi()
+{
+}
+
+void CMiniModeUserUi::InitUiPlaylist()
+{
+    //保存原来的UI
+    m_ui_element = m_root_default;
+    CMiniModeDlg* pMinimodeDlg = dynamic_cast<CMiniModeDlg*>(m_pMainWnd);
+    if (pMinimodeDlg != nullptr)
+    {
+        //如果使用UI播放列表，则向UI中添加一个播放列表元素
+        if (pMinimodeDlg->IsUseUiPlaylist())
+        {
+            UiElement::CElementFactory factory;
+            //新的UI
+            std::shared_ptr<UiElement::Element> ui_new = factory.CreateElement("element", this);
+            //创建一个垂直布局
+            std::shared_ptr<UiElement::Element> vertical_layout = factory.CreateElement("verticalLayout", this);
+            //垂直布局添加到新的UI中
+            ui_new->AddChild(vertical_layout);
+            //原来的UI添加到垂直布局中
+            vertical_layout->AddChild(m_ui_element);
+            //添加一个搜索框
+            std::shared_ptr<UiElement::Element> search_box = factory.CreateElement("searchBox", this);
+            search_box->SetHeight("26");
+            vertical_layout->AddChild(search_box);
+            //添加一个播放列表
+            m_playlist_emelment = factory.CreateElement("playlist", this);
+            vertical_layout->AddChild(m_playlist_emelment);
+            //使用新的UI
+            m_root_default = ui_new;
+        }
+    }
+}
+
+bool CMiniModeUserUi::GetUiSize(int& width, int& height, int& height_with_playlist)
+{
+    if (m_ui_element != nullptr)
+    {
+        //设置绘图区域
+        width = m_ui_element->GetWidth(CRect());
+        height = m_ui_element->GetHeight(CRect());
+        height_with_playlist = height + theApp.DPI(292);
+        return true;
+    }
+    return false;
+}
+
+std::shared_ptr<UiElement::Playlist> CMiniModeUserUi::GetPlaylist() const
+{
+    return std::dynamic_pointer_cast<UiElement::Playlist>(m_playlist_emelment);
+}
+
+void CMiniModeUserUi::_DrawInfo(CRect draw_rect, bool reset /*= false*/)
+{
+    if (m_root_default != nullptr)
+    {
+        m_root_default->SetRect(draw_rect);
+        m_root_default->Draw();
+        m_root_default->DrawTopMost();
+    }
+}
+
+void CMiniModeUserUi::PreDrawInfo()
+{
+    //设置颜色
+    m_colors = CPlayerUIHelper::GetUIColors(theApp.m_app_setting_data.dark_mode, IsDrawBackgroundAlpha());
+
+    //设置绘图区域
+    int width{}, height{}, height_width_playlist;
+    GetUiSize(width, height, height_width_playlist);
+    CSize window_size;
+    if (IsShowUiPlaylist())
+        window_size = CSize(width, height_width_playlist);
+    else
+        window_size = CSize(width, height);
+
+    m_draw_rect = CRect(CPoint(0, 0), window_size);
+}
+
+bool CMiniModeUserUi::ButtonClicked(BtnKey btn_type, const UIButton& btn)
+{
+    switch (btn_type)
+    {
+    case BTN_MINI:
+        m_pMainWnd->SendMessage(WM_COMMAND, IDOK);
+        return true;
+    case BTN_CLOSE:
+    {
+        bool close_window = true;
+        if (theApp.m_nc_setting_data.show_close_main_window_inquery)
+        {
+            CClosseMainWindowInqueryDlg dlg;
+            if (dlg.DoModal() != IDOK)
+                close_window = false;
+        }
+        if (close_window)
+        {
+            if (theApp.m_general_setting_data.minimize_to_notify_icon)
+                m_pMainWnd->ShowWindow(HIDE_WINDOW);
+            else
+                m_pMainWnd->SendMessage(WM_COMMAND, ID_MINI_MODE_EXIT);
+        }
+        return true;
+    }
+    case BTN_SHOW_PLAYLIST:
+        m_pMainWnd->SendMessage(WM_COMMAND, ID_SHOW_PLAY_LIST);
+        return true;
+    case BTN_SKIN:
+    {
+        CPoint point1;
+        GetCursorPos(&point1);
+        CMenu* pMenu = theApp.m_menu_mgr.GetMenu(MenuMgr::MiniModeSwitchUiMenu);
+        ASSERT(pMenu != nullptr);
+        if (pMenu != nullptr)
+            pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point1.x, point1.y, m_pMainWnd);
+        return true;
+    }
+    }
+    return CPlayerUIBase::ButtonClicked(btn_type, btn);
+}
+
+bool CMiniModeUserUi::ButtonRClicked(BtnKey btn_type, const UIButton& btn)
+{
+    if (btn_type == BTN_SHOW_PLAYLIST)
+        return false;
+    return CPlayerUIBase::ButtonRClicked(btn_type, btn);
+}
+
+bool CMiniModeUserUi::IsShowUiPlaylist() const
+{
+    CMiniModeDlg* pMinimodeDlg = dynamic_cast<CMiniModeDlg*>(m_pMainWnd);
+    if (pMinimodeDlg != nullptr)
+    {
+        return pMinimodeDlg->IsUseUiPlaylist() && pMinimodeDlg->IsShowPlaylist();
+    }
+    return false;
+}
