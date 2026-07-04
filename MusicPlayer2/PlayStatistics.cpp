@@ -39,7 +39,7 @@ std::string PlayRecord::ToJson() const
                 if (static_cast<unsigned char>(c) < 0x20)
                 {
                     char buf[8];
-                    snprintf(buf, sizeof(buf), "\\u%04x", c);
+                    snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned char>(c));
                     out += buf;
                 }
                 else

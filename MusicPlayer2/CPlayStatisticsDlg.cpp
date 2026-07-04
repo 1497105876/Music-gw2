@@ -179,6 +179,7 @@ void CPlayStatisticsDlg::LoadRecords()
                         size_t pos = line.find(search);
                         if (pos == std::string::npos) return;
                         pos += search.size();
+                        if (pos >= line.size()) return;
                         out = atoi(line.c_str() + pos);
                     };
 
@@ -187,6 +188,7 @@ void CPlayStatisticsDlg::LoadRecords()
                         size_t pos = line.find(search);
                         if (pos == std::string::npos) return;
                         pos += search.size();
+                        if (pos >= line.size()) return;
                         out = (line[pos] == 't');
                     };
 
