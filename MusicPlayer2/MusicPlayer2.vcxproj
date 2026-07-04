@@ -260,6 +260,8 @@
     <ClInclude Include="CleanupRangeDlg.h" />
     <ClInclude Include="CListBoxEnhanced.h" />
     <ClInclude Include="CListenTimeStatisticsDlg.h" />
+    <ClInclude Include="PlayStatistics.h" />
+    <ClInclude Include="CPlayStatisticsDlg.h" />
     <ClInclude Include="ClosseMainWindowInqueryDlg.h" />
     <ClInclude Include="CMMNotificationClient.h" />
     <ClInclude Include="CommonDialogMgr.h" />
@@ -508,6 +510,8 @@
     <ClCompile Include="CleanupRangeDlg.cpp" />
     <ClCompile Include="CListBoxEnhanced.cpp" />
     <ClCompile Include="CListenTimeStatisticsDlg.cpp" />
+    <ClCompile Include="PlayStatistics.cpp" />
+    <ClCompile Include="CPlayStatisticsDlg.cpp" />
     <ClCompile Include="ClosseMainWindowInqueryDlg.cpp" />
     <ClCompile Include="CMMNotificationClient.cpp" />
     <ClCompile Include="CommonData.cpp" />

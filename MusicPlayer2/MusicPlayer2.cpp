@@ -15,6 +15,7 @@
 #include "UiMediaLibItemMgr.h"
 #include "NeteaseLyricDownload.h"
 #include "QQMusicLyricDownload.h"
+#include "PlayStatistics.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -224,6 +225,9 @@ BOOL CMusicPlayerApp::InitInstance()
     LoadSongData();
     LoadLastFMData();
 
+    // 初始化播放统计
+    CPlayStatistics::GetInstance().Init(m_config_dir);
+
     // 获取默认线程语言
     CCommon::GetThreadLanguageList(m_def_lang_list);
     //初始化界面语言
@@ -325,6 +329,9 @@ BOOL CMusicPlayerApp::InitInstance()
     m_media_update_para.thread_exit = true;
     if (theApp.m_media_lib_updating)
         WaitForSingleObject(m_media_lib_update_thread->m_hThread, 1000);	//等待线程退出
+
+    // 播放统计：确保数据落盘
+    CPlayStatistics::GetInstance().Flush();
 
     SaveSongData();
 

@@ -678,6 +678,12 @@
     <ClInclude Include="CListenTimeStatisticsDlg.h">
       <Filter>对话框类\ListenTimeStatisticsDlg</Filter>
     </ClInclude>
+    <ClInclude Include="PlayStatistics.h">
+      <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClInclude>
+    <ClInclude Include="CPlayStatisticsDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
     <ClInclude Include="CDonateDlg.h">
       <Filter>对话框类\DonateDlg</Filter>
     </ClInclude>
@@ -1405,6 +1411,12 @@
     </ClCompile>
     <ClCompile Include="CListenTimeStatisticsDlg.cpp">
       <Filter>对话框类\ListenTimeStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayStatistics.cpp">
+      <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClCompile>
+    <ClCompile Include="CPlayStatisticsDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
     <ClCompile Include="CDonateDlg.cpp">
       <Filter>对话框类\DonateDlg</Filter>

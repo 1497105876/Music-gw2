@@ -9,6 +9,7 @@
 #include "AboutDlg.h"
 #include "CTest.h"
 #include "CListenTimeStatisticsDlg.h"
+#include "CPlayStatisticsDlg.h"
 #include "CFloatPlaylistDlg.h"
 #include "Playlist.h"
 #include "InputDlg.h"
@@ -36,6 +37,7 @@
 #include "UIPanel/SettingsPanel.h"
 #include "UIDialog/UITestDialog.h"
 #include "OpenUrlDlg.h"
+#include "PlayStatistics.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -260,6 +262,7 @@ BEGIN_MESSAGE_MAP(CMusicPlayerDlg, CMainDialogBase)
     ON_COMMAND(ID_FULL_SCREEN, &CMusicPlayerDlg::OnFullScreen)
     ON_COMMAND(ID_CREATE_PLAY_SHORTCUT, &CMusicPlayerDlg::OnCreatePlayShortcut)
     ON_COMMAND(ID_LISTEN_STATISTICS, &CMusicPlayerDlg::OnListenStatistics)
+    ON_COMMAND(ID_PLAY_STATISTICS, &CMusicPlayerDlg::OnPlayStatistics)
     ON_COMMAND(ID_DARK_MODE, &CMusicPlayerDlg::OnDarkMode)
     ON_MESSAGE(WM_MAIN_MENU_POPEDUP, &CMusicPlayerDlg::OnMainMenuPopup)
     ON_COMMAND(ID_ALWAYS_ON_TOP, &CMusicPlayerDlg::OnAlwaysOnTop)
@@ -2696,6 +2699,7 @@ void CMusicPlayerDlg::OnTimer(UINT_PTR nIDEvent)
         if (CPlayer::GetInstance().IsPlaying())
         {
             CPlayer::GetInstance().AddListenTime(1);
+            CPlayStatistics::GetInstance().OnTick(1);
         }
 
         CWinVersionHelper::CheckWindows10LightTheme();
@@ -5291,6 +5295,14 @@ void CMusicPlayerDlg::OnListenStatistics()
 {
     // TODO: 在此添加命令处理程序代码
     CListenTimeStatisticsDlg dlg;
+    dlg.DoModal();
+}
+
+
+void CMusicPlayerDlg::OnPlayStatistics()
+{
+    // 播放统计对话框
+    CPlayStatisticsDlg dlg;
     dlg.DoModal();
 }
 
