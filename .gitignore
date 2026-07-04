@@ -292,3 +292,15 @@ __pycache__/
 /MusicPlayer2/compile_time.txt
 !/MusicPlayer2/language/*.ini
 /enc_temp_folder
+
+# Installer output
+installer_output/
+
+# Build logs
+build_output.txt
+
+# Crash dumps
+异常/
+
+# Release executable at root
+/MusicPlayer2-Release.exe
