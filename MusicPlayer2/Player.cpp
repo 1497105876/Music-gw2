@@ -14,6 +14,7 @@
 #include "CRecentList.h"
 #include "MediaLibHelper.h"
 #include "SongMultiVersion.h"
+#include "PlayStatistics.h"
 
 CPlayer CPlayer::m_instance;
 
@@ -550,6 +551,16 @@ void CPlayer::MusicControl(Command command, int volume_step)
         if (m_enable_lastfm) {
             UpdateLastFMCurrentTrack(GetCurrentSongInfo());
         }
+
+        // 播放统计：歌曲开始播放
+        std::wstring stats_source;
+        if (m_playlist_mode == PM_FOLDER)
+            stats_source = L"文件夹模式";
+        else if (m_playlist_mode == PM_PLAYLIST)
+            stats_source = L"播放列表模式";
+        else if (m_playlist_mode == PM_MEDIA_LIB)
+            stats_source = L"媒体库模式";
+        CPlayStatistics::GetInstance().OnSongStarted(cur_song, stats_source);
     }
     break;
     case Command::PLAY:
@@ -575,6 +586,8 @@ void CPlayer::MusicControl(Command command, int volume_step)
         MediaTransControlsLoadThumbnailDefaultImage();
         break;
     case Command::STOP:
+        // 播放统计：用户停止
+        CPlayStatistics::GetInstance().OnSongEnded(PlayRecord::FinishReason::STOPPED);
         if (GetCurrentSongInfo().is_cue && GetCurrentSongInfo().start_pos > 0)
         {
             SeekTo(0);
@@ -906,6 +919,18 @@ bool CPlayer::PlayTrack(int song_track, bool auto_next)
         MusicControl(Command::STOP);
     else
     {
+        // 播放统计：歌曲切换，根据是否为自动下一首判定原因
+        if (CPlayStatistics::GetInstance().IsRecording())
+        {
+            PlayRecord::FinishReason reason;
+            if (m_error_state != ES_NO_ERROR)
+                reason = PlayRecord::FinishReason::PLAY_ERROR;
+            else if (auto_next)
+                reason = PlayRecord::FinishReason::COMPLETED;
+            else
+                reason = PlayRecord::FinishReason::SKIPPED;
+            CPlayStatistics::GetInstance().OnSongEnded(reason);
+        }
         m_current_position.fromInt(0);      //关闭前将当前播放位置清零
         MusicControl(Command::CLOSE);
         m_index = song_track;

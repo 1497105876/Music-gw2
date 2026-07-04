@@ -1086,6 +1086,15 @@
 #define ID_LIB_RECENT_PLAYED_ITEM_PROPERTIES 33477
 #define ID_PITCH_DOWN                   33478
 #define ID_PITCH_UP                     33479
+#define ID_PLAY_STATISTICS              33513
+
+#define IDD_PLAY_STATISTICS_DIALOG       693
+#define IDC_STAT_TAB                    1400
+#define IDC_STAT_DETAIL_LIST            1401
+#define IDC_STAT_OVERVIEW_LIST          1402
+#define IDC_EXPORT_CSV_BTN              1403
+#define IDC_EXPORT_JSON_BTN             1404
+#define IDC_STAT_CHART_STATIC           1405
 #define ID_ORIGINAL_PITCH               33480
 #define ID_SONGS_MULTI_VERSION_ITEM_START 33481
 #define ID_SONGS_MULTI_VERSION_ITEM_MAX 33511
@@ -1096,8 +1105,8 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        694
-#define _APS_NEXT_COMMAND_VALUE         33513
-#define _APS_NEXT_CONTROL_VALUE         1388
+#define _APS_NEXT_COMMAND_VALUE         33514
+#define _APS_NEXT_CONTROL_VALUE         1405
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

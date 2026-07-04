@@ -1,0 +1,1119 @@
+**********************************************************************
+** Visual Studio 2022 Developer Command Prompt v17.13.0
+** Copyright (c) 2022 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+适用于 .NET Framework MSBuild 版本 17.13.9+e0f243f1e
+
+  SciLexer.vcxproj -> Z:\github\MusicPlayer2-gw\x64\Release\SciLexer.dll
+  AboutDlg.cpp
+  AcceleratorRes.cpp
+  AddToPlaylistDlg.cpp
+  AllMediaDlg.cpp
+  AppearanceSettingDlg.cpp
+  AudioCommon.cpp
+  BaseDialog.cpp
+  BassCore.cpp
+  BrowseEdit.cpp
+  CDevicesManager.cpp
+  CDonateDlg.cpp
+  CFloatPlaylistDlg.cpp
+  ChinesePingyinRes.cpp
+  CHotkeyManager.cpp
+  CHotKeySettingDlg.cpp
+  CleanupRangeDlg.cpp
+  CListBoxEnhanced.cpp
+  CListenTimeStatisticsDlg.cpp
+  CPlayStatisticsDlg.cpp
+  ClosseMainWindowInqueryDlg.cpp
+  CommonData.cpp
+  CommonDialogMgr.cpp
+  CoverPreviewDlg.cpp
+  OpenUrlDlg.cpp
+  PlayerFormulaHelper.cpp
+  CRecentList.cpp
+  CUIDrawer.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CleanupRangeDlg.cpp(109,19): warning C4244: “初始化”: 从“LPARAM”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  CMainDialogBase.cpp
+  (编译源文件“/CleanupRangeDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\BassCore.cpp(63,58): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/BassCore.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\BassCore.cpp(210,54): warning C4311: “类型强制转换”: 从“void *”到“DWORD”的指针截断 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/BassCore.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\BassCore.cpp(210,54): warning C4302: “类型强制转换”: 从“void *”到“DWORD”截断 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/BassCore.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\BassCore.cpp(464,74): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/BassCore.cpp”)
+  
+  EditStringListDlg.cpp
+  FfmpegCore.cpp
+  FileNameFormDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CRecentList.cpp(154,14): warning C4267: “参数”: 从“size_t”转换到“const _Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CRecentList.cpp(154,14): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CRecentList.cpp(154,14): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CRecentList.cpp(154,14): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CRecentList.cpp(154,14): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CRecentList.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CRecentList.cpp(155,12): warning C4267: “return”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CRecentList.cpp”)
+  
+  FilterHelper.cpp
+  FindContainerDlg.cpp
+  FindListDlg.cpp
+  FlacEncodeCfgDlg.cpp
+  FolderPropertiesDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\AudioCommon.cpp(519,32): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/AudioCommon.cpp”)
+  
+  FontDialogEx.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\AudioCommon.cpp(532,45): warning C4267: “初始化”: 从“size_t”转换到“unsigned int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/AudioCommon.cpp”)
+  
+  GetTagOnlineDlg.cpp
+  IconMgr.cpp
+  LastFM.cpp
+  LastFMDataArchive.cpp
+  ListItem.cpp
+  ListSearchCache.cpp
+  LyricRelateDlg.cpp
+  MediaLibItemPropertiesDlg.cpp
+  PlaylistPropertiesDlg.cpp
+  SimplePropertiesDlg.cpp
+  UIDialog.cpp
+  UITestDialog.cpp
+  UIEdit.cpp
+  AbstractCheckButton.cpp
+  AbstractScrollArea.cpp
+  AbstractToggleButton.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ListSearchCache.cpp(29,48): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ListSearchCache.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ListSearchCache.cpp(78,20): warning C4267: “return”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ListSearchCache.cpp”)
+  
+  AbstractTracksList.cpp
+  AlbumCover.cpp
+  AllTracksList.cpp
+  BeatIndicator.cpp
+  Button.cpp
+  CheckBox.cpp
+  ClassicalControlBar.cpp
+  CombinedElement.cpp
+  ToggleSettingGroup.cpp
+  ComboBox.cpp
+  ElementFactory.cpp
+  ElementSwitcher.cpp
+  FolderExploreTree.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\ElementSwitcher.cpp(1,1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  IconElement.cpp
+  Layout.cpp
+  AbstractListElement.cpp
+  ListElement.cpp
+  LyricsElement.cpp
+  MediaLibFolder.cpp
+  MediaLibItemList.cpp
+  MediaLibPlaylist.cpp
+  MiniSpectrum.cpp
+  MyFavouriteList.cpp
+  NavigationBar.cpp
+  PanelElement.cpp
+  PlaceHolder.cpp
+  PlaylistElement.cpp
+  PlaylistIndicator.cpp
+  ProgressBar.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\AbstractListElement.cpp(598,21): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/AbstractListElement.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\AbstractListElement.cpp(749,34): warning C4267: “return”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/AbstractListElement.cpp”)
+  
+  RadioButton.cpp
+  RatingElement.cpp
+  RecentPlayedList.cpp
+  Rectangle.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\MediaLibFolder.cpp(31,29): warning C4267: “return”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/MediaLibFolder.cpp”)
+  
+  ScrollArea.cpp
+  SearchBox.cpp
+  Slider.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\MediaLibPlaylist.cpp(31,29): warning C4267: “return”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/MediaLibPlaylist.cpp”)
+  
+  SliderProgressBar.cpp
+  Spectrum.cpp
+  StackElement.cpp
+  EditControl.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\NavigationBar.cpp(159,39): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/NavigationBar.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\NavigationBar.cpp(200,32): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/NavigationBar.cpp”)
+  
+  Text.cpp
+  ToggleButton.cpp
+  TrackInfo.cpp
+  TracksList.cpp
+  TreeElement.cpp
+  UIElement.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(104,32): warning C4244: “=”: 从“LONG”转换到“Gdiplus::REAL”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(105,46): warning C4244: “=”: 从“LONG”转换到“Gdiplus::REAL”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(109,46): warning C4244: “=”: 从“LONG”转换到“Gdiplus::REAL”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(110,32): warning C4244: “=”: 从“LONG”转换到“Gdiplus::REAL”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(116,42): warning C4244: “=”: 从“double”转换到“Gdiplus::REAL”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(118,44): warning C4244: “=”: 从“double”转换到“Gdiplus::REAL”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(151,72): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(169,70): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(216,27): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\Slider.cpp(220,27): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/Slider.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\PlaylistElement.cpp(198,46): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/PlaylistElement.cpp”)
+  
+  Volume.cpp
+  UiMediaLibItemMgr.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\RecentPlayedList.cpp(33,29): warning C4267: “return”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/RecentPlayedList.cpp”)
+  
+  MediaLibStatisticsDlg.cpp
+  MediaTransControls.cpp
+  MenuEditCtrl.cpp
+  MenuMgr.cpp
+  MiniModeUserUi.cpp
+  MoreRecentItemDlg.cpp
+  PropertyAdvancedDlg.cpp
+  PropertyAlbumCoverDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\StackElement.cpp(47,29): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/StackElement.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIElement\StackElement.cpp(54,56): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIElement/StackElement.cpp”)
+  
+  PropertyDlg.cpp
+  PropertyDlgHelper.cpp
+  RenameDlg.cpp
+  ScintillaEditView.cpp
+  SelectItemDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MoreRecentItemDlg.cpp(68,60): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MoreRecentItemDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MoreRecentItemDlg.cpp(186,27): warning C4244: “=”: 从“LPARAM”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MoreRecentItemDlg.cpp”)
+  
+  SongDataManager.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UiMediaLibItemMgr.cpp(35,42): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UiMediaLibItemMgr.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UiMediaLibItemMgr.cpp(132,31): warning C4244: “初始化”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UiMediaLibItemMgr.cpp”)
+  
+  SongInfo.cpp
+  SongInfoHelper.cpp
+  StrTable.cpp
+  TagFromNameDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(64,71): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(68,64): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(99,49): warning C4244: “参数”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(102,42): warning C4244: “参数”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(111,23): warning C4244: “=”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(159,16): warning C4244: “初始化”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(169,20): warning C4244: “初始化”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(170,18): warning C4244: “初始化”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(259,16): warning C4244: “初始化”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(260,21): warning C4244: “初始化”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(295,23): warning C4244: “return”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(325,14): warning C4244: “初始化”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(365,23): warning C4244: “return”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+  TagSelBaseDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(427,16): warning C4267: “return”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(435,16): warning C4267: “return”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(457,24): warning C4244: “=”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(458,22): warning C4244: “=”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(459,20): warning C4244: “初始化”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(468,17): warning C4244: “初始化”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+  ListPreviewPanel.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ScintillaEditView.cpp(469,18): warning C4244: “初始化”: 从“LRESULT”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ScintillaEditView.cpp”)
+  
+  PanelManager.cpp
+  PlayerUIPanel.cpp
+  PlayQueuePanel.cpp
+  SettingsPanel.cpp
+  SettingsPanelApperance.cpp
+  SettingsPanelGeneral.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/SongInfo.cpp”)
+      Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14):
+      模板实例化上下文(最早的实例化上下文)为
+          Z:\github\MusicPlayer2-gw\MusicPlayer2\SongInfo.cpp(130,18):
+          查看对正在编译的函数 模板 实例化“bool CCommon::StringNormalize<std::wstring>(T &)”的引用
+          with
+          [
+              T=std::wstring
+          ]
+  
+  SettingsPanelLyrics.cpp
+  SettingsPanelMediaLib.cpp
+  SettingsPanelPlay.cpp
+  SettingsPanelTab.cpp
+  TestPanel.cpp
+  UiSearchBox.cpp
+  UIWindow.cpp
+  UIWindowCmdHelper.cpp
+  UserUi.cpp
+  DesktopLyric.cpp
+  FolderExploreDlg.cpp
+  MciCore.cpp
+  CMediaLibDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\UIPanel\SettingsPanel\SettingsPanelGeneral.cpp(72,30): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/UIPanel/SettingsPanel/SettingsPanelGeneral.cpp”)
+  
+  CNotifyIcon.cpp
+  CoverDownloadDlg.cpp
+  CPlayerUIBase.cpp
+  CPlayerUIHelper.cpp
+  crashtool.cpp
+  CSelectPlaylist.cpp
+  CTabCtrlEx.cpp
+  CTest.cpp
+  FileRelateDlg.cpp
+  InputDlg.cpp
+  MediaClassifyDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CoverDownloadDlg.cpp(191,37): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CoverDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CoverDownloadDlg.cpp(192,38): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CoverDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CoverDownloadDlg.cpp(193,38): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CoverDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CoverDownloadDlg.cpp(194,38): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CoverDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CoverDownloadDlg.cpp(195,38): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CoverDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CoverDownloadDlg.cpp(359,32): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CoverDownloadDlg.cpp”)
+  
+  MediaLibHelper.cpp
+  MediaLibSettingDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CTabCtrlEx.cpp(28,62): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CTabCtrlEx.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CTabCtrlEx.cpp(28,31): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CTabCtrlEx.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CTabCtrlEx.cpp(44,15): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CTabCtrlEx.cpp”)
+  
+  MediaLibTabDlg.cpp
+  MusicPlayerCmdHelper.cpp
+  PlayerProgressBar.cpp
+  PlayerToolBar.cpp
+  PlaySettingsDlg.cpp
+  SearchEditCtrl.cpp
+  StaticEx.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CSelectPlaylist.cpp(39,40): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CSelectPlaylist.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CSelectPlaylist.cpp(108,89): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CSelectPlaylist.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CSelectPlaylist.cpp(300,36): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CSelectPlaylist.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CSelectPlaylist.cpp(301,37): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CSelectPlaylist.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CSelectPlaylist.cpp(302,37): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CSelectPlaylist.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CSelectPlaylist.cpp(303,37): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CSelectPlaylist.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\CSelectPlaylist.cpp(304,37): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/CSelectPlaylist.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MediaClassifyDlg.cpp(693,49): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MediaClassifyDlg.cpp”)
+  
+  SupportedFormatDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MediaLibSettingDlg.cpp(93,26): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MediaLibSettingDlg.cpp”)
+  
+  TabDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MediaLibHelper.cpp”)
+      Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14):
+      模板实例化上下文(最早的实例化上下文)为
+          Z:\github\MusicPlayer2-gw\MusicPlayer2\MediaLibHelper.cpp(48,34):
+          查看对正在编译的函数 模板 实例化“bool CCommon::StringNormalize<_Ty>(T &)”的引用
+          with
+          [
+              _Ty=std::wstring,
+              T=std::wstring
+          ]
+  
+  TagEditDlg.cpp
+  TestDlg.cpp
+  TreeCtrlEx.cpp
+  WmaEncodeCfgDlg.cpp
+  Common.cpp
+  CortanaLyric.cpp
+  DataSettingsDlg.cpp
+  EditEx.cpp
+  EqualizerDlg.cpp
+  FindDlg.cpp
+  FolderBrowserDlg.cpp
+  FormatConvertDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\TagEditDlg.cpp(166,51): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/TagEditDlg.cpp”)
+  
+  MessageDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\WmaEncodeCfgDlg.cpp(109,21): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/WmaEncodeCfgDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\WmaEncodeCfgDlg.cpp(116,21): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/WmaEncodeCfgDlg.cpp”)
+  
+  InternetCommon.cpp
+  ListCtrlEx.cpp
+  LyricDownloadCommon.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\DataSettingsDlg.cpp(174,30): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/DataSettingsDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(177,21): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+  LyricBatchDownloadDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerCmdHelper.cpp(1154,39): warning C4244: “参数”: 从“__int64”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerCmdHelper.cpp(1154,39): warning C4244:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerCmdHelper.cpp(1154,39): warning C4244:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerCmdHelper.cpp(1154,39): warning C4244:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerCmdHelper.cpp(1154,39): warning C4244:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerCmdHelper.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerCmdHelper.cpp(1340,23): warning C4244: “初始化”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerCmdHelper.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerCmdHelper.cpp(1416,21): warning C4267: “初始化”: 从“size_t”转换到“UINT”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerCmdHelper.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(454,93): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(468,94): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(481,40): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(590,37): warning C4267: “参数”: 从“size_t”转换到“unsigned int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(655,34): warning C4267: “参数”: 从“size_t”转换到“unsigned int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(692,16): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+  LyricDownloadDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1022,20): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1023,20): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1029,20): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1030,20): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1034,19): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1039,30): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1043,24): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1048,24): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1128,19): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1169,39): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1170,32): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1603,61): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+  LyricEditDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1641,21): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1777,163): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1777,136): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+  MiniModeDlg.cpp
+  MP3EncodeCfgDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerCmdHelper.cpp”)
+      Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14):
+      模板实例化上下文(最早的实例化上下文)为
+          Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerCmdHelper.cpp(346,18):
+          查看对正在编译的函数 模板 实例化“bool CCommon::StringNormalize<_Ty>(T &)”的引用
+          with
+          [
+              _Ty=std::wstring,
+              T=std::wstring
+          ]
+  
+  MyComboBox.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\InternetCommon.cpp(48,128): warning C4267: “参数”: 从“size_t”转换到“DWORD”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/InternetCommon.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\InternetCommon.cpp(120,128): warning C4267: “参数”: 从“size_t”转换到“DWORD”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/InternetCommon.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\InternetCommon.cpp(137,133): warning C4267: “参数”: 从“size_t”转换到“DWORD”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/InternetCommon.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\InternetCommon.cpp(137,76): warning C4267: “参数”: 从“size_t”转换到“DWORD”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/InternetCommon.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(570,14): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerCmdHelper.cpp”)
+      Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(570,14):
+      模板实例化上下文(最早的实例化上下文)为
+          Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerCmdHelper.cpp(358,30):
+          查看对正在编译的函数 模板 实例化“size_t CCommon::StringNatchWholeWord<std::wstring>(const T &,const T &)”的引用
+          with
+          [
+              T=std::wstring
+          ]
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\InternetCommon.cpp(273,8): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/InternetCommon.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\InternetCommon.cpp(274,8): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/InternetCommon.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(571,23): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerCmdHelper.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(574,25): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerCmdHelper.cpp”)
+  
+  OggEncodeCfgDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FindDlg.cpp(92,39): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FindDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FindDlg.cpp(93,40): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FindDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FindDlg.cpp(94,40): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FindDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FindDlg.cpp(95,40): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FindDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FindDlg.cpp(96,40): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FindDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FindDlg.cpp(97,40): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FindDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+      Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14):
+      模板实例化上下文(最早的实例化上下文)为
+          Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(264,17):
+          查看对正在编译的函数 模板 实例化“bool CCommon::StringNormalize<std::wstring>(T &)”的引用
+          with
+          [
+              T=std::wstring
+          ]
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(296,32): warning C4244: “参数”: 从“wchar_t”转换到“const _Elem”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(296,32): warning C4244:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(296,32): warning C4244:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(296,32): warning C4244:             _Elem=char [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(296,32): warning C4244:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+      Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(296,32):
+      模板实例化上下文(最早的实例化上下文)为
+          Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(340,5):
+          查看对正在编译的函数 模板 实例化“void _StringSplit<std::string>(const T &,wchar_t,std::vector<std::string,std::allocator<std::string>> &,bool,bool)”的引用
+          with
+          [
+              T=std::string
+          ]
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(357,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(359,35): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(570,14): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+      Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(570,14):
+      模板实例化上下文(最早的实例化上下文)为
+          Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.cpp(1065,18):
+          查看对正在编译的函数 模板 实例化“size_t CCommon::StringNatchWholeWord<std::wstring>(const T &,const T &)”的引用
+          with
+          [
+              T=std::wstring
+          ]
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(571,23): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(574,25): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Common.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(418,37): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(422,42): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(426,42): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(604,37): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(652,38): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(674,40): warning C4244: “参数”: 从“WPARAM”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(705,34): warning C4244: “参数”: 从“WPARAM”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(709,33): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\FormatConvertDlg.cpp(710,29): warning C4244: “=”: 从“WPARAM”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/FormatConvertDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ListCtrlEx.cpp(216,33): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ListCtrlEx.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ListCtrlEx.cpp(223,24): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ListCtrlEx.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricDownloadCommon.cpp(81,16): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricDownloadCommon.cpp”)
+  
+  PlayListCtrl.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ListCtrlEx.cpp(317,35): warning C4244: “参数”: 从“DWORD_PTR”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ListCtrlEx.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ListCtrlEx.cpp(325,40): warning C4244: “参数”: 从“DWORD_PTR”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ListCtrlEx.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ListCtrlEx.cpp(370,30): warning C4244: “参数”: 从“DWORD_PTR”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ListCtrlEx.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\ListCtrlEx.cpp(383,42): warning C4244: “参数”: 从“DWORD_PTR”转换到“const int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/ListCtrlEx.cpp”)
+  
+  Lyric.cpp
+  MusicPlayer2.cpp
+  MusicPlayerDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(201,37): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(202,38): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(203,38): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(204,38): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(223,38): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(291,21): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(296,39): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(297,41): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(324,43): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(355,43): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(365,43): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(383,43): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(391,43): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(398,43): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(413,47): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(415,47): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricBatchDownloadDlg.cpp(419,43): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricBatchDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricDownloadDlg.cpp(37,31): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricDownloadDlg.cpp(38,32): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricDownloadDlg.cpp(39,32): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricDownloadDlg.cpp(40,32): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricDownloadDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricDownloadDlg.cpp(41,32): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricDownloadDlg.cpp”)
+  
+  OptionsDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MP3EncodeCfgDlg.cpp(151,25): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MP3EncodeCfgDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MP3EncodeCfgDlg.cpp(153,25): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MP3EncodeCfgDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(80,37): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(85,44): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(99,36): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(99,24): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricDownloadDlg.cpp(513,20): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricDownloadDlg.cpp”)
+  
+  Player.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(767,59): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(780,34): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(783,51): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(814,43): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(816,44): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(825,51): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\LyricEditDlg.cpp(930,14): warning C4244: “初始化”: 从“UINT_PTR”转换到“UINT”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/LyricEditDlg.cpp”)
+  
+  LyricSettingsDlg.cpp
+  PropertyTabDlg.cpp
+  ReverbDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(79,41): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(85,42): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(86,42): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(87,42): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(94,22): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+  SetPathDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(125,25): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(126,26): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(131,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(141,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(151,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(161,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(171,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(181,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+  SoundEffectDlg.cpp
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(204,42): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(205,53): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(216,38): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(228,58): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(228,58): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(228,58): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(228,58): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(228,58): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(234,62): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(234,62): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(234,62): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(234,62): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(234,62): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(242,62): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(242,62): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(242,62): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(242,62): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(242,62): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(306,37): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(312,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(313,30): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(320,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(321,30): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(335,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(336,31): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(339,30): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(351,66): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(351,66): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(351,66): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(351,66): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(351,66): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(356,62): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(356,62): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(356,62): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(356,62): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(356,62): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(363,66): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(363,66): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(363,66): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(363,66): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(363,66): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(374,43): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(374,43): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(374,43): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(374,43): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(374,43): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(377,29): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(378,30): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(83,39): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(83,39): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(83,39): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(83,39): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(83,39): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/PlayListCtrl.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(115,24): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/PlayListCtrl.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(398,27): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(400,25): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(402,35): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(268,38): warning C4244: “参数”: 从“DWORD_PTR”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/PlayListCtrl.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(269,38): warning C4244: “参数”: 从“DWORD_PTR”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/PlayListCtrl.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(285,47): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/PlayListCtrl.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(288,38): warning C4244: “参数”: 从“DWORD_PTR”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/PlayListCtrl.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(296,43): warning C4244: “参数”: 从“DWORD_PTR”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/PlayListCtrl.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\PlayListCtrl.cpp(351,30): warning C4244: “参数”: 从“DWORD_PTR”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/PlayListCtrl.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(484,62): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(484,62): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(484,62): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(484,62): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(484,62): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(498,54): warning C4267: “参数”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(498,54): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(498,54): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(498,54): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(498,54): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(580,28): warning C4267: “return”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Lyric.cpp”)
+      Z:\github\MusicPlayer2-gw\MusicPlayer2\Common.h(484,14):
+      模板实例化上下文(最早的实例化上下文)为
+          Z:\github\MusicPlayer2-gw\MusicPlayer2\Lyric.cpp(213,22):
+          查看对正在编译的函数 模板 实例化“bool CCommon::StringNormalize<std::wstring>(T &)”的引用
+          with
+          [
+              T=std::wstring
+          ]
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MiniModeDlg.cpp(189,45): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MiniModeDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MiniModeDlg.cpp(193,21): warning C4267: “初始化”: 从“size_t”转换到“UINT”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MiniModeDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\SetPathDlg.cpp(33,36): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/SetPathDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\SetPathDlg.cpp(80,32): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/SetPathDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\SetPathDlg.cpp(81,33): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/SetPathDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\SetPathDlg.cpp(82,33): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/SetPathDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\SetPathDlg.cpp(83,33): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/SetPathDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\SetPathDlg.cpp(84,33): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/SetPathDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\SetPathDlg.cpp(85,33): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/SetPathDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\SetPathDlg.cpp(86,33): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/SetPathDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(340,31): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Player.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(356,32): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Player.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.cpp(203,56): warning C4267: “=”: 从“size_t”转换到“DWORD”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayer2.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(1649,21): warning C4244: “return”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Player.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(2001,14): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Player.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(2025,32): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Player.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(2042,29): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Player.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(2566,29): warning C4267: “=”: 从“size_t”转换到“_Ty”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(2566,29): warning C4267:         with [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(2566,29): warning C4267:         [ [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(2566,29): warning C4267:             _Ty=int [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+Z:\github\MusicPlayer2-gw\MusicPlayer2\Player.cpp(2566,29): warning C4267:         ] [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/Player.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(87,15): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(1675,62): warning C4267: “参数”: 从“size_t”转换到“UINT”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(1943,17): warning C4267: “初始化”: 从“size_t”转换到“UINT”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(1967,17): warning C4267: “初始化”: 从“size_t”转换到“UINT”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(4379,54): warning C4312: “类型强制转换”: 从“int”转换到更大的“void *” [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(4386,25): warning C4311: “类型强制转换”: 从“LPVOID”到“int”的指针截断 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(4386,25): warning C4302: “类型强制转换”: 从“LPVOID”到“int”截断 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(4773,54): warning C4312: “类型强制转换”: 从“int”转换到更大的“void *” [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(5051,32): warning C4244: “参数”: 从“LPARAM”转换到“UINT”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(5650,68): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(5655,87): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(5660,84): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(5939,22): warning C4244: “=”: 从“WPARAM”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(6359,41): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(6742,17): warning C4267: “初始化”: 从“size_t”转换到“UINT”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayerDlg.cpp(6891,46): warning C4244: “return”: 从“LRESULT”转换到“BOOL”，可能丢失数据 [Z:\github\MusicPlayer2-gw\MusicPlayer2\MusicPlayer2.vcxproj]
+  (编译源文件“/MusicPlayerDlg.cpp”)
+  
+  正在生成代码
+  908 of 22704 functions ( 4.0%) were compiled, the rest were copied from previous compilation.
+    265 functions were new in current compilation
+    1159 functions had inline decision re-evaluated but remain unchanged
+  已完成代码的生成
+  MusicPlayer2.vcxproj -> Z:\github\MusicPlayer2-gw\x64\Release\MusicPlayer2.exe
