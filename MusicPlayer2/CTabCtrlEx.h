@@ -31,6 +31,7 @@ protected:
 public:
 	afx_msg void OnTcnSelchange(NMHDR *pNMHDR, LRESULT *pResult);
 	virtual void PreSubclassWindow();
+	virtual BOOL OnChildNotify(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 
 	CRect m_tab_rect;
     afx_msg void OnSize(UINT nType, int cx, int cy);

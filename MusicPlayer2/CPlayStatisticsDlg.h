@@ -74,6 +74,7 @@ protected:
     DECLARE_MESSAGE_MAP()
 public:
     virtual BOOL OnInitDialog();
+    void DrawAnalysisChart();
     afx_msg void OnTcnSelChangeTab(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnBnClickedExportCsvButton();
     afx_msg void OnBnClickedExportJsonButton();

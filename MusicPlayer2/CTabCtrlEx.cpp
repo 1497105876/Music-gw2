@@ -128,6 +128,22 @@ BEGIN_MESSAGE_MAP(CTabCtrlEx, CTabCtrl)
     ON_WM_SIZE()
 END_MESSAGE_MAP()
 
+// 当 m_tab_list 为空时（tab 通过 InsertItem 而非 AddWindow 添加），
+// 不反射 TCN_SELCHANGE，让父窗口的 ON_NOTIFY 处理
+BOOL CTabCtrlEx::OnChildNotify(UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult)
+{
+    if (message == WM_NOTIFY)
+    {
+        NMHDR* pNMHDR = reinterpret_cast<NMHDR*>(lParam);
+        if (pNMHDR != nullptr && pNMHDR->code == TCN_SELCHANGE && m_tab_list.empty())
+        {
+            // 不反射，让父窗口处理
+            return FALSE;
+        }
+    }
+    return CTabCtrl::OnChildNotify(message, wParam, lParam, pResult);
+}
+
 
 
 // CTabCtrlEx 消息处理程序

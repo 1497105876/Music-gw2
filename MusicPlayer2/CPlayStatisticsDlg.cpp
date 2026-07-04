@@ -73,6 +73,7 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     m_tab.InsertItem(0, L"总览");
     m_tab.InsertItem(1, L"详细记录");
     m_tab.InsertItem(2, L"图表");
+    m_tab.InsertItem(3, L"图形分析");
 
     // 初始化详细记录列表
     m_detail_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
@@ -486,13 +487,20 @@ void CPlayStatisticsDlg::OnTcnSelChangeTab(NMHDR* pNMHDR, LRESULT* pResult)
         m_detail_list.ShowWindow(SW_SHOW);
         m_chart_static.ShowWindow(SW_HIDE);
     }
-    else
+    else if (sel == 2)
     {
-        // 图表
+        // 图表（保留原有）
         m_overview_list.ShowWindow(SW_HIDE);
         m_detail_list.ShowWindow(SW_HIDE);
         m_chart_static.ShowWindow(SW_SHOW);
         Invalidate();
+    }
+    else
+    {
+        // 图形分析
+        m_overview_list.ShowWindow(SW_HIDE);
+        m_detail_list.ShowWindow(SW_HIDE);
+        DrawAnalysisChart();
     }
     *pResult = 0;
 }
@@ -612,7 +620,219 @@ void CPlayStatisticsDlg::OnBnClickedExportJsonButton()
     AfxMessageBox(L"导出完成", MB_ICONINFORMATION);
 }
 
-// ── 图表绘制 ──
+// ── 图形分析（可工作的版本） ──
+
+void CPlayStatisticsDlg::DrawAnalysisChart()
+{
+    // 改为 SS_OWNERDRAW，防止控件画黑色覆盖
+    ::SetWindowLongPtr(m_chart_static.GetSafeHwnd(), GWL_STYLE,
+        (::GetWindowLongPtr(m_chart_static.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW);
+
+    CRect rect;
+    m_chart_static.GetWindowRect(&rect);
+    ScreenToClient(&rect);
+    int w = rect.Width(), h = rect.Height();
+    if (w < 80 || h < 80) return;
+
+    // 统计数据
+    int total = (int)m_records.size();
+    int total_dur = 0, completed = 0, skipped = 0, stopped = 0, errored = 0;
+    int hour_count[24] = {};
+    std::map<std::wstring, int> artist_time;
+
+    for (const auto& r : m_records)
+    {
+        total_dur += r.play_duration_sec;
+        switch (r.finish_reason)
+        {
+        case PlayRecord::FinishReason::COMPLETED: completed++; break;
+        case PlayRecord::FinishReason::SKIPPED:   skipped++; break;
+        case PlayRecord::FinishReason::STOPPED:   stopped++; break;
+        case PlayRecord::FinishReason::PLAY_ERROR: errored++; break;
+        }
+        if (r.played_at.size() >= 13)
+        {
+            int hr = _wtoi(r.played_at.substr(11, 2).c_str());
+            if (hr >= 0 && hr < 24) hour_count[hr]++;
+        }
+        if (!r.artist.empty()) artist_time[r.artist] += r.play_duration_sec;
+    }
+
+    CDC* pDC = GetDC();
+    if (!pDC) return;
+
+    pDC->FillSolidRect(rect, RGB(248, 248, 252));
+
+    int margin = 24;
+    int L = rect.left + margin, R = rect.right - margin;
+    int y = rect.top + 12;
+    wchar_t buf[256];
+
+    // 字体
+    CFont fTitle, fSection, fText, fTextBold;
+    fTitle.CreatePointFont(160, L"Microsoft YaHei", pDC);
+    fSection.CreatePointFont(105, L"Microsoft YaHei", pDC);
+    fText.CreatePointFont(85, L"Microsoft YaHei", pDC);
+    fTextBold.CreatePointFont(85, L"Microsoft YaHei", pDC);
+    LOGFONT lf;
+    fTextBold.GetLogFont(&lf);
+    lf.lfWeight = FW_BOLD;
+    fTextBold.DeleteObject();
+    fTextBold.CreateFontIndirect(&lf);
+
+    pDC->SetBkMode(TRANSPARENT);
+
+    // 辅助：绘制文字并返回高度
+    auto drawText = [&](int x, int yPos, CFont* font, COLORREF color, const wchar_t* text, int maxW = 0) -> int {
+        pDC->SelectObject(font);
+        pDC->SetTextColor(color);
+        CRect rc(x, yPos, maxW > 0 ? x + maxW : R, yPos + 200);
+        pDC->DrawTextW(text, -1, &rc, DT_LEFT | DT_WORDBREAK | DT_CALCRECT);
+        pDC->DrawTextW(text, -1, &rc, DT_LEFT | DT_WORDBREAK);
+        return rc.Height();
+    };
+
+    // ── 标题 ──
+    y += drawText(L, y, &fTitle, RGB(30, 30, 30), L"\u56fe\u5f62\u5206\u6790") + 8;
+
+    // ── 基本统计 ──
+    swprintf_s(buf, L"\u603b\u64ad\u653e: %d \u6b21  \u2502  \u65f6\u957f: %d\u65f0%02d\u5206%02d\u79d2  \u2502  \u5b8c\u6574\u7387: %d%%",
+        total, total_dur / 3600, (total_dur % 3600) / 60, total_dur % 60,
+        total > 0 ? completed * 100 / total : 0);
+    {
+        CRect rc(L, y, R, y + 60);
+        pDC->SelectObject(&fText);
+        pDC->SetTextColor(RGB(70, 70, 70));
+        pDC->DrawTextW(buf, -1, &rc, DT_LEFT | DT_WORDBREAK | DT_CALCRECT);
+        pDC->DrawTextW(buf, -1, &rc, DT_LEFT | DT_WORDBREAK);
+        y = rc.bottom + 10;
+    }
+
+    // 分隔线
+    CPen penLine(PS_SOLID, 1, RGB(210, 210, 215));
+    pDC->SelectObject(&penLine);
+    pDC->MoveTo(L, y); pDC->LineTo(R, y);
+    y += 10;
+
+    // ── 时段柱状图 ──
+    y += drawText(L, y, &fSection, RGB(40, 40, 40), L"\u542c\u6b4c\u65f6\u6bb5") + 8;
+
+    int max_h = 1;
+    for (int i = 0; i < 24; i++) if (hour_count[i] > max_h) max_h = hour_count[i];
+
+    int cL = L + 28, cR = R - 8;
+    int cT = y, cB = y + 90;
+    int bw = (cR - cL) / 24;
+    if (bw < 3) bw = 3;
+
+    CPen penAxis(PS_SOLID, 1, RGB(180, 180, 180));
+    pDC->SelectObject(&penAxis);
+    pDC->MoveTo(cL, cB); pDC->LineTo(cR, cB);
+
+    for (int i = 0; i < 24; i++)
+    {
+        int bh = hour_count[i] > 0 ? max(2, (int)((double)hour_count[i] / max_h * (cB - cT - 2))) : 0;
+        int bx = cL + i * bw;
+        COLORREF clr = i < 6 ? RGB(80, 110, 190) : i < 12 ? RGB(100, 170, 230) : i < 18 ? RGB(110, 185, 170) : RGB(150, 120, 195);
+        CBrush br(clr);
+        pDC->FillRect(CRect(bx + 1, cB - bh, bx + max(1, bw - 2), cB), &br);
+        if (i % 4 == 0)
+        {
+            pDC->SelectObject(&fText);
+            pDC->SetTextColor(RGB(100, 100, 100));
+            swprintf_s(buf, L"%02d", i);
+            pDC->TextOutW(bx, cB + 3, buf, 2);
+        }
+    }
+    y = cB + 36;
+
+    // 分隔线
+    pDC->SelectObject(&penLine);
+    pDC->MoveTo(L, y); pDC->LineTo(R, y);
+    y += 10;
+
+    // ── 播放结果 ──
+    y += drawText(L, y, &fSection, RGB(40, 40, 40), L"\u64ad\u653e\u7ed3\u679c") + 8;
+
+    struct { const wchar_t* lbl; int cnt; COLORREF clr; } pie[] = {
+        { L"\u5b8c\u6574", completed, RGB(90, 175, 90) },
+        { L"\u8df3\u8fc7", skipped,   RGB(225, 145, 70) },
+        { L"\u505c\u6b62", stopped,   RGB(110, 150, 210) },
+        { L"\u51fa\u9519", errored,   RGB(215, 90, 90) },
+    };
+
+    int barL = L, barH = 20;
+    for (auto& it : pie)
+    {
+        int segW = total > 0 ? max(it.cnt > 0 ? 2 : 0, (int)((double)it.cnt / total * (R - L))) : 0;
+        if (segW > 0)
+        {
+            CBrush br(it.clr);
+            pDC->FillRect(CRect(barL, y, barL + segW, y + barH), &br);
+            barL += segW;
+        }
+    }
+    y += barH + 8;
+
+    // 图例
+    int lx = L;
+    pDC->SelectObject(&fText);
+    for (auto& it : pie)
+    {
+        CBrush br(it.clr);
+        pDC->FillRect(CRect(lx, y, lx + 12, y + 12), &br);
+        pDC->SetTextColor(RGB(60, 60, 60));
+        int pct = total > 0 ? (int)((double)it.cnt / total * 100) : 0;
+        swprintf_s(buf, L"%s %d (%d%%)", it.lbl, it.cnt, pct);
+        pDC->TextOutW(lx + 16, y - 1, buf, (int)wcslen(buf));
+        lx += 160;
+        if (lx > R - 140) { lx = L; y += 20; }
+    }
+    y += 32;
+
+    // 分隔线
+    pDC->SelectObject(&penLine);
+    pDC->MoveTo(L, y); pDC->LineTo(R, y);
+    y += 16;
+
+    // ── Top 10 艺术家 ──
+    y += drawText(L, y, &fSection, RGB(40, 40, 40), L"Top 10 \u827a\u672f\u5bb6") + 8;
+
+    std::vector<std::pair<std::wstring, int>> sorted(artist_time.begin(), artist_time.end());
+    std::sort(sorted.begin(), sorted.end(), [](auto& a, auto& b) { return a.second > b.second; });
+    int topN = min((int)sorted.size(), 10);
+    int max_at = 1;
+    for (int i = 0; i < topN; i++) if (sorted[i].second > max_at) max_at = sorted[i].second;
+
+    COLORREF ac[] = { RGB(100,170,230), RGB(230,130,100), RGB(130,190,130), RGB(200,160,220), RGB(240,200,100), RGB(100,200,200), RGB(230,170,130), RGB(170,150,230), RGB(180,220,100), RGB(220,120,160) };
+    int nameW = 160, barMaxW = R - L - nameW - 70;
+    int rowH = 22;
+
+    for (int i = 0; i < topN && y + rowH < rect.bottom - 5; i++)
+    {
+        pDC->SelectObject(&fText);
+        pDC->SetTextColor(RGB(50, 50, 50));
+        std::wstring lbl = std::to_wstring(i + 1) + L". " + sorted[i].first;
+        CRect rcName(L, y, L + nameW - 8, y + rowH);
+        pDC->DrawTextW(lbl.c_str(), (int)lbl.size(), &rcName, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS);
+
+        int bw2 = max(3, (int)((double)sorted[i].second / max_at * barMaxW));
+        CBrush br(ac[i % 10]);
+        pDC->FillRect(CRect(L + nameW, y + 3, L + nameW + bw2, y + rowH - 3), &br);
+
+        pDC->SetTextColor(RGB(110, 110, 110));
+        int dur = sorted[i].second;
+        swprintf_s(buf, L"%d:%02d", dur / 60, dur % 60);
+        pDC->TextOutW(L + nameW + bw2 + 10, y + 2, buf, (int)wcslen(buf));
+        y += rowH;
+    }
+
+    pDC->SelectStockObject(BLACK_PEN);
+    pDC->SelectStockObject(NULL_BRUSH);
+    ReleaseDC(pDC);
+}
+
+// ── 原有图表绘制 ──
 
 void CPlayStatisticsDlg::OnPaint()
 {
