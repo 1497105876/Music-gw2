@@ -1,0 +1,49 @@
+﻿#pragma once
+#include "BaseDialog.h"
+#include "CListBoxEnhanced.h"
+#include "SearchEditCtrl.h"
+
+
+// CAddToPlaylistDlg 对话框
+
+class CAddToPlaylistDlg : public CBaseDialog
+{
+    DECLARE_DYNAMIC(CAddToPlaylistDlg)
+
+public:
+    CAddToPlaylistDlg(CWnd* pParent = nullptr);   // 标准构造函数
+    virtual ~CAddToPlaylistDlg();
+
+// 对话框数据
+#ifdef AFX_DESIGN_TIME
+    enum { IDD = IDD_ADD_TO_PLAYLIST_DIALOG };
+#endif
+
+    wstring GetPlaylistSelected() const { return m_playlist_selected; }
+
+protected:
+    CListBoxEnhanced m_playlist_list_ctrl;
+    wstring m_playlist_selected;
+    CSearchEditCtrl m_search_edit;
+    vector<wstring> m_list;             //播放列表的列表
+    vector<wstring> m_search_result;    //搜索结果
+    bool m_searched{ false };           //是否处于搜索状态
+
+protected:
+    virtual CString GetDialogName() const override;
+    virtual bool InitializeControls() override;
+
+    void ShowList();
+    void QuickSearch(const wstring& key_word);
+
+    virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+
+    DECLARE_MESSAGE_MAP()
+public:
+    virtual BOOL OnInitDialog();
+    virtual void OnOK();
+    afx_msg void OnNMDblclkList1(NMHDR *pNMHDR, LRESULT *pResult);
+    afx_msg void OnEnChangeSearchEdit();
+protected:
+    afx_msg LRESULT OnSearchEditBtnClicked(WPARAM wParam, LPARAM lParam);
+};

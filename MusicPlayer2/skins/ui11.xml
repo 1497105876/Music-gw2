@@ -1,0 +1,133 @@
+<root xmlns="https://github.com/zhongyang219/MusicPlayer2/skin" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://github.com/zhongyang219/MusicPlayer2/skin ./skin.xsd"
+      index="11">
+  <ui type="big">
+    <horizontalLayout margin="24">
+      <verticalLayout>
+        <albumCover square="true" margin="24"/>
+        <horizontalLayout height="56">
+          <button key="repeatMode" width="32" height="32" margin="4"/>
+          <button key="previous" width="48" height="48" margin="4" bigIcon="true"/>
+          <button key="playPause" width="48" height="48" margin="4" bigIcon="true"/>
+          <button key="next" width="48" height="48" margin="4" bigIcon="true"/>
+          <elementSwitcher width="32" height="32" margin="4" style="button" icon="playlist" text="%(UI_TIP_BTN_PLAYLIST_SHOW_HIDE)" stack_element_id="ui_big_right_stack_element"/>
+        </horizontalLayout>
+        <horizontalLayout height="40">
+          <text text="%(CurrentPosition)" font_size="8" width="32" alignment="right"/>
+          <sliderProgressBar margin-left="8" margin-right="8"/>
+          <text text="%(SongLength)" font_size="8" width="32"/>
+        </horizontalLayout>
+      </verticalLayout>
+      <stackElement id="ui_big_right_stack_element">
+        <verticalLayout margin-left="32">
+          <stackElement show_indicator="true" margin-bottom="16">
+            <verticalLayout>
+              <placeHolder proportion="1"/>
+              <text type="title" font_size="12" style="scroll" height="32"/>
+              <text type="artist" font_size="10" style="scroll" height="32"/>
+              <text type="album" font_size="10" style="scroll" height="32"/>
+              <spectrum max-height="80" fixed_width="true" draw_reflex="true" margin-top="24" proportion="4"/>
+            </verticalLayout>
+            <verticalLayout>
+              <placeHolder show_when_use_system_titlebar="true" height="12"/>
+              <text type="title" font_size="12" style="scroll" height="32"/>
+              <text type="artist" font_size="10" style="scroll" height="32"/>
+              <lyrics margin="8"/>
+            </verticalLayout>
+          </stackElement>
+          <horizontalLayout height="48">
+            <button key="info" width="28" height="28" margin-left="8" margin-right="8"/>
+            <button key="favorite" width="28" height="28" margin-left="8" margin-right="8"/>
+            <button key="addToPlaylist" width="28" height="28" margin-left="8" margin-right="8"/>
+            <button key="darkLightMode" width="28" height="28" margin-left="8" margin-right="8"/>
+            <volume width="28" height="28" margin-left="8" margin-right="8"/>
+          </horizontalLayout>
+        </verticalLayout>
+        <verticalLayout margin-left="24">
+          <playlistIndicator height="30" margin-bottom="4"/>
+          <searchBox height="26" margin-bottom="4"/>
+          <playlist item_height="32"/>
+        </verticalLayout>
+      </stackElement>
+    </horizontalLayout>
+  </ui>
+
+  <ui type="narrow">
+    <verticalLayout margin="20">
+      <stackElement show_indicator="true" margin-bottom="14">
+        <albumCover square="true" margin="24"/>
+        <verticalLayout>
+          <placeHolder proportion="1"/>
+          <horizontalLayout height="96">
+            <albumCover square="true" width="96"/>
+            <verticalLayout margin-left="16">
+              <text type="title" font_size="12" style="scroll" height="32"/>
+              <text type="artist" font_size="10" style="scroll" height="32"/>
+              <text type="album" font_size="10" style="scroll" height="32"/>
+            </verticalLayout>
+          </horizontalLayout>
+          <placeHolder max-height="24" proportion="2"/>
+          <spectrum max-height="80" fixed_width="true" draw_reflex="true" proportion="10"/>
+        </verticalLayout>
+        <verticalLayout>
+          <placeHolder show_when_use_system_titlebar="true" height="16"/>
+          <horizontalLayout height="64" hide-height="200">
+            <albumCover square="true" width="64"/>
+            <verticalLayout margin-left="16">
+              <text type="title" font_size="12" style="scroll" height="32"/>
+              <text type="artist" font_size="10" style="scroll" height="32"/>
+            </verticalLayout>
+          </horizontalLayout>
+          <lyrics margin="8"/>
+        </verticalLayout>
+      </stackElement>
+      <horizontalLayout height="56" margin-top="8">
+        <button key="repeatMode" width="32" height="32" margin="4"/>
+        <button key="previous" width="48" height="48" margin="4" bigIcon="true"/>
+        <button key="playPause" width="48" height="48" margin="4" bigIcon="true"/>
+        <button key="next" width="48" height="48" margin="4" bigIcon="true"/>
+        <button key="showPlayQueue" width="32" height="32" margin="4"/>
+      </horizontalLayout>
+      <horizontalLayout height="40">
+        <text text="%(CurrentPosition)" font_size="8" width="32" alignment="right"/>
+        <sliderProgressBar margin-left="8" margin-right="8"/>
+        <text text="%(SongLength)" font_size="8" width="32"/>
+      </horizontalLayout>
+    </verticalLayout>
+  </ui>
+  
+  <ui type="small">
+    <verticalLayout margin="8">
+      <stackElement show_indicator="true" margin="8" margin-bottom="14">
+        <verticalLayout>
+          <placeHolder show_when_use_system_titlebar="true" height="16"/>
+          <horizontalLayout>
+            <albumCover square="true" width="100"/>
+            <verticalLayout margin-left="16">
+              <text type="title" font_size="12" style="scroll"/>
+              <text type="artist" font_size="10" style="scroll"/>
+              <text type="album" font_size="10" style="scroll" hide-height="96"/>
+            </verticalLayout>
+          </horizontalLayout>
+        </verticalLayout>
+        <verticalLayout margin-left="8" margin-right="8">
+          <text type="title" font_size="12" style="scroll" height="24"/>
+          <text type="artist" font_size="10" style="scroll" height="20"/>
+          <spectrum fixed_width="true" draw_reflex="true" margin-top="4" />
+        </verticalLayout>
+        <lyrics/>
+      </stackElement>
+      <horizontalLayout height="56">
+        <button key="repeatMode" width="32" height="32" margin="4"/>
+        <button key="previous" width="48" height="48" margin="4" bigIcon="true"/>
+        <button key="playPause" width="48" height="48" margin="4" bigIcon="true"/>
+        <button key="next" width="48" height="48" margin="4" bigIcon="true"/>
+        <button key="showPlayQueue" width="32" height="32" margin="4"/>
+      </horizontalLayout>
+      <horizontalLayout height="22">
+        <text text="%(CurrentPosition)" font_size="8" width="32" alignment="right"/>
+        <sliderProgressBar margin-left="8" margin-right="8"/>
+        <text text="%(SongLength)" font_size="8" width="32"/>
+      </horizontalLayout>
+    </verticalLayout>
+  </ui>
+</root>
