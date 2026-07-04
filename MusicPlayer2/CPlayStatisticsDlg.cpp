@@ -91,10 +91,8 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     m_overview_list.InsertColumn(OCOL_ITEM, L"统计项", LVCFMT_LEFT, 200);
     m_overview_list.InsertColumn(OCOL_VALUE, L"数值", LVCFMT_LEFT, 300);
 
-    // 加载数据
     LoadRecords();
     ShowOverview();
-    ShowDetail();
 
     // 默认显示总览
     m_tab.SetCurSel(0);
@@ -431,7 +429,6 @@ void CPlayStatisticsDlg::ShowOverview()
 // 显示详细记录
 void CPlayStatisticsDlg::ShowDetail()
 {
-    m_detail_list.SetRedraw(FALSE);
     m_detail_list.DeleteAllItems();
 
     auto format_dur = [](int sec) -> std::wstring {
@@ -467,9 +464,6 @@ void CPlayStatisticsDlg::ShowDetail()
         m_detail_list.SetItemText(row, DCOL_SOURCE, r.playlist_source.c_str());
         row++;
     }
-
-    m_detail_list.SetRedraw(TRUE);
-    m_detail_list.Invalidate();
 }
 
 // Tab 切换
@@ -485,7 +479,9 @@ void CPlayStatisticsDlg::OnTcnSelChangeTab(NMHDR* pNMHDR, LRESULT* pResult)
     }
     else if (sel == 1)
     {
-        // 详细记录
+        // 详细记录 - 首次切换时加载数据
+        if (m_detail_list.GetItemCount() == 0 && !m_records.empty())
+            ShowDetail();
         m_overview_list.ShowWindow(SW_HIDE);
         m_detail_list.ShowWindow(SW_SHOW);
         m_chart_static.ShowWindow(SW_HIDE);
