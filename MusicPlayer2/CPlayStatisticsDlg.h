@@ -32,9 +32,7 @@ protected:
     int m_chart_type{ 0 };          // 0=趋势图, 1=时段图, 2=饼图
 
     // 绘图
-    void DrawTrendChart(CDC* pDC, const CRect& rect);
-    void DrawHourChart(CDC* pDC, const CRect& rect);
-    void DrawPieChart(CDC* pDC, const CRect& rect);
+    void DrawAnalysisChart(CDC* pDC);
 
     // 详细记录列表列索引
     enum DetailColumn
@@ -74,10 +72,8 @@ protected:
     DECLARE_MESSAGE_MAP()
 public:
     virtual BOOL OnInitDialog();
-    void DrawAnalysisChart();
     afx_msg void OnTcnSelChangeTab(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnBnClickedExportCsvButton();
     afx_msg void OnBnClickedExportJsonButton();
     afx_msg void OnPaint();
-    afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 };

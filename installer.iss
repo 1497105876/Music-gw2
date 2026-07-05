@@ -3,14 +3,14 @@
 
 [Setup]
 AppName=MusicPlayer2
-AppVersion=1.2.0
+AppVersion=1.3.0
 AppPublisher=gw
 //AppPublisherURL=https://github.com/1497105876
 DefaultDirName={autopf}\MusicPlayer2
 DefaultGroupName=MusicPlayer2
 UninstallDisplayIcon={app}\MusicPlayer2.exe
 OutputDir=installer_output
-OutputBaseFilename=MusicPlayer2-gw-setup-1.2.0
+OutputBaseFilename=MusicPlayer2-gw-setup-1.3.0
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
