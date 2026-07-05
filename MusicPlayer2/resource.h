@@ -1095,6 +1095,12 @@
 #define IDC_EXPORT_CSV_BTN              1403
 #define IDC_EXPORT_JSON_BTN             1404
 #define IDC_STAT_CHART_STATIC           1405
+#define IDC_STAT_TIME_FILTER             1406
+#define IDC_STAT_VIEW_BTN1               1407
+#define IDC_STAT_VIEW_BTN2               1408
+#define IDC_STAT_VIEW_BTN3               1409
+#define IDC_STAT_VIEW_BTN4               1410
+#define IDC_STAT_VIEW_BTN5               1411
 #define ID_ORIGINAL_PITCH               33480
 #define ID_SONGS_MULTI_VERSION_ITEM_START 33481
 #define ID_SONGS_MULTI_VERSION_ITEM_MAX 33511

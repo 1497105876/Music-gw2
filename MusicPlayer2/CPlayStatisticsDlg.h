@@ -23,20 +23,53 @@ public:
 protected:
     // 控件
     CTabCtrlEx m_tab;
-    CListCtrlEx m_detail_list;      // 详细记录列表
-    CListCtrlEx m_overview_list;    // 总览列表
-    CStatic m_chart_static;         // 图表显示区域
+    CListCtrlEx m_detail_list;       // 详细记录列表
+    CListCtrlEx m_overview_list;     // 总览列表
+    CStatic m_chart_static;          // 图表显示区域
+    CComboBox m_time_filter;         // 时间范围下拉框
+    CButton m_view_btns[5];          // 视图切换按钮
 
     // 数据
     std::vector<PlayRecord> m_records;
-    int m_chart_type{ 0 };          // 0=趋势图, 1=时段图, 2=饼图
+    int m_chart_type{ 0 };           // 0=概览, 1=排行榜, 2=流派, 3=趋势, 4=时段
+    int m_time_filter_days{ 0 };     // 0=全部, 7/30/90=最近N天
 
-    // 绘图
-    void DrawTrendChart(CDC* pDC, const CRect& rect);
-    void DrawHourChart(CDC* pDC, const CRect& rect);
-    void DrawPieChart(CDC* pDC, const CRect& rect);
+    // 聚合统计结构体
+    struct StatsAggregate {
+        int total_plays{ 0 };
+        int total_duration_sec{ 0 };
+        int completed{ 0 }, skipped{ 0 }, stopped{ 0 }, errored{ 0 };
+        int hour_count[24]{};
+        std::map<std::wstring, int> artist_time;
+        std::map<std::wstring, int> album_time;
+        std::map<std::wstring, int> song_count;
+        std::map<std::wstring, int> genre_time;
+        std::map<std::wstring, int> daily_count;
+    };
 
-    // 详细记录列表列索引
+    // 数据过滤与聚合
+    std::vector<PlayRecord> GetFilteredRecords() const;
+    StatsAggregate AggregateStats(const std::vector<PlayRecord>& records) const;
+
+    // 绘图函数
+    void DrawAnalysisChart();
+    void DrawOverviewPage(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
+    void DrawRankingPage(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
+    void DrawGenrePage(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
+    void DrawTrendChart(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
+    void DrawHourChart(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
+
+    // 辅助绘图函数
+    void DrawSeparator(CDC* pDC, int x1, int x2, int y);
+    void DrawHourBars(CDC* pDC, const CRect& rect, const int hour_count[24], bool show_labels);
+    void DrawResultBar(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
+    void DrawTopBars(CDC* pDC, const CRect& rect,
+                     const std::vector<std::pair<std::wstring, int>>& sorted,
+                     int top_n, COLORREF colors[], int name_w);
+
+    // 更新按钮高亮状态
+    void UpdateViewButtons();
+
     enum DetailColumn
     {
         DCOL_INDEX = 0,
@@ -50,7 +83,6 @@ protected:
         DCOL_SOURCE,
     };
 
-    // 总览列表列索引
     enum OverviewColumn
     {
         OCOL_ITEM = 0,
@@ -62,23 +94,21 @@ protected:
     virtual bool InitializeControls() override;
     virtual void DoDataExchange(CDataExchange* pDX);
 
-    // 加载播放记录
     void LoadRecords();
-    // 显示总览数据
     void ShowOverview();
-    // 显示详细记录
     void ShowDetail();
-    // 导出数据
     void ExportData(bool csv_format);
+    void InitTimeFilter();
 
     DECLARE_MESSAGE_MAP()
 public:
     virtual BOOL OnInitDialog();
-    void DrawAnalysisChart();
     afx_msg void OnTcnSelChangeTab(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnBnClickedExportCsvButton();
     afx_msg void OnBnClickedExportJsonButton();
     afx_msg void OnPaint();
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-    afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+    afx_msg void OnCbnSelChangeTimeFilter();
+    afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
+    afx_msg void OnBnClickedViewBtn(UINT nID);
 };
