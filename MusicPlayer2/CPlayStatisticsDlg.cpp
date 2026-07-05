@@ -60,7 +60,6 @@ BEGIN_MESSAGE_MAP(CPlayStatisticsDlg, CBaseDialog)
     ON_BN_CLICKED(IDC_EXPORT_CSV_BTN, &CPlayStatisticsDlg::OnBnClickedExportCsvButton)
     ON_BN_CLICKED(IDC_EXPORT_JSON_BTN, &CPlayStatisticsDlg::OnBnClickedExportJsonButton)
     ON_WM_PAINT()
-    ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
 // CPlayStatisticsDlg 消息处理程序
@@ -72,8 +71,7 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     // 初始化 Tab 控件
     m_tab.InsertItem(0, L"总览");
     m_tab.InsertItem(1, L"详细记录");
-    m_tab.InsertItem(2, L"图表");
-    m_tab.InsertItem(3, L"图形分析");
+    m_tab.InsertItem(2, L"图形分析");
 
     // 初始化详细记录列表
     m_detail_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
@@ -489,18 +487,11 @@ void CPlayStatisticsDlg::OnTcnSelChangeTab(NMHDR* pNMHDR, LRESULT* pResult)
     }
     else if (sel == 2)
     {
-        // 图表（保留原有）
-        m_overview_list.ShowWindow(SW_HIDE);
-        m_detail_list.ShowWindow(SW_HIDE);
-        m_chart_static.ShowWindow(SW_SHOW);
-        Invalidate();
-    }
-    else
-    {
         // 图形分析
         m_overview_list.ShowWindow(SW_HIDE);
         m_detail_list.ShowWindow(SW_HIDE);
-        DrawAnalysisChart();
+        m_chart_static.ShowWindow(SW_HIDE);
+        Invalidate();
     }
     *pResult = 0;
 }
@@ -622,15 +613,16 @@ void CPlayStatisticsDlg::OnBnClickedExportJsonButton()
 
 // ── 图形分析（可工作的版本） ──
 
-void CPlayStatisticsDlg::DrawAnalysisChart()
+void CPlayStatisticsDlg::DrawAnalysisChart(CDC* pDC)
 {
-    // 改为 SS_OWNERDRAW，防止控件画黑色覆盖
-    ::SetWindowLongPtr(m_chart_static.GetSafeHwnd(), GWL_STYLE,
-        (::GetWindowLongPtr(m_chart_static.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW);
+    if (!pDC || !pDC->GetSafeHdc()) return;
 
+    // 在 Tab 下方的对话框客户区绘制
     CRect rect;
-    m_chart_static.GetWindowRect(&rect);
-    ScreenToClient(&rect);
+    GetClientRect(&rect);
+    // Tab 高度约 28，上方留点空间
+    rect.top += 36;
+    rect.bottom -= 40; // 底部按钮区域
     int w = rect.Width(), h = rect.Height();
     if (w < 80 || h < 80) return;
 
@@ -658,8 +650,8 @@ void CPlayStatisticsDlg::DrawAnalysisChart()
         if (!r.artist.empty()) artist_time[r.artist] += r.play_duration_sec;
     }
 
-    CDC* pDC = GetDC();
-    if (!pDC) return;
+    // CDC* pDC = GetDC();
+    // if (!pDC) return;
 
     pDC->FillSolidRect(rect, RGB(248, 248, 252));
 
@@ -829,7 +821,7 @@ void CPlayStatisticsDlg::DrawAnalysisChart()
 
     pDC->SelectStockObject(BLACK_PEN);
     pDC->SelectStockObject(NULL_BRUSH);
-    ReleaseDC(pDC);
+    // ReleaseDC(pDC);
 }
 
 // ── 原有图表绘制 ──
@@ -841,305 +833,6 @@ void CPlayStatisticsDlg::OnPaint()
     if (m_tab.GetCurSel() != 2)
         return;
 
-    CRect rect;
-    m_chart_static.GetClientRect(&rect);
-    m_chart_static.MapWindowPoints(this, &rect);
-
-    dc.FillSolidRect(rect, RGB(255, 255, 255));
-
-    switch (m_chart_type)
-    {
-    case 0: DrawTrendChart(&dc, rect); break;
-    case 1: DrawHourChart(&dc, rect); break;
-    case 2: DrawPieChart(&dc, rect); break;
-    }
+    DrawAnalysisChart(&dc);
 }
 
-void CPlayStatisticsDlg::OnLButtonDown(UINT nFlags, CPoint point)
-{
-    CRect rect;
-    m_chart_static.GetClientRect(&rect);
-    m_chart_static.MapWindowPoints(this, &rect);
-
-    if (rect.PtInRect(point))
-    {
-        m_chart_type = (m_chart_type + 1) % 3;
-        Invalidate();
-    }
-
-    CBaseDialog::OnLButtonDown(nFlags, point);
-}
-
-// 播放趋势折线图：最近30天每天的播放次数
-void CPlayStatisticsDlg::DrawTrendChart(CDC* pDC, const CRect& rect)
-{
-    std::map<std::wstring, int> daily_count;
-    time_t now = time(nullptr);
-
-    for (const auto& r : m_records)
-    {
-        if (r.played_at.size() >= 10)
-        {
-            std::wstring date = r.played_at.substr(0, 10);
-            daily_count[date]++;
-        }
-    }
-
-    std::vector<std::wstring> dates;
-    for (int i = 29; i >= 0; i--)
-    {
-        time_t t = now - i * 86400;
-        struct tm tm_buf;
-        localtime_s(&tm_buf, &t);
-        wchar_t buf[16];
-        swprintf_s(buf, L"%04d-%02d-%02d", tm_buf.tm_year + 1900, tm_buf.tm_mon + 1, tm_buf.tm_mday);
-        dates.push_back(buf);
-    }
-
-    int max_count = 1;
-    for (const auto& d : dates)
-    {
-        auto it = daily_count.find(d);
-        if (it != daily_count.end() && it->second > max_count)
-            max_count = it->second;
-    }
-
-    int margin_left = 50, margin_right = 20, margin_top = 30, margin_bottom = 40;
-    int chart_w = rect.Width() - margin_left - margin_right;
-    int chart_h = rect.Height() - margin_top - margin_bottom;
-    if (chart_w <= 0 || chart_h <= 0) return;
-
-    pDC->SetTextColor(RGB(60, 60, 60));
-    pDC->TextOutW(rect.left + margin_left, rect.top + 5, L"最近30天播放趋势");
-
-    CPen axis_pen(PS_SOLID, 1, RGB(180, 180, 180));
-    CPen* old_pen = pDC->SelectObject(&axis_pen);
-    pDC->MoveTo(rect.left + margin_left, rect.top + margin_top);
-    pDC->LineTo(rect.left + margin_left, rect.top + margin_top + chart_h);
-    pDC->LineTo(rect.left + margin_left + chart_w, rect.top + margin_top + chart_h);
-    pDC->SelectObject(old_pen);
-
-    CFont small_font;
-    small_font.CreatePointFont(80, L"微软雅黑", pDC);
-    CFont* pOldFont = pDC->SelectObject(&small_font);
-
-    pDC->SetTextColor(RGB(120, 120, 120));
-    wchar_t buf[16];
-    swprintf_s(buf, L"%d", max_count);
-    pDC->TextOutW(rect.left + 10, rect.top + margin_top - 5, buf);
-    pDC->TextOutW(rect.left + 15, rect.top + margin_top + chart_h - 5, L"0");
-
-    int bar_w = chart_w / 30;
-    if (bar_w < 2) bar_w = 2;
-    CPen line_pen(PS_SOLID, 2, RGB(80, 140, 220));
-    CBrush bar_brush(RGB(100, 170, 230));
-
-    int prev_x = -1, prev_y = -1;
-    for (int i = 0; i < 30; i++)
-    {
-        int x = rect.left + margin_left + chart_w * i / 30 + bar_w / 2;
-        int count = 0;
-        auto it = daily_count.find(dates[i]);
-        if (it != daily_count.end()) count = it->second;
-        int bar_h = (int)((double)count / max_count * chart_h);
-        int y = rect.top + margin_top + chart_h - bar_h;
-
-        pDC->SelectObject(&bar_brush);
-        pDC->Rectangle(x - bar_w / 2, y, x + bar_w / 2, rect.top + margin_top + chart_h);
-
-        if (prev_x >= 0)
-        {
-            pDC->SelectObject(&line_pen);
-            pDC->MoveTo(prev_x, prev_y);
-            pDC->LineTo(x, y);
-        }
-        prev_x = x;
-        prev_y = y;
-    }
-
-    pDC->SetTextColor(RGB(100, 100, 100));
-    for (int i = 0; i < 30; i += 5)
-    {
-        int x = rect.left + margin_left + chart_w * i / 30;
-        std::wstring label = dates[i].substr(5);
-        pDC->TextOutW(x, rect.top + margin_top + chart_h + 5, label.c_str());
-    }
-
-    pDC->SelectObject(pOldFont);
-    pDC->SelectObject(old_pen);
-}
-
-// 听歌时段柱状图：24小时分布
-void CPlayStatisticsDlg::DrawHourChart(CDC* pDC, const CRect& rect)
-{
-    int hour_count[24] = { 0 };
-    for (const auto& r : m_records)
-    {
-        if (r.played_at.size() >= 13)
-        {
-            int hour = _wtoi(r.played_at.substr(11, 2).c_str());
-            if (hour >= 0 && hour < 24)
-                hour_count[hour]++;
-        }
-    }
-
-    int max_count = 1;
-    for (int i = 0; i < 24; i++)
-        if (hour_count[i] > max_count) max_count = hour_count[i];
-
-    int margin_left = 50, margin_right = 20, margin_top = 30, margin_bottom = 40;
-    int chart_w = rect.Width() - margin_left - margin_right;
-    int chart_h = rect.Height() - margin_top - margin_bottom;
-    if (chart_w <= 0 || chart_h <= 0) return;
-
-    pDC->SetTextColor(RGB(60, 60, 60));
-    pDC->TextOutW(rect.left + margin_left, rect.top + 5, L"听歌时段分布（24小时）");
-
-    CPen axis_pen(PS_SOLID, 1, RGB(180, 180, 180));
-    CPen* old_pen = pDC->SelectObject(&axis_pen);
-    pDC->MoveTo(rect.left + margin_left, rect.top + margin_top);
-    pDC->LineTo(rect.left + margin_left, rect.top + margin_top + chart_h);
-    pDC->LineTo(rect.left + margin_left + chart_w, rect.top + margin_top + chart_h);
-    pDC->SelectObject(old_pen);
-
-    CFont small_font;
-    small_font.CreatePointFont(80, L"微软雅黑", pDC);
-    CFont* pOldFont = pDC->SelectObject(&small_font);
-
-    pDC->SetTextColor(RGB(120, 120, 120));
-    wchar_t buf[16];
-    swprintf_s(buf, L"%d", max_count);
-    pDC->TextOutW(rect.left + 10, rect.top + margin_top - 5, buf);
-    pDC->TextOutW(rect.left + 15, rect.top + margin_top + chart_h - 5, L"0");
-
-    int bar_w = chart_w / 24;
-    if (bar_w < 4) bar_w = 4;
-
-    for (int i = 0; i < 24; i++)
-    {
-        int x = rect.left + margin_left + chart_w * i / 24;
-        int bar_h = (int)((double)hour_count[i] / max_count * chart_h);
-        int y = rect.top + margin_top + chart_h - bar_h;
-
-        COLORREF bar_color;
-        if (i < 6)      bar_color = RGB(70, 100, 180);    // 凌晨
-        else if (i < 12) bar_color = RGB(100, 170, 230);  // 上午
-        else if (i < 18) bar_color = RGB(130, 190, 180);  // 下午
-        else             bar_color = RGB(160, 130, 200);  // 晚上
-        CBrush color_brush(bar_color);
-        pDC->SelectObject(&color_brush);
-        pDC->Rectangle(x, y, x + bar_w - 1, rect.top + margin_top + chart_h);
-
-        if (i % 3 == 0)
-        {
-            pDC->SetTextColor(RGB(100, 100, 100));
-            swprintf_s(buf, L"%d", i);
-            pDC->TextOutW(x, rect.top + margin_top + chart_h + 5, buf);
-        }
-    }
-
-    pDC->SelectObject(pOldFont);
-    pDC->SelectObject(old_pen);
-}
-
-// 艺术家占比饼图：Top 10
-void CPlayStatisticsDlg::DrawPieChart(CDC* pDC, const CRect& rect)
-{
-    std::map<std::wstring, int> artist_time;
-    for (const auto& r : m_records)
-    {
-        if (!r.artist.empty())
-            artist_time[r.artist] += r.play_duration_sec;
-    }
-
-    std::vector<std::pair<std::wstring, int>> sorted_artists(artist_time.begin(), artist_time.end());
-    std::sort(sorted_artists.begin(), sorted_artists.end(),
-        [](const auto& a, const auto& b) { return a.second > b.second; });
-
-    int top_n = (int)sorted_artists.size();
-    if (top_n > 10) top_n = 10;
-    if (top_n == 0)
-    {
-        pDC->SetTextColor(RGB(120, 120, 120));
-        pDC->TextOutW(rect.left + 20, rect.top + 20, L"暂无数据");
-        return;
-    }
-
-    int total = 0;
-    for (const auto& [name, t] : artist_time)
-        total += t;
-    if (total == 0) return;
-
-    COLORREF colors[] = {
-        RGB(100, 170, 230), RGB(230, 130, 100), RGB(130, 190, 130),
-        RGB(200, 160, 220), RGB(240, 200, 100), RGB(100, 200, 200),
-        RGB(230, 170, 130), RGB(170, 150, 230), RGB(180, 220, 100),
-        RGB(220, 120, 160)
-    };
-
-    pDC->SetTextColor(RGB(60, 60, 60));
-    pDC->TextOutW(rect.left + 20, rect.top + 5, L"艺术家播放时长占比（Top 10）");
-
-    int pie_size = min(rect.Width(), rect.Height()) - 100;
-    if (pie_size < 100) pie_size = 100;
-    int pie_x = rect.left + 30;
-    int pie_y = rect.top + 30;
-    int pie_r = pie_size / 2;
-    CPoint center(pie_x + pie_r, pie_y + pie_r);
-
-    double start_angle = -90.0;
-    for (int i = 0; i < top_n; i++)
-    {
-        double sweep = (double)sorted_artists[i].second / total * 360.0;
-        double end_angle = start_angle + sweep;
-
-        double rad_start = start_angle * 3.14159265 / 180.0;
-        double rad_end = end_angle * 3.14159265 / 180.0;
-
-        CPoint start_pt(
-            center.x + (LONG)(pie_r * cos(rad_start)),
-            center.y + (LONG)(pie_r * sin(rad_start)));
-        CPoint end_pt(
-            center.x + (LONG)(pie_r * cos(rad_end)),
-            center.y + (LONG)(pie_r * sin(rad_end)));
-
-        CBrush brush(colors[i % 10]);
-        CBrush* old_brush = pDC->SelectObject(&brush);
-        CPen white_pen(PS_SOLID, 1, RGB(255, 255, 255));
-        CPen* old_pen2 = pDC->SelectObject(&white_pen);
-
-        pDC->Pie(
-            center.x - pie_r, center.y - pie_r,
-            center.x + pie_r, center.y + pie_r,
-            start_pt.x, start_pt.y,
-            end_pt.x, end_pt.y);
-
-        pDC->SelectObject(old_brush);
-        pDC->SelectObject(old_pen2);
-
-        start_angle = end_angle;
-    }
-
-    // 图例
-    CFont small_font;
-    small_font.CreatePointFont(90, L"微软雅黑", pDC);
-    CFont* pOldFont = pDC->SelectObject(&small_font);
-
-    int legend_x = pie_x + pie_size + 10;
-    int legend_y = pie_y + 10;
-    int line_h = 18;
-
-    for (int i = 0; i < top_n; i++)
-    {
-        CBrush brush(colors[i % 10]);
-        pDC->SelectObject(&brush);
-        pDC->Rectangle(legend_x, legend_y + i * line_h, legend_x + 12, legend_y + i * line_h + 12);
-
-        int pct = (int)((double)sorted_artists[i].second / total * 100);
-        std::wstring label = sorted_artists[i].first + L" (" + std::to_wstring(pct) + L"%)";
-        pDC->SetTextColor(RGB(60, 60, 60));
-        pDC->TextOutW(legend_x + 16, legend_y + i * line_h - 1, label.c_str());
-    }
-
-    pDC->SelectObject(pOldFont);
-}
