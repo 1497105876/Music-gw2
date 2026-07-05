@@ -28,11 +28,14 @@ protected:
     CStatic m_chart_static;          // 图表显示区域
     CComboBox m_time_filter;         // 时间范围下拉框
     CButton m_view_btns[5];          // 视图切换按钮
+    CListCtrlEx m_rank_list;         // 排行榜列表（可滚动）
+    CStatic m_rank_chart;            // 排行榜左侧条形图
 
     // 数据
     std::vector<PlayRecord> m_records;
     int m_chart_type{ 0 };           // 0=概览, 1=排行榜, 2=流派, 3=趋势, 4=时段
     int m_time_filter_days{ 0 };     // 0=全部, 7/30/90=最近N天
+    int m_rank_category{ 0 };        // 0=歌手, 1=歌曲
 
     // 聚合统计结构体
     struct StatsAggregate {
@@ -54,10 +57,16 @@ protected:
     // 绘图函数
     void DrawAnalysisChart();
     void DrawOverviewPage(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
-    void DrawRankingPage(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
-    void DrawGenrePage(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
+    // DrawRankingPage 改为列表控件，不再用 CDC 绘制
+    // DrawGenrePage 暂时注释
+    // void DrawGenrePage(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
     void DrawTrendChart(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
     void DrawHourChart(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
+
+    // 排行榜列表填充
+    void ShowRankingList();
+    // 排行榜左侧条形图
+    void DrawRankingChart(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
 
     // 辅助绘图函数
     void DrawSeparator(CDC* pDC, int x1, int x2, int y);
@@ -65,7 +74,7 @@ protected:
     void DrawResultBar(CDC* pDC, const CRect& rect, const StatsAggregate& stats);
     void DrawTopBars(CDC* pDC, const CRect& rect,
                      const std::vector<std::pair<std::wstring, int>>& sorted,
-                     int top_n, COLORREF colors[], int name_w);
+                     int top_n, COLORREF colors[], int name_w, int bar_left_offset = 80);
 
     // 更新按钮高亮状态
     void UpdateViewButtons();
@@ -89,6 +98,13 @@ protected:
         OCOL_VALUE,
     };
 
+    enum RankColumn
+    {
+        RCOL_RANK = 0,
+        RCOL_NAME,
+        RCOL_VALUE,
+    };
+
 protected:
     virtual CString GetDialogName() const override;
     virtual bool InitializeControls() override;
@@ -99,6 +115,8 @@ protected:
     void ShowDetail();
     void ExportData(bool csv_format);
     void InitTimeFilter();
+    void AutoFitRankColumns();
+    void LayoutRankControls();
 
     DECLARE_MESSAGE_MAP()
 public:
@@ -111,4 +129,6 @@ public:
     afx_msg void OnCbnSelChangeTimeFilter();
     afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
     afx_msg void OnBnClickedViewBtn(UINT nID);
+    afx_msg void OnBnClickedRankCatBtn(UINT nID);
+    afx_msg void OnSize(UINT nType, int cx, int cy);
 };
