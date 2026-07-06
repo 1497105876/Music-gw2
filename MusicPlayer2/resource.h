@@ -1,4 +1,4 @@
-﻿//{{NO_DEPENDENCIES}}
+//{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ 生成的包含文件。
 // 供 MusicPlayer2.rc 使用
 //
@@ -1105,6 +1105,18 @@
 #define IDC_STAT_RANK_CAT_BTN1           1413
 #define IDC_STAT_RANK_CAT_BTN2           1414
 #define IDC_STAT_RANK_CHART              1415
+#define IDD_STAT_OVERVIEW_DLG            694
+#define IDD_STAT_ARTIST_RANK_DLG         695
+#define IDD_STAT_SONG_RANK_DLG           696
+#define IDD_STAT_TREND_DLG               697
+#define IDD_STAT_SONGS_DLG               698
+#define IDC_STAT_OVERVIEW_LIST2          1416
+#define IDC_STAT_ARTIST_RANK_LIST        1417
+#define IDC_STAT_SONG_RANK_LIST          1418
+#define IDC_STAT_TREND_CHART             1419
+#define IDC_STAT_SONGS_LIST              1420
+#define IDC_STAT_ARTIST_RANK_CHART      1421
+#define IDC_STAT_SONG_RANK_CHART        1422
 #define ID_ORIGINAL_PITCH               33480
 #define ID_SONGS_MULTI_VERSION_ITEM_START 33481
 #define ID_SONGS_MULTI_VERSION_ITEM_MAX 33511

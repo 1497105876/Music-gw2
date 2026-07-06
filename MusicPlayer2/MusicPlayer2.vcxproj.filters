@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="资源文件">
@@ -682,6 +682,21 @@
       <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClInclude>
     <ClInclude Include="CPlayStatisticsDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="StatOverviewTabDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="StatArtistRankTabDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="StatSongRankTabDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="StatTrendTabDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="StatSongsTabDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
     <ClInclude Include="CDonateDlg.h">
@@ -1416,6 +1431,21 @@
       <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClCompile>
     <ClCompile Include="CPlayStatisticsDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="StatOverviewTabDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="StatArtistRankTabDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="StatSongRankTabDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="StatTrendTabDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="StatSongsTabDlg.cpp">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
     <ClCompile Include="CDonateDlg.cpp">

@@ -304,3 +304,18 @@ build_output.txt
 
 # Release executable at root
 /MusicPlayer2-Release.exe
+
+# Temp/backup files
+*.fixed
+*.bak
+*.bom
+*.tmp
+
+# Temp PowerShell scripts (rc fixer etc)
+/add_layout.ps1
+/fix_newline*.ps1
+/fix_rc*.ps1
+/fix_layout*.ps1
+/fix_trend_layout*.ps1
+/fix_*.ps1
+

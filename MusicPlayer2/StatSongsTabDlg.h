@@ -1,0 +1,37 @@
+﻿#pragma once
+#include "TabDlg.h"
+#include "ListCtrlEx.h"
+#include "PlayStatistics.h"
+
+class CStatSongsTabDlg : public CTabDlg
+{
+    DECLARE_DYNAMIC(CStatSongsTabDlg)
+public:
+    CStatSongsTabDlg(CWnd* pParent = nullptr);
+    virtual ~CStatSongsTabDlg();
+
+    enum { IDD = IDD_STAT_SONGS_DLG };
+
+    void SetRecords(const std::vector<PlayRecord>& records);
+
+protected:
+    CListCtrlEx m_list;
+
+    enum Column
+    {
+        DCOL_INDEX = 0,
+        DCOL_TIME,
+        DCOL_TITLE,
+        DCOL_ARTIST,
+        DCOL_ALBUM,
+        DCOL_PLAY_DUR,
+        DCOL_SONG_LEN,
+        DCOL_RESULT,
+        DCOL_SOURCE,
+    };
+
+    virtual void DoDataExchange(CDataExchange* pDX) override;
+    virtual BOOL OnInitDialog() override;
+
+    DECLARE_MESSAGE_MAP()
+};
