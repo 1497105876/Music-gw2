@@ -30,6 +30,11 @@ protected:
     };
     std::vector<SongRankItem> m_rank_data;
 
+    int m_scroll_pos{ 0 };
+    int m_scroll_max{ 0 };
+    int m_page_size{ 0 };
+    static const int BAR_HEIGHT = 44;
+
     enum Column
     {
         COL_RANK = 0,
@@ -39,11 +44,15 @@ protected:
 
     void BuildRankData();
     void DrawBarChart(CDC* pDC, const CRect& rect);
+    void UpdateScrollbar();
 
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
 
     afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
+    afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+    afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+    afx_msg void OnSize(UINT nType, int cx, int cy);
 
     DECLARE_MESSAGE_MAP()
 };
