@@ -62,6 +62,7 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     m_song_rank_dlg.Create(IDD_STAT_SONG_RANK_DLG, &m_tab);
     m_trend_dlg.Create(IDD_STAT_TREND_DLG, &m_tab);
     m_songs_dlg.Create(IDD_STAT_SONGS_DLG, &m_tab);
+    m_profile_dlg.Create(IDD_STAT_PROFILE_DLG, &m_tab);
 
     // 传递数据给各子页
     m_overview_dlg.SetRecords(m_records);
@@ -69,6 +70,7 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     m_song_rank_dlg.SetRecords(m_records);
     m_trend_dlg.SetRecords(m_records);
     m_songs_dlg.SetRecords(m_records);
+    m_profile_dlg.SetRecords(m_records);
 
     // 添加到 Tab
     m_tab.AddWindow(&m_overview_dlg, L"概览", IconMgr::IconType::IT_Info);
@@ -76,6 +78,7 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     m_tab.AddWindow(&m_song_rank_dlg, L"歌曲排行", IconMgr::IconType::IT_Music);
     m_tab.AddWindow(&m_trend_dlg, L"趋势", IconMgr::IconType::IT_Statistics);
     m_tab.AddWindow(&m_songs_dlg, L"歌曲", IconMgr::IconType::IT_File_Relate);
+    m_tab.AddWindow(&m_profile_dlg, L"AI 洞察", IconMgr::IconType::IT_Star);
 
     m_tab.SetItemSize(CSize(theApp.DPI(60), theApp.DPI(24)));
     m_tab.AdjustTabWindowSize();

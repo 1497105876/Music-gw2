@@ -7,6 +7,7 @@
 #include "StatSongRankTabDlg.h"
 #include "StatTrendTabDlg.h"
 #include "StatSongsTabDlg.h"
+#include "StatProfileTabDlg.h"
 #include <vector>
 
 class CPlayStatisticsDlg : public CBaseDialog
@@ -29,6 +30,7 @@ protected:
     CStatSongRankTabDlg m_song_rank_dlg;
     CStatTrendTabDlg m_trend_dlg;
     CStatSongsTabDlg m_songs_dlg;
+    CStatProfileTabDlg m_profile_dlg;
 
     std::vector<PlayRecord> m_records;
 

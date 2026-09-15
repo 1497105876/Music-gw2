@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -267,6 +267,9 @@
     <ClInclude Include="StatSongRankTabDlg.h" />
     <ClInclude Include="StatTrendTabDlg.h" />
     <ClInclude Include="StatSongsTabDlg.h" />
+    <ClInclude Include="StatAnalysis.h" />
+    <ClInclude Include="StatAiInsight.h" />
+    <ClInclude Include="StatProfileTabDlg.h" />
     <ClInclude Include="ClosseMainWindowInqueryDlg.h" />
     <ClInclude Include="CMMNotificationClient.h" />
     <ClInclude Include="CommonDialogMgr.h" />
@@ -522,6 +525,9 @@
     <ClCompile Include="StatSongRankTabDlg.cpp" />
     <ClCompile Include="StatTrendTabDlg.cpp" />
     <ClCompile Include="StatSongsTabDlg.cpp" />
+    <ClCompile Include="StatAnalysis.cpp" />
+    <ClCompile Include="StatAiInsight.cpp" />
+    <ClCompile Include="StatProfileTabDlg.cpp" />
     <ClCompile Include="ClosseMainWindowInqueryDlg.cpp" />
     <ClCompile Include="CMMNotificationClient.cpp" />
     <ClCompile Include="CommonData.cpp" />

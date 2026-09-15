@@ -1,6 +1,8 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatOverviewTabDlg.h"
+#include "StatAnalysis.h"
+#include <map>
 
 IMPLEMENT_DYNAMIC(CStatOverviewTabDlg, CTabDlg)
 
@@ -55,6 +57,7 @@ void CStatOverviewTabDlg::SetRecords(const std::vector<PlayRecord>& records)
     std::map<std::wstring, int> song_play_time;
     std::map<std::wstring, int> artist_play_time;
     std::map<std::wstring, int> album_play_time;
+    std::map<std::wstring, int> genre_play_count;
     std::map<int, int> hour_distribution;
 
     for (const auto& r : records)
@@ -108,22 +111,14 @@ void CStatOverviewTabDlg::SetRecords(const std::vector<PlayRecord>& records)
             artist_play_time[r.artist] += r.play_duration_sec;
         if (!r.album.empty())
             album_play_time[r.album] += r.play_duration_sec;
+        if (!r.genre.empty())
+            genre_play_count[r.genre] += 1;
     }
 
     int total_count = static_cast<int>(records.size());
 
     auto format_time = [](int seconds) -> std::wstring {
-        int hours = seconds / 3600;
-        int mins = (seconds % 3600) / 60;
-        int secs = seconds % 60;
-        wchar_t buf[64];
-        if (hours > 0)
-            swprintf_s(buf, L"%d小时%d分%d秒", hours, mins, secs);
-        else if (mins > 0)
-            swprintf_s(buf, L"%d分%d秒", mins, secs);
-        else
-            swprintf_s(buf, L"%d秒", secs);
-        return buf;
+        return CStatAnalysis::FormatDuration(seconds);
     };
 
     int row = 0;
@@ -141,6 +136,53 @@ void CStatOverviewTabDlg::SetRecords(const std::vector<PlayRecord>& records)
     add_row(L"本月播放歌曲数", std::to_wstring(month_count) + L" 首");
     add_row(L"累计播放歌曲数", std::to_wstring(total_count) + L" 首");
     add_row(L"累计播放总时长", format_time(total_duration));
+
+    // 平均播放时长：总时长 / 总次数，反映单次听歌的平均深度
+    if (total_count > 0)
+        add_row(L"平均单曲播放时长", format_time(total_duration / total_count));
+
+    // Top 歌手/专辑/流派（口味速览）
+    auto top_of = [](const std::map<std::wstring, int>& m) -> std::pair<std::wstring, int> {
+        std::pair<std::wstring, int> best{ L"", 0 };
+        for (const auto& [k, v] : m)
+        {
+            if (v > best.second)
+                best = { k, v };
+        }
+        return best;
+    };
+    if (!artist_play_time.empty())
+    {
+        auto best = top_of(artist_play_time);
+        add_row(L"最常听歌手", best.first + L"（" + format_time(best.second) + L"）");
+    }
+    if (!album_play_time.empty())
+    {
+        auto best = top_of(album_play_time);
+        add_row(L"最常听专辑", best.first + L"（" + format_time(best.second) + L"）");
+    }
+    if (!genre_play_count.empty())
+    {
+        auto best = top_of(genre_play_count);
+        add_row(L"最常听流派", best.first + L"（" + std::to_wstring(best.second) + L" 次）");
+    }
+
+    // 时段分布峰值
+    int best_hour = -1, best_hour_count = 0;
+    for (const auto& [h, c] : hour_distribution)
+    {
+        if (c > best_hour_count)
+        {
+            best_hour_count = c;
+            best_hour = h;
+        }
+    }
+    if (best_hour >= 0)
+    {
+        wchar_t buf[24];
+        swprintf_s(buf, L"%02d:00-%02d:00", best_hour, (best_hour + 1) % 24);
+        add_row(L"最活跃时段", std::wstring(buf) + L"（" + std::to_wstring(best_hour_count) + L" 次）");
+    }
 
     add_row(L"", L"");
     add_row(L"── 播放结果 ──", L"");

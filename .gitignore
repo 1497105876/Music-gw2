@@ -319,3 +319,20 @@ build_output.txt
 /fix_trend_layout*.ps1
 /fix_*.ps1
 
+
+# ---- MusicPlayer2-gw additions ----
+# MSBuild 输出目录（x64/Debug 已有 [Dd]ebug/ 兜底，这里补 x64 整体兜底）
+x64/
+# 构建日志与安装包输出
+build_output*.txt
+installer_output/
+# 临时脚本/布局调试脚本
+revert_layout.ps1
+# ipch 缓存与 VS 浏览器数据库
+*.aps
+.vs/
+ipch/
+*.VC.db
+*.VC.opendb
+# 临时测试产物
+test_hotkey_ctrl/*.exe
