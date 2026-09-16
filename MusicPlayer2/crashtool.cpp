@@ -139,8 +139,31 @@ public:
         return stream.str();
     }
 
+    // 把异常信息 + 符号化调用栈直接写到 %TEMP%，不依赖程序任何状态
+    void WriteStackFile(EXCEPTION_POINTERS* pEP)
+    {
+        wchar_t path[MAX_PATH] = { 0 };
+        ::GetTempPathW(MAX_PATH, path);
+        ::wcscat_s(path, L"MusicPlayer2_crash_stack.txt");
+
+        HANDLE h = ::CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, 0);
+        if (h == INVALID_HANDLE_VALUE) return;
+
+        wchar_t head[512] = { 0 };
+        ::StringCchPrintfW(head, _countof(head),
+            L"ExceptionCode: 0x%08X\r\nExceptionAddress: %p\r\n\r\n",
+            pEP->ExceptionRecord->ExceptionCode, pEP->ExceptionRecord->ExceptionAddress);
+        std::wstring all = head;
+        all += GetStackTrace(pEP);
+
+        DWORD written = 0;
+        ::WriteFile(h, all.c_str(), (DWORD)(all.size() * sizeof(wchar_t)), &written, nullptr);
+        ::CloseHandle(h);
+    }
+
     void ShowCrashInfo(EXCEPTION_POINTERS* pEP)
     {
+        WriteStackFile(pEP);   // 先落盘，保证即使后面弹窗二次崩溃也能拿到栈
         // 写入错误日志
         wstring log_info = theApp.m_str_table.LoadTextFormat(L"LOG_CRASH_ERROR", { m_dumpFile });
         theApp.WriteLog(log_info);

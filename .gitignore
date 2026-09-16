@@ -336,3 +336,7 @@ ipch/
 *.VC.opendb
 # 临时测试产物
 test_hotkey_ctrl/*.exe
+
+# 例外：运行时 DLL（按配置配对的 tag/bass）必须入库
+!MusicPlayer2/dll/x64/
+!MusicPlayer2/dll/x64/**

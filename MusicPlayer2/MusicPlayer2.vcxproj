@@ -154,6 +154,10 @@
     <PreBuildEvent>
       <Command>print_compile_time.bat</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(ProjectDir)dll\x64\$(Configuration)\*.dll" "$(OutDir)"</Command>
+      <Message>Copy runtime DLLs (tag/bass) matched to $(Configuration)</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -225,6 +229,10 @@
     <PreBuildEvent>
       <Command>print_compile_time.bat</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(ProjectDir)dll\x64\$(Configuration)\*.dll" "$(OutDir)"</Command>
+      <Message>Copy runtime DLLs (tag/bass) matched to $(Configuration)</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Text Include="compile_time.txt" />
