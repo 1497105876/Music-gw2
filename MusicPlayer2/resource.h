@@ -1118,6 +1118,8 @@
 #define IDC_STAT_ARTIST_RANK_CHART      1421
 #define IDC_STAT_SONG_RANK_CHART        1422
 #define IDC_STAT_PROFILE_CHART          1423
+#define IDC_STAT_GENRE_LIST            1445
+#define IDC_STAT_PROFILE_TEXT           1446
 #define IDD_STAT_PROFILE_DLG            699
 
 // 播放统计优化新增资源 ID（架构文档 D5）
@@ -1159,7 +1161,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        705
 #define _APS_NEXT_COMMAND_VALUE         33514
-#define _APS_NEXT_CONTROL_VALUE         1445
+#define _APS_NEXT_CONTROL_VALUE         1447
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

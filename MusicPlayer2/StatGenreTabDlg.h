@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "StatTabDlg.h"
 #include "StatCommon.h"
+#include "ListCtrlEx.h"
 #include <vector>
 
 // 流派分布页（REQ-106 / REQ-115 / REQ-113 / REQ-114）：
@@ -20,7 +21,7 @@ public:
     virtual void Refresh() override;
 
 protected:
-    CStatic m_chart;
+    CListCtrlEx m_list;
 
     std::vector<GenreShare> m_share;              // 当前占比（已合并“其他”）
     std::vector<GenreShare> m_quarter_share;      // 漂移叠图用：每季度主导流派
@@ -32,13 +33,10 @@ protected:
     bool m_has_similarity{ false };
 
     void BuildData();
-    void DrawGenre(CDC* pDC, const CRect& rect);
-    void DrawFooter(CDC* pDC, const CRect& rect, int top);
 
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
 
-    afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
 
     DECLARE_MESSAGE_MAP()
 };
