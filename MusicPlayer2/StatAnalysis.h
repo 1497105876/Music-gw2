@@ -3,9 +3,27 @@
 #include <string>
 #include <vector>
 
+// 前向声明共享类型（完整定义见 StatCommon.h），供下方接口签名使用。
+// StatCommon.h 反向包含本文件以取得 StatSummary，故此处不能包含 StatCommon.h。
+enum class Grain;
+struct PeriodBucket;
+struct HeatCell;
+struct GenreShare;
+struct SkipBucket;
+struct PeriodComparison;
+struct AlbumRankItem;
+struct RetiredGem;
+struct PlaylistContribution;
+struct RadarScore;
+struct YearReview;
+struct StatFilter;
+
 // 统计聚合结果，供概览页显示和 AI 洞察使用
 struct StatSummary
 {
+    // 口径版本号：口径调整（含过滤规则变化）时必须递增
+    int schema_version = 2;         // v2：统一 15 秒口径，时段统计纳入 <15 秒过滤
+
     // 基本统计
     int total_count = 0;            // 累计播放次数
     int total_duration_sec = 0;     // 累计播放时长（秒）
@@ -60,9 +78,43 @@ struct StatSummary
 class CStatAnalysis
 {
 public:
-    // 从播放记录计算全部统计指标（传入全部记录，内部统一过滤 <15 秒的试听）
-    static StatSummary ComputeSummary(const std::vector<PlayRecord>& records);
+    // ── 口径判定（15 秒过滤的唯一入口，所有聚合必须调用） ──
+    // 记录是否计入统计：实际播放时长 >= 15 秒
+    static bool IsCounted(const PlayRecord& r);
+
+    // ── 时间解析（统一口径，"YYYY-MM-DDTHH:MM:SS"，禁止第二套解析） ──
+    static int YmdOf(const std::wstring& played_at);            // -> YYYYMMDD；非法返回 0
+    static int HourOf(const std::wstring& played_at);           // -> 小时；非法返回 -1
+    static std::wstring FormatYmd(int ymd, wchar_t sep = L'-'); // 20260101 -> "2026-01-01"
+    static std::wstring FormatBucketLabel(int key, Grain g);    // MM-DD / Www / YYYY-MM / YYYY
 
     // 把秒数格式化成 "X小时X分X秒"
     static std::wstring FormatDuration(int seconds);
+
+    // ── 聚合接口（本批实现 ComputeSummary/ComputeBuckets/ComputeHourHistogram） ──
+    // 从播放记录计算全部统计指标（内部统一走 IsCounted）
+    static StatSummary ComputeSummary(const std::vector<PlayRecord>& records);
+
+    // 按粒度聚合分桶（天/周/月/年），按 key 升序
+    static std::vector<PeriodBucket> ComputeBuckets(const std::vector<PlayRecord>& records, Grain grain);
+
+    // 24 小时时段直方图，写入 out_hour[24]，返回计入的总次数
+    static int ComputeHourHistogram(const std::vector<PlayRecord>& records, int out_hour[24]);
+
+    // ── 以下接口在后续批次实现（本批仅声明，供子页/洞察统一签名） ──
+    static std::vector<HeatCell>      ComputeHeatmapGrid(const std::vector<PlayRecord>& records);
+    static std::vector<GenreShare>    ComputeGenreShare(const std::vector<PlayRecord>& records, int max_slices = 5);
+    static std::vector<GenreShare>    ComputeGenreShareByQuarter(const std::vector<PlayRecord>& records, int quarters,
+                                                                 std::vector<std::wstring>& out_labels);
+    static std::vector<SkipBucket>    ComputeSkipDistribution(const std::vector<PlayRecord>& records);
+    static PeriodComparison           ComputePeriodComparison(const std::vector<PlayRecord>& records, const StatFilter& filter);
+    static std::vector<AlbumRankItem> ComputeAlbumRank(const std::vector<PlayRecord>& records, int top_n = 20);
+    static std::vector<PeriodBucket>  ComputeNewSongTrend(const std::vector<PlayRecord>& records);
+    static double                     ComputeCosineSimilarity(const std::vector<GenreShare>& a,
+                                                              const std::vector<GenreShare>& b);
+    static std::vector<RetiredGem>    ComputeRetiredGems(const std::vector<PlayRecord>& records, int min_count = 3);
+    static std::vector<PlaylistContribution> ComputePlaylistContribution(const std::vector<PlayRecord>& records);
+    static int                        ComputeStreakMiss(const std::vector<PlayRecord>& records);
+    static RadarScore                 ComputeRadar(const StatSummary& summary);
+    static std::vector<YearReview>    ComputeYearlyReviews(const std::vector<PlayRecord>& records);
 };

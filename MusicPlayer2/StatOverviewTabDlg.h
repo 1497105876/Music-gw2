@@ -1,9 +1,8 @@
 ﻿#pragma once
-#include "TabDlg.h"
+#include "StatTabDlg.h"
 #include "ListCtrlEx.h"
-#include "PlayStatistics.h"
 
-class CStatOverviewTabDlg : public CTabDlg
+class CStatOverviewTabDlg : public CStatTabDlg
 {
     DECLARE_DYNAMIC(CStatOverviewTabDlg)
 public:
@@ -12,7 +11,7 @@ public:
 
     enum { IDD = IDD_STAT_OVERVIEW_DLG };
 
-    void SetRecords(const std::vector<PlayRecord>& records);
+    virtual void Refresh() override;
 
 protected:
     CListCtrlEx m_list;
@@ -22,8 +21,6 @@ protected:
         COL_ITEM = 0,
         COL_VALUE,
     };
-
-    void ShowOverview();
 
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;

@@ -1,10 +1,111 @@
 ﻿#include "stdafx.h"
 #include "StatAnalysis.h"
+#include "StatCommon.h"
+#include "StatMeta.h"
 #include "PlayStatistics.h"
 #include <map>
 #include <set>
 #include <algorithm>
 #include <ctime>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 口径判定
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 记录是否计入统计：实际播放时长 >= 15 秒（15 秒过滤的唯一判定入口）
+bool CStatAnalysis::IsCounted(const PlayRecord& r)
+{
+    return r.play_duration_sec >= 15;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 时间解析（统一口径，"YYYY-MM-DDTHH:MM:SS"，禁止第二套解析）
+// ─────────────────────────────────────────────────────────────────────────────
+
+int CStatAnalysis::YmdOf(const std::wstring& played_at)
+{
+    if (played_at.size() < 10) return 0;
+    if (played_at[4] != L'-' || played_at[7] != L'-') return 0;
+    int year = _wtoi(played_at.substr(0, 4).c_str());
+    int month = _wtoi(played_at.substr(5, 2).c_str());
+    int day = _wtoi(played_at.substr(8, 2).c_str());
+    if (year <= 0 || month <= 0 || month > 12 || day <= 0 || day > 31) return 0;
+    return year * 10000 + month * 100 + day;
+}
+
+int CStatAnalysis::HourOf(const std::wstring& played_at)
+{
+    if (played_at.size() < 13) return -1;
+    if (played_at[10] != L'T') return -1;
+    if (played_at[13] != L':') return -1;
+    int hour = _wtoi(played_at.substr(11, 2).c_str());
+    if (hour < 0 || hour > 23) return -1;
+    return hour;
+}
+
+std::wstring CStatAnalysis::FormatYmd(int ymd, wchar_t sep)
+{
+    if (ymd <= 0) return std::wstring();
+    wchar_t buf[8];
+    std::wstring s = L"";
+    swprintf_s(buf, L"%04d", ymd / 10000);
+    s += buf;
+    s += sep;
+    swprintf_s(buf, L"%02d", (ymd / 100) % 100);
+    s += buf;
+    s += sep;
+    swprintf_s(buf, L"%02d", ymd % 100);
+    s += buf;
+    return s;
+}
+
+std::wstring CStatAnalysis::FormatBucketLabel(int key, Grain g)
+{
+    if (key <= 0) return std::wstring();
+    wchar_t buf[24];
+    switch (g)
+    {
+    case Grain::Day:
+        swprintf_s(buf, L"%02d-%02d", (key / 100) % 100, key % 100);
+        return buf;
+    case Grain::Week:
+        swprintf_s(buf, L"W%02d", key % 100);
+        return buf;
+    case Grain::Month:
+        swprintf_s(buf, L"%04d-%02d", key / 100, key % 100);
+        return buf;
+    case Grain::Year:
+        swprintf_s(buf, L"%04d", key);
+        return buf;
+    }
+    return std::wstring();
+}
+
+// 计算某日所在周的“周键”：周一所在年份 * 100 + 该年内第几周
+static int WeekKeyOfYmd(int ymd)
+{
+    struct tm tmv = {};
+    tmv.tm_year = (ymd / 10000) - 1900;
+    tmv.tm_mon = ((ymd / 100) % 100) - 1;
+    tmv.tm_mday = ymd % 100;
+    tmv.tm_hour = 12;
+    time_t t = mktime(&tmv);
+    if (t == static_cast<time_t>(-1)) return ymd / 10000 * 100;
+
+    struct tm wd = {};
+    localtime_s(&wd, &t);
+    int wday = wd.tm_wday;                          // 0=周日 .. 6=周六
+    int delta = (wday == 0) ? -6 : (1 - wday);      // 回到本周周一
+    time_t mon = t + static_cast<time_t>(delta) * 86400;
+
+    struct tm tm_mon = {};
+    localtime_s(&tm_mon, &mon);
+    int wy = tm_mon.tm_year + 1900;
+    int week = tm_mon.tm_yday / 7 + 1;              // 该年内的第几周（以周一计）
+    if (week < 1) week = 1;
+    if (week > 53) week = 53;
+    return wy * 100 + week;
+}
 
 // 把秒数格式化成 "X小时X分X秒" / "X分X秒" / "X秒"
 std::wstring CStatAnalysis::FormatDuration(int seconds)
@@ -25,6 +126,7 @@ std::wstring CStatAnalysis::FormatDuration(int seconds)
 StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records)
 {
     StatSummary s;
+    s.schema_version = CStatMeta::GetSchemaVersion();
 
     time_t now = time(nullptr);
     struct tm tm_now;
@@ -43,7 +145,7 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
     std::map<std::wstring, int> artist_time;        // 每个歌手累计时长
     std::map<std::wstring, int> genre_count;        // 每个流派播放次数
     std::map<int, int> hour_count;                  // 各时段播放次数
-    std::set<std::wstring> active_dates;            // 有播放的日期（yyyyMMdd）
+    std::set<std::wstring> active_dates;            // 有播放的日期（yyyy-MM-dd）
     std::set<std::wstring> all_dates;               // 出现过的日期（不过滤，用于连续天数）
     std::set<std::wstring> month_new_songs;         // 本月第一次听的歌
 
@@ -54,15 +156,18 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
 
     for (const auto& r : records)
     {
-        if (r.played_at.size() < 10) continue;
+        // 统一走 YmdOf：无效日期（或长度不足）直接跳过
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
 
-        int year = _wtoi(r.played_at.substr(0, 4).c_str());
-        int month = _wtoi(r.played_at.substr(5, 2).c_str());
-        int day = _wtoi(r.played_at.substr(8, 2).c_str());
+        int year = ymd / 10000;
+        int month = (ymd / 100) % 100;
+        int day = ymd % 100;
         std::wstring date_key = r.played_at.substr(0, 10);
         all_dates.insert(date_key);
 
-        bool valid = (r.play_duration_sec >= 15);   // 和其他统计页一致：不足15秒不计入
+        // 15 秒口径唯一入口
+        bool valid = IsCounted(r);
         if (valid)
         {
             s.total_count++;
@@ -105,16 +210,13 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
             time_t record_time = mktime(&tm_r);
             if (record_time >= week_start)
                 s.week_count++;
-        }
 
-        // 时段统计（不过滤15秒，保持和概览页时段分布口径一致）
-        if (r.played_at.size() >= 13)
-        {
-            int hour = _wtoi(r.played_at.substr(11, 2).c_str());
-            hour_count[hour] += 1;
-            if (valid)
+            // 时段统计（v2 起统一口径：仅统计 >=15 秒的记录，与其余指标一致）
+            int hour = HourOf(r.played_at);
+            if (hour >= 0)
             {
-                if (hour >= 0 && hour < 6)
+                hour_count[hour] += 1;
+                if (hour < 6)
                     night_sec += r.play_duration_sec;
             }
         }
@@ -130,7 +232,8 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
         {
             if (r.played_at.size() >= 13 && r.played_at.compare(0, 10, today_key) == 0)
             {
-                s.today_active_hour = _wtoi(r.played_at.substr(11, 2).c_str());
+                int hour = HourOf(r.played_at);
+                if (hour >= 0) s.today_active_hour = hour;
                 break;
             }
         }
@@ -223,13 +326,14 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
         int weekend_count = 0;
         for (const auto& r : records)
         {
-            if (r.play_duration_sec < 15) continue;
-            if (r.played_at.size() < 10) continue;
-            int y = _wtoi(r.played_at.substr(0, 4).c_str());
-            int m = _wtoi(r.played_at.substr(5, 2).c_str());
-            int dd = _wtoi(r.played_at.substr(8, 2).c_str());
+            if (!IsCounted(r)) continue;
+            int ymd = YmdOf(r.played_at);
+            if (ymd == 0) continue;
             struct tm tm_r = {};
-            tm_r.tm_year = y - 1900; tm_r.tm_mon = m - 1; tm_r.tm_mday = dd; tm_r.tm_hour = 12;
+            tm_r.tm_year = (ymd / 10000) - 1900;
+            tm_r.tm_mon = ((ymd / 100) % 100) - 1;
+            tm_r.tm_mday = ymd % 100;
+            tm_r.tm_hour = 12;
             time_t t = mktime(&tm_r);
             struct tm tm_out;
             localtime_s(&tm_out, &t);
@@ -283,12 +387,11 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
         }
     }
     {
-        std::map<std::wstring, std::pair<int, int>> song_first;  // path -> (次数, 是否有标题)
         std::map<std::wstring, std::wstring> song_title;
         std::map<std::wstring, std::wstring> song_artist;
         for (const auto& r : records)
         {
-            if (r.play_duration_sec < 15) continue;
+            if (!IsCounted(r)) continue;
             if (!r.title.empty())
                 song_title[r.file_path] = r.title;
             if (!r.artist.empty())
@@ -375,4 +478,66 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
     }
 
     return s;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 聚合基座
+// ─────────────────────────────────────────────────────────────────────────────
+
+std::vector<PeriodBucket> CStatAnalysis::ComputeBuckets(const std::vector<PlayRecord>& records, Grain grain)
+{
+    std::map<int, PeriodBucket> buckets;
+
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;            // 15 秒口径唯一入口
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
+
+        int key = 0;
+        switch (grain)
+        {
+        case Grain::Day:   key = ymd;              break;
+        case Grain::Week:  key = WeekKeyOfYmd(ymd); break;
+        case Grain::Month: key = ymd / 100;         break;
+        case Grain::Year:  key = ymd / 10000;       break;
+        }
+
+        PeriodBucket& b = buckets[key];
+        b.key = key;
+        b.count++;
+        b.duration_sec += r.play_duration_sec;
+        if (r.finish_reason == PlayRecord::FinishReason::COMPLETED) b.completed_count++;
+        else if (r.finish_reason == PlayRecord::FinishReason::SKIPPED) b.skipped_count++;
+    }
+
+    // std::map 已按 key 升序，逐个生成标签
+    std::vector<PeriodBucket> result;
+    result.reserve(buckets.size());
+    for (auto& [key, b] : buckets)
+    {
+        b.label = FormatBucketLabel(key, grain);
+        result.push_back(std::move(b));
+    }
+    return result;
+}
+
+int CStatAnalysis::ComputeHourHistogram(const std::vector<PlayRecord>& records, int out_hour[24])
+{
+    for (int i = 0; i < 24; i++)
+        out_hour[i] = 0;
+
+    int total = 0;
+    for (const auto& r : records)
+    {
+        // 与 ComputeSummary / ComputeBuckets 完全相同的口径：
+        // 先做 15 秒过滤，再要求时间戳合法（与 ComputeSummary 的 YmdOf==0 跳过一致）
+        if (!IsCounted(r)) continue;
+        if (YmdOf(r.played_at) == 0) continue;
+        int hour = HourOf(r.played_at);
+        if (hour < 0 || hour > 23) continue;
+        out_hour[hour] += 1;
+        total++;
+    }
+    return total;
 }

@@ -1,7 +1,6 @@
 ﻿#pragma once
-#include "TabDlg.h"
+#include "StatTabDlg.h"
 #include "ListCtrlEx.h"
-#include "PlayStatistics.h"
 #include <vector>
 
 struct RankItem
@@ -11,7 +10,7 @@ struct RankItem
     std::wstring display_value;
 };
 
-class CStatArtistRankTabDlg : public CTabDlg
+class CStatArtistRankTabDlg : public CStatTabDlg
 {
     DECLARE_DYNAMIC(CStatArtistRankTabDlg)
 public:
@@ -20,12 +19,11 @@ public:
 
     enum { IDD = IDD_STAT_ARTIST_RANK_DLG };
 
-    void SetRecords(const std::vector<PlayRecord>& records);
+    virtual void Refresh() override;
 
 protected:
     CListCtrlEx m_list;
     CStatic m_chart;
-    std::vector<PlayRecord> m_records;
     std::vector<RankItem> m_rank_data;
 
     int m_scroll_pos{ 0 };      // 当前滚动位置（像素）

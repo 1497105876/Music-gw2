@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "PlayStatistics.h"
+#include "StatCommon.h"     // WM_STAT_RECORD_APPENDED
 #include "Common.h"
 #include <ctime>
 #include <sstream>
@@ -81,6 +82,12 @@ CPlayStatistics& CPlayStatistics::GetInstance()
 
 CPlayStatistics::CPlayStatistics()
 {
+}
+
+void CPlayStatistics::SetNotifyTarget(HWND hwnd)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_notify_target = hwnd;
 }
 
 void CPlayStatistics::Init(const std::wstring& config_dir)
@@ -190,5 +197,10 @@ void CPlayStatistics::WriteRecord(const PlayRecord& record)
         ofs.write(json.data(), static_cast<std::streamsize>(json.size()));
         ofs.flush();   // 立即刷新，确保崩溃安全
         ofs.close();
+
+        // 写入成功后通知统计对话框（PostMessage 非阻塞；窗口已销毁则跳过，避免退出时崩溃）
+        HWND target = m_notify_target;
+        if (target != nullptr && ::IsWindow(target))
+            ::PostMessage(target, WM_STAT_RECORD_APPENDED, 0, 0);
     }
 }

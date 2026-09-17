@@ -4,10 +4,10 @@
 #include "StatAnalysis.h"
 #include <map>
 
-IMPLEMENT_DYNAMIC(CStatOverviewTabDlg, CTabDlg)
+IMPLEMENT_DYNAMIC(CStatOverviewTabDlg, CStatTabDlg)
 
 CStatOverviewTabDlg::CStatOverviewTabDlg(CWnd* pParent)
-    : CTabDlg(IDD_STAT_OVERVIEW_DLG, pParent)
+    : CStatTabDlg(IDD_STAT_OVERVIEW_DLG, pParent)
 {
 }
 
@@ -17,27 +17,33 @@ CStatOverviewTabDlg::~CStatOverviewTabDlg()
 
 void CStatOverviewTabDlg::DoDataExchange(CDataExchange* pDX)
 {
-    CTabDlg::DoDataExchange(pDX);
+    CStatTabDlg::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_STAT_OVERVIEW_LIST2, m_list);
 }
 
-BEGIN_MESSAGE_MAP(CStatOverviewTabDlg, CTabDlg)
+BEGIN_MESSAGE_MAP(CStatOverviewTabDlg, CStatTabDlg)
 END_MESSAGE_MAP()
 
 BOOL CStatOverviewTabDlg::OnInitDialog()
 {
-    CTabDlg::OnInitDialog();
+    CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-    m_list.InsertColumn(COL_ITEM, L"统计项", LVCFMT_LEFT, 200);
-    m_list.InsertColumn(COL_VALUE, L"数值", LVCFMT_LEFT, 300);
+    m_list.InsertColumn(COL_ITEM, L"统计项", LVCFMT_LEFT, theApp.DPI(200));
+    m_list.InsertColumn(COL_VALUE, L"数值", LVCFMT_LEFT, theApp.DPI(300));
 
     return TRUE;
 }
 
-void CStatOverviewTabDlg::SetRecords(const std::vector<PlayRecord>& records)
+// 从全局上下文聚合（口径统一：仅统计 >=15 秒的记录）
+void CStatOverviewTabDlg::Refresh()
 {
     m_list.DeleteAllItems();
+    m_dirty = false;
+
+    if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr)
+        return;
+    const std::vector<PlayRecord>& records = *m_stat_ctx->records;
 
     time_t now = time(nullptr);
     struct tm tm_now;
@@ -53,6 +59,7 @@ void CStatOverviewTabDlg::SetRecords(const std::vector<PlayRecord>& records)
     int today_count = 0, week_count = 0, month_count = 0;
     int today_duration = 0, week_duration = 0, total_duration = 0;
     int completed_count = 0, skipped_count = 0, stopped_count = 0, error_count = 0;
+    int total_count = 0;
 
     std::map<std::wstring, int> song_play_time;
     std::map<std::wstring, int> artist_play_time;
@@ -62,39 +69,40 @@ void CStatOverviewTabDlg::SetRecords(const std::vector<PlayRecord>& records)
 
     for (const auto& r : records)
     {
-        if (r.played_at.size() >= 10)
+        if (!CStatAnalysis::IsCounted(r)) continue;     // 15 秒口径唯一入口
+
+        int ymd = CStatAnalysis::YmdOf(r.played_at);
+        if (ymd == 0) continue;
+
+        int year = ymd / 10000;
+        int month = (ymd / 100) % 100;
+        int day = ymd % 100;
+        total_count++;
+
+        if (year == today_year && month == today_month && day == today_day)
         {
-            int year = _wtoi(r.played_at.substr(0, 4).c_str());
-            int month = _wtoi(r.played_at.substr(5, 2).c_str());
-            int day = _wtoi(r.played_at.substr(8, 2).c_str());
-
-            if (year == today_year && month == today_month && day == today_day)
-            {
-                today_count++;
-                today_duration += r.play_duration_sec;
-            }
-
-            struct tm tm_record = {};
-            tm_record.tm_year = year - 1900;
-            tm_record.tm_mon = month - 1;
-            tm_record.tm_mday = day;
-            tm_record.tm_hour = 12;
-            time_t record_time = mktime(&tm_record);
-            if (record_time >= week_start)
-            {
-                week_count++;
-                week_duration += r.play_duration_sec;
-            }
-
-            if (year == today_year && month == today_month)
-                month_count++;
-
-            if (r.played_at.size() >= 13)
-            {
-                int hour = _wtoi(r.played_at.substr(11, 2).c_str());
-                hour_distribution[hour]++;
-            }
+            today_count++;
+            today_duration += r.play_duration_sec;
         }
+
+        struct tm tm_record = {};
+        tm_record.tm_year = year - 1900;
+        tm_record.tm_mon = month - 1;
+        tm_record.tm_mday = day;
+        tm_record.tm_hour = 12;
+        time_t record_time = mktime(&tm_record);
+        if (record_time >= week_start)
+        {
+            week_count++;
+            week_duration += r.play_duration_sec;
+        }
+
+        if (year == today_year && month == today_month)
+            month_count++;
+
+        int hour = CStatAnalysis::HourOf(r.played_at);
+        if (hour >= 0)
+            hour_distribution[hour]++;
 
         total_duration += r.play_duration_sec;
 
@@ -114,8 +122,6 @@ void CStatOverviewTabDlg::SetRecords(const std::vector<PlayRecord>& records)
         if (!r.genre.empty())
             genre_play_count[r.genre] += 1;
     }
-
-    int total_count = static_cast<int>(records.size());
 
     auto format_time = [](int seconds) -> std::wstring {
         return CStatAnalysis::FormatDuration(seconds);

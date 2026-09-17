@@ -3,10 +3,10 @@
 #include "StatProfileTabDlg.h"
 #include "StatAiInsight.h"
 
-IMPLEMENT_DYNAMIC(CStatProfileTabDlg, CTabDlg)
+IMPLEMENT_DYNAMIC(CStatProfileTabDlg, CStatTabDlg)
 
 CStatProfileTabDlg::CStatProfileTabDlg(CWnd* pParent)
-    : CTabDlg(IDD_STAT_PROFILE_DLG, pParent)
+    : CStatTabDlg(IDD_STAT_PROFILE_DLG, pParent)
 {
 }
 
@@ -16,11 +16,11 @@ CStatProfileTabDlg::~CStatProfileTabDlg()
 
 void CStatProfileTabDlg::DoDataExchange(CDataExchange* pDX)
 {
-    CTabDlg::DoDataExchange(pDX);
+    CStatTabDlg::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_STAT_PROFILE_CHART, m_chart);
 }
 
-BEGIN_MESSAGE_MAP(CStatProfileTabDlg, CTabDlg)
+BEGIN_MESSAGE_MAP(CStatProfileTabDlg, CStatTabDlg)
     ON_WM_DRAWITEM()
     ON_WM_VSCROLL()
     ON_WM_MOUSEWHEEL()
@@ -29,7 +29,7 @@ END_MESSAGE_MAP()
 
 BOOL CStatProfileTabDlg::OnInitDialog()
 {
-    CTabDlg::OnInitDialog();
+    CStatTabDlg::OnInitDialog();
 
     // 与排行页一致：SS_BLACKFRAME 改为运行时自绘（SS_OWNERDRAW），带垂直滚动条
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
@@ -38,10 +38,15 @@ BOOL CStatProfileTabDlg::OnInitDialog()
     return TRUE;
 }
 
-void CStatProfileTabDlg::SetRecords(const std::vector<PlayRecord>& records)
+// 全局上下文变化时重算并刷新（汇总由主对话框统一算一次，直接复用）
+void CStatProfileTabDlg::Refresh()
 {
-    m_records = records;
-    m_summary = CStatAnalysis::ComputeSummary(records);
+    m_dirty = false;
+
+    if (m_stat_ctx != nullptr)
+        m_summary = m_stat_ctx->summary;
+    else
+        m_summary = StatSummary();
 
     m_scroll_pos = 0;
     UpdateScrollbar();

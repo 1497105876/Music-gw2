@@ -65,6 +65,10 @@ public:
     // 当前是否正在记录
     bool IsRecording() const { return m_recording; }
 
+    // 设置接收"记录追加"通知的窗口（统计对话框近实时刷新用）；传 nullptr 取消。
+    // 写入成功后向其 PostMessage(WM_STAT_RECORD_APPENDED)。
+    void SetNotifyTarget(HWND hwnd);
+
 private:
     CPlayStatistics();
 
@@ -78,4 +82,5 @@ private:
     bool m_initialized{};
     std::mutex m_mutex;
     std::wstring m_stats_dir;
+    HWND m_notify_target{};                   // 记录追加通知目标窗口（不持有生命周期）
 };

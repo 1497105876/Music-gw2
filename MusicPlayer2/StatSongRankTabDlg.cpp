@@ -1,14 +1,15 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatSongRankTabDlg.h"
+#include "StatAnalysis.h"
 #include <map>
 #include <vector>
 #include <algorithm>
 
-IMPLEMENT_DYNAMIC(CStatSongRankTabDlg, CTabDlg)
+IMPLEMENT_DYNAMIC(CStatSongRankTabDlg, CStatTabDlg)
 
 CStatSongRankTabDlg::CStatSongRankTabDlg(CWnd* pParent)
-    : CTabDlg(IDD_STAT_SONG_RANK_DLG, pParent)
+    : CStatTabDlg(IDD_STAT_SONG_RANK_DLG, pParent)
 {
 }
 
@@ -18,12 +19,12 @@ CStatSongRankTabDlg::~CStatSongRankTabDlg()
 
 void CStatSongRankTabDlg::DoDataExchange(CDataExchange* pDX)
 {
-    CTabDlg::DoDataExchange(pDX);
+    CStatTabDlg::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_STAT_SONG_RANK_LIST, m_list);
     DDX_Control(pDX, IDC_STAT_SONG_RANK_CHART, m_chart);
 }
 
-BEGIN_MESSAGE_MAP(CStatSongRankTabDlg, CTabDlg)
+BEGIN_MESSAGE_MAP(CStatSongRankTabDlg, CStatTabDlg)
     ON_WM_DRAWITEM()
     ON_WM_VSCROLL()
     ON_WM_MOUSEWHEEL()
@@ -32,12 +33,12 @@ END_MESSAGE_MAP()
 
 BOOL CStatSongRankTabDlg::OnInitDialog()
 {
-    CTabDlg::OnInitDialog();
+    CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, 40);
-    m_list.InsertColumn(COL_NAME, L"歌曲", LVCFMT_LEFT, 500);
-    m_list.InsertColumn(COL_VALUE, L"播放次数", LVCFMT_RIGHT, 78);
+    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, theApp.DPI(40));
+    m_list.InsertColumn(COL_NAME, L"歌曲", LVCFMT_LEFT, theApp.DPI(500));
+    m_list.InsertColumn(COL_VALUE, L"播放次数", LVCFMT_RIGHT, theApp.DPI(78));
 
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW | WS_VSCROLL);
@@ -48,11 +49,13 @@ BOOL CStatSongRankTabDlg::OnInitDialog()
 void CStatSongRankTabDlg::BuildRankData()
 {
     m_rank_data.clear();
+    if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr) return;
+    const std::vector<PlayRecord>& records = *m_stat_ctx->records;
 
     std::map<std::wstring, int> song_count;
-    for (const auto& r : m_records)
+    for (const auto& r : records)
     {
-        if (r.play_duration_sec < 15) continue;
+        if (!CStatAnalysis::IsCounted(r)) continue;     // 15 秒口径唯一入口
         song_count[r.file_path]++;
     }
 
@@ -77,9 +80,9 @@ void CStatSongRankTabDlg::BuildRankData()
     }
 }
 
-void CStatSongRankTabDlg::SetRecords(const std::vector<PlayRecord>& records)
+void CStatSongRankTabDlg::Refresh()
 {
-    m_records = records;
+    m_dirty = false;
     BuildRankData();
 
     m_list.DeleteAllItems();

@@ -1,0 +1,72 @@
+%% 流程一：打开统计对话框 -> 加载 -> 过滤 -> 聚合 -> 广播到 9 个子页
+sequenceDiagram
+    actor U as 用户
+    participant MD as CPlayStatisticsDlg
+    participant LS as 文件系统(playlog_*.jsonl)
+    participant SA as CStatAnalysis
+    participant T as CTabCtrlEx
+    participant PG as 各子页(9 个 CStatTabDlg)
+
+    U->>MD: 菜单"播放统计"(MusicPlayerDlg::OnPlayStatistics)
+    MD->>MD: OnInitDialog()
+    MD->>MD: InitializeControls() 设置过滤条文案/DPI/最小尺寸
+    MD->>MD: CStatTheme::ApplyDialog(this)
+    MD->>MD: 创建 9 个子页(Create IDD..)
+    MD->>LS: LoadRecords() 遍历 playlog_*.jsonl 解析
+    LS-->>MD: m_all_records(按 played_at 倒序)
+    MD->>MD: ApplyFilter() 按 from_ymd/to_ymd 生成 m_context.records
+    MD->>SA: ComputeSummary(m_context.records)
+    SA-->>MD: StatSummary(15 秒口径统一)
+    MD->>T: AddWindow(child, title, icon) x9
+    MD->>T: SetItemSize(DPI(52), DPI(24))
+    T->>T: AdjustTabWindowSize() -> CalSubWindowSize() -> MoveWindow
+    MD->>PG: SetContext(&m_context) x9
+    loop 每个子页
+        PG->>SA: Compute*(m_context.records, filter)
+        SA-->>PG: buckets/heatmap/share/period/radar...
+        PG->>PG: Invalidate(FALSE)
+    end
+    MD->>MD: UpdateUpdatedLabel()  "数据更新至 HH:MM"
+    T->>PG: SetCurTab(0) -> OnTabEntered() 可见页 Refresh()
+
+%% 流程二：改时间范围 / 切粒度 -> 重算 -> 重绘（含"数据更新至"刷新）
+sequenceDiagram
+    actor U as 用户
+    participant MD as CPlayStatisticsDlg
+    participant SA as CStatAnalysis
+    participant PG as 各子页(9 个)
+
+    U->>MD: 改起止日期(DTN_DATETIMECHANGE) / 切粒度(BN_CLICKED)
+    MD->>MD: 解析新 from_ymd/to_ymd 或 grain
+    alt 起日期 > 止日期
+        MD-->>U: 提示"起始日期晚于结束日期"，不应用
+    else 合法
+        MD->>MD: 更新 m_filter(手动改日期则 preset=Custom)
+        MD->>MD: ApplyFilter()  重新生成 m_context.records
+        MD->>SA: ComputeSummary(m_context.records)
+        SA-->>MD: StatSummary
+        MD->>PG: SetContext(&m_context) x9
+        loop 每个子页
+            PG->>SA: ComputeBuckets/ComputePeriodComparison/...(grain)
+            SA-->>PG: 结果
+            PG->>PG: Invalidate(FALSE)
+        end
+        MD->>MD: UpdateUpdatedLabel()
+    end
+
+%% 流程三：近实时刷新（REQ-006）
+sequenceDiagram
+    participant CPlay as CPlayer
+    participant PS as CPlayStatistics
+    participant MD as CPlayStatisticsDlg(打开中)
+    participant SA as CStatAnalysis
+
+    CPlay->>PS: OnSongEnded(reason)
+    PS->>PS: WriteRecord() 追加 playlog
+    PS->>MD: PostMessage(WM_STAT_RECORD_APPENDED)
+    Note over MD: 另设 60s OnTimer 兜底(AC-6 <=1 分钟)
+    MD->>MD: LoadRecords() 重读当前月文件(增量语义)
+    MD->>MD: ApplyFilter()
+    MD->>SA: ComputeSummary(m_context.records)
+    SA-->>MD: StatSummary
+    MD->>MD: BroadcastContext() + UpdateUpdatedLabel()

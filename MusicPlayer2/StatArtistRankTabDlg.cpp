@@ -1,14 +1,15 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatArtistRankTabDlg.h"
+#include "StatAnalysis.h"
 #include <map>
 #include <vector>
 #include <algorithm>
 
-IMPLEMENT_DYNAMIC(CStatArtistRankTabDlg, CTabDlg)
+IMPLEMENT_DYNAMIC(CStatArtistRankTabDlg, CStatTabDlg)
 
 CStatArtistRankTabDlg::CStatArtistRankTabDlg(CWnd* pParent)
-    : CTabDlg(IDD_STAT_ARTIST_RANK_DLG, pParent)
+    : CStatTabDlg(IDD_STAT_ARTIST_RANK_DLG, pParent)
 {
 }
 
@@ -18,12 +19,12 @@ CStatArtistRankTabDlg::~CStatArtistRankTabDlg()
 
 void CStatArtistRankTabDlg::DoDataExchange(CDataExchange* pDX)
 {
-    CTabDlg::DoDataExchange(pDX);
+    CStatTabDlg::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_STAT_ARTIST_RANK_LIST, m_list);
     DDX_Control(pDX, IDC_STAT_ARTIST_RANK_CHART, m_chart);
 }
 
-BEGIN_MESSAGE_MAP(CStatArtistRankTabDlg, CTabDlg)
+BEGIN_MESSAGE_MAP(CStatArtistRankTabDlg, CStatTabDlg)
     ON_WM_DRAWITEM()
     ON_WM_VSCROLL()
     ON_WM_MOUSEWHEEL()
@@ -32,14 +33,13 @@ END_MESSAGE_MAP()
 
 BOOL CStatArtistRankTabDlg::OnInitDialog()
 {
-    CTabDlg::OnInitDialog();
+    CStatTabDlg::OnInitDialog();
 
     // 列表控件：整行选中 + 网格线 + 双缓冲防闪烁
-    // 列宽总和约 238px，与 .rc 中 IDC_STAT_ARTIST_RANK_LIST 的宽度一致
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, 40);       // 排名列
-    m_list.InsertColumn(COL_NAME, L"歌手", LVCFMT_LEFT, 200);    // 歌手名列
-    m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, 78); // 时长列
+    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, theApp.DPI(40));       // 排名列
+    m_list.InsertColumn(COL_NAME, L"歌手", LVCFMT_LEFT, theApp.DPI(200));    // 歌手名列
+    m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, theApp.DPI(78)); // 时长列
 
     // 把图表静态控件改成自绘模式（SS_OWNERDRAW），系统会发 WM_DRAWITEM 来让我们自己画
     // 同时加上 WS_VSCROLL，数据多了可以滚动
@@ -49,16 +49,18 @@ BOOL CStatArtistRankTabDlg::OnInitDialog()
     return TRUE;
 }
 
-// 汇总每个歌手的总播放时长，按降序排列
+// 汇总每个歌手的总播放时长，按降序排列（口径统一：走 IsCounted）
 void CStatArtistRankTabDlg::BuildRankData()
 {
     m_rank_data.clear();
+    if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr) return;
+    const std::vector<PlayRecord>& records = *m_stat_ctx->records;
 
     // 按歌手名累加播放时长
     std::map<std::wstring, int> artist_time;
-    for (const auto& r : m_records)
+    for (const auto& r : records)
     {
-        if (r.play_duration_sec < 15) continue;  // 跳过试听不足15秒的记录
+        if (!CStatAnalysis::IsCounted(r)) continue;  // 15 秒口径唯一入口
         if (!r.artist.empty())
             artist_time[r.artist] += r.play_duration_sec;
     }
@@ -87,10 +89,10 @@ void CStatArtistRankTabDlg::BuildRankData()
     }
 }
 
-// 外部调用：传入播放记录，刷新排行榜和图表
-void CStatArtistRankTabDlg::SetRecords(const std::vector<PlayRecord>& records)
+// 全局上下文变化时重算并刷新排行榜与图表
+void CStatArtistRankTabDlg::Refresh()
 {
-    m_records = records;
+    m_dirty = false;
     BuildRankData();
 
     // 填充右侧列表

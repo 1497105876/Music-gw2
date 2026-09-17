@@ -340,3 +340,48 @@ test_hotkey_ctrl/*.exe
 # 例外：运行时 DLL（按配置配对的 tag/bass）必须入库
 !MusicPlayer2/dll/x64/
 !MusicPlayer2/dll/x64/**
+
+
+# ---- .workbuddy（AI 工作区数据，不入库） ----
+.workbuddy/
+
+# ---- 构建 / 调试临时目录 ----
+.scratch/
+
+
+# ======== 补全：构建中间产物（MSVC / MSBuild） ========
+# 说明：x64/、[Dd]ebug/、[Rr]elease/ 整目录已在上面忽略，
+# 这里补齐「万一落在忽略目录之外」会漏掉的中间文件类型。
+*.iobj
+*.ipdb
+*.idb
+*.res
+*.recipe
+*.lastbuildstate
+*.buildstate
+*.binlog
+*.exp
+
+# ======== 补全：系统与编辑器垃圾 ========
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.vscode/
+*.code-workspace
+.fleet/
+*.swp
+*.swo
+
+# ======== 补全：CI 产物（.github/workflows/ci.yaml 在仓库根生成 .7z） ========
+/*.7z
+/*.zip
+
+# ======== 本机诊断/验证产物（不入库，仅留在磁盘） ========
+# 一次性诊断脚本（rc 补丁、cl 探针、构建日志汇总等）
+/tools/
+# QA 独立验证脚手架（含编译产物 .exe 与测试残留）
+/test_stats_verify/
+/build_mine.txt
+/build_output_last.txt

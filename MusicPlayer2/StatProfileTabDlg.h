@@ -1,9 +1,8 @@
 ﻿#pragma once
-#include "TabDlg.h"
-#include "PlayStatistics.h"
+#include "StatTabDlg.h"
 #include "StatAnalysis.h"
 
-class CStatProfileTabDlg : public CTabDlg
+class CStatProfileTabDlg : public CStatTabDlg
 {
     DECLARE_DYNAMIC(CStatProfileTabDlg)
 public:
@@ -12,11 +11,10 @@ public:
 
     enum { IDD = IDD_STAT_PROFILE_DLG };
 
-    void SetRecords(const std::vector<PlayRecord>& records);
+    virtual void Refresh() override;
 
 protected:
     CStatic m_chart;
-    std::vector<PlayRecord> m_records;
     StatSummary m_summary;
 
     // 自绘整页内容

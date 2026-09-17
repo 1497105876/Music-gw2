@@ -1,14 +1,15 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatTrendTabDlg.h"
+#include "StatAnalysis.h"
 #include <map>
 #include <vector>
 #include <algorithm>
 
-IMPLEMENT_DYNAMIC(CStatTrendTabDlg, CTabDlg)
+IMPLEMENT_DYNAMIC(CStatTrendTabDlg, CStatTabDlg)
 
 CStatTrendTabDlg::CStatTrendTabDlg(CWnd* pParent)
-    : CTabDlg(IDD_STAT_TREND_DLG, pParent)
+    : CStatTabDlg(IDD_STAT_TREND_DLG, pParent)
 {
 }
 
@@ -18,17 +19,17 @@ CStatTrendTabDlg::~CStatTrendTabDlg()
 
 void CStatTrendTabDlg::DoDataExchange(CDataExchange* pDX)
 {
-    CTabDlg::DoDataExchange(pDX);
+    CStatTabDlg::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_STAT_TREND_CHART, m_chart);
 }
 
-BEGIN_MESSAGE_MAP(CStatTrendTabDlg, CTabDlg)
+BEGIN_MESSAGE_MAP(CStatTrendTabDlg, CStatTabDlg)
     ON_WM_DRAWITEM()
 END_MESSAGE_MAP()
 
 BOOL CStatTrendTabDlg::OnInitDialog()
 {
-    CTabDlg::OnInitDialog();
+    CStatTabDlg::OnInitDialog();
 
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW);
@@ -36,9 +37,9 @@ BOOL CStatTrendTabDlg::OnInitDialog()
     return TRUE;
 }
 
-void CStatTrendTabDlg::SetRecords(const std::vector<PlayRecord>& records)
+void CStatTrendTabDlg::Refresh()
 {
-    m_records = records;
+    m_dirty = false;
     m_chart.Invalidate(FALSE);
 }
 
@@ -63,11 +64,14 @@ void CStatTrendTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 void CStatTrendTabDlg::DrawTrendChart(CDC* pDC, const CRect& rect)
 {
-    // 聚合每日播放次数
+    if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr) return;
+    const std::vector<PlayRecord>& records = *m_stat_ctx->records;
+
+    // 聚合每日播放次数（口径统一：走 IsCounted）
     std::map<std::wstring, int> daily_count;
-    for (const auto& r : m_records)
+    for (const auto& r : records)
     {
-        if (r.play_duration_sec < 15) continue;
+        if (!CStatAnalysis::IsCounted(r)) continue;     // 15 秒口径唯一入口
         if (r.played_at.size() >= 10)
         {
             std::wstring date = r.played_at.substr(0, 10);

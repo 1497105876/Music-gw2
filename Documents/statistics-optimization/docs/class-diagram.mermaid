@@ -1,0 +1,263 @@
+classDiagram
+    class Grain {
+        <<enumeration>>
+        Day
+        Week
+        Month
+        Year
+    }
+    class RangePreset {
+        <<enumeration>>
+        Last7
+        Last30
+        Last90
+        ThisYear
+        LastYear
+        All
+        Custom
+    }
+    class StatFilter {
+        +int from_ymd
+        +int to_ymd
+        +Grain grain
+        +RangePreset preset
+    }
+    class StatContext {
+        +const vector~PlayRecord~ records
+        +StatFilter filter
+        +StatSummary summary
+        +bool valid
+    }
+    class PlayRecord {
+        +wstring file_path
+        +wstring title
+        +wstring artist
+        +wstring album
+        +wstring genre
+        +wstring played_at
+        +int play_duration_sec
+        +int song_length_sec
+        +FinishReason finish_reason
+        +wstring playlist_source
+        +wstring language
+        +ToJson() string
+    }
+    class StatSummary {
+        +int schema_version
+        +int total_count
+        +int total_duration_sec
+        +int active_days
+        +double completed_rate
+        +double skip_rate
+        +double avg_completion
+        +int current_streak
+        +int longest_streak
+        +int night_owl_percent
+        +int explore_percent
+        +wstring top_artist
+        +wstring top_genre
+        +Badge[] badges
+    }
+    class Badge {
+        +wstring key
+        +wstring title
+        +wstring text
+    }
+    class PeriodBucket {
+        +int key
+        +wstring label
+        +int count
+        +int duration_sec
+        +int completed_count
+        +int skipped_count
+    }
+    class HeatCell {
+        +int ymd
+        +int count
+        +int duration_sec
+    }
+    class GenreShare {
+        +wstring genre
+        +int count
+        +int duration_sec
+        +double percent
+    }
+    class SkipBucket {
+        +int index
+        +wstring label
+        +int count
+        +double percent
+    }
+    class PeriodComparison {
+        +PeriodBucket current
+        +PeriodBucket previous
+        +PeriodBucket last_year
+        +int count_delta
+        +double count_delta_percent
+        +bool has_previous
+        +bool has_last_year
+    }
+    class AlbumRankItem {
+        +wstring album
+        +int duration_sec
+        +int count
+    }
+    class RetiredGem {
+        +wstring file_path
+        +wstring title
+        +wstring artist
+        +int count
+    }
+    class RadarScore {
+        +double explore
+        +double focus
+        +double night
+        +double loyalty
+        +double fresh
+    }
+    class YearReview {
+        +int year
+        +int count
+        +int duration_sec
+        +wstring top_artist
+        +wstring top_song
+        +wstring top_genre
+    }
+    class FavouriteEvent {
+        +wstring file_path
+        +wstring title
+        +wstring artist
+        +bool liked
+        +wstring at
+    }
+
+    class CStatAnalysis {
+        <<static>>
+        +bool IsCounted(PlayRecord)
+        +int YmdOf(wstring)
+        +int HourOf(wstring)
+        +wstring FormatYmd(int)
+        +wstring FormatDuration(int)
+        +StatSummary ComputeSummary(vector~PlayRecord~)
+        +vector~PeriodBucket~ ComputeBuckets(vector~PlayRecord~, Grain)
+        +vector~HeatCell~ ComputeHeatmapGrid(vector~PlayRecord~)
+        +vector~GenreShare~ ComputeGenreShare(vector~PlayRecord~, int)
+        +vector~GenreShare~ ComputeGenreShareByQuarter(vector~PlayRecord~, int, vector~wstring~)
+        +vector~SkipBucket~ ComputeSkipDistribution(vector~PlayRecord~)
+        +int ComputeHourHistogram(vector~PlayRecord~, int[24])
+        +PeriodComparison ComputePeriodComparison(vector~PlayRecord~, StatFilter)
+        +vector~AlbumRankItem~ ComputeAlbumRank(vector~PlayRecord~, int)
+        +vector~PeriodBucket~ ComputeNewSongTrend(vector~PlayRecord~)
+        +double ComputeCosineSimilarity(vector~GenreShare~, vector~GenreShare~)
+        +vector~RetiredGem~ ComputeRetiredGems(vector~PlayRecord~, int)
+        +vector~PlaylistContribution~ ComputePlaylistContribution(vector~PlayRecord~)
+        +int ComputeStreakMiss(vector~PlayRecord~)
+        +RadarScore ComputeRadar(StatSummary)
+        +vector~YearReview~ ComputeYearlyReviews(vector~PlayRecord~)
+        +vector~PeriodBucket~ ComputeFavouriteTrend(vector~FavouriteEvent~, StatFilter)
+    }
+    class CStatTheme {
+        <<static>>
+        +StatThemeColors Get()
+        +void ApplyDialog(CWnd*)
+        +COLORREF Lerp(COLORREF, COLORREF, double)
+    }
+    class CStatAiInsight {
+        <<static>>
+        +vector~wstring~ GenerateInsights(StatSummary)
+        +vector~Insight~ GenerateInsightCards(StatSummary)
+        +DnaReport BuildDnaReport(StatSummary)
+        +vector~wstring~ BuildDriftNarrative(vector~GenreShare~)
+        +wstring BuildAnomalyAttribution(PeriodComparison, vector~SongDelta~)
+    }
+    class Insight {
+        +wstring key
+        +wstring title
+        +wstring text
+        +int target_tab
+    }
+    class DnaReport {
+        +wstring title
+        +vector~wstring~ tags
+        +wstring text
+    }
+    class CFavouriteLog {
+        <<static>>
+        +void Init(wstring)
+        +void Log(wstring, wstring, wstring, bool)
+        +vector~FavouriteEvent~ LoadAll()
+        +bool IsAvailable()
+    }
+    class StatMeta {
+        <<static>>
+        +int CurrentVersion()
+        +vector~wstring~ LoadChangelog()
+        +wstring LatestChangeNote()
+    }
+
+    class CBaseDialog
+    class CTabDlg
+    class CStatTabDlg {
+        +SetContext(const StatContext*)
+        +Refresh()
+        #const StatContext* m_stat_ctx
+        #bool m_dirty
+    }
+    class CPlayStatisticsDlg {
+        +LoadRecords()
+        +ApplyFilter()
+        +BroadcastContext()
+        +UpdateUpdatedLabel()
+        +OnBnClickedExportAggButton()
+        +OnBnClickedReportButton()
+        +OnBnClickedStatHelpBtn()
+        #StatFilter m_filter
+        #vector~PlayRecord~ m_all_records
+        #StatContext m_context
+    }
+    class CStatOverviewTabDlg
+    class CStatTrendTabDlg
+    class CStatHeatmapTabDlg
+    class CStatAlbumRankTabDlg
+    class CStatArtistRankTabDlg
+    class CStatSongRankTabDlg
+    class CStatGenreTabDlg
+    class CStatSongsTabDlg
+    class CStatProfileTabDlg
+    class CStatReportDlg
+    class CStatHelpDlg
+
+    CBaseDialog <|-- CTabDlg
+    CTabDlg <|-- CStatTabDlg
+    CStatTabDlg <|-- CStatOverviewTabDlg
+    CStatTabDlg <|-- CStatTrendTabDlg
+    CStatTabDlg <|-- CStatHeatmapTabDlg
+    CStatTabDlg <|-- CStatAlbumRankTabDlg
+    CStatTabDlg <|-- CStatArtistRankTabDlg
+    CStatTabDlg <|-- CStatSongRankTabDlg
+    CStatTabDlg <|-- CStatGenreTabDlg
+    CStatTabDlg <|-- CStatSongsTabDlg
+    CStatTabDlg <|-- CStatProfileTabDlg
+    CBaseDialog <|-- CStatReportDlg
+    CBaseDialog <|-- CStatHelpDlg
+    CPlayStatisticsDlg --> StatContext : 持有并广播
+    CPlayStatisticsDlg --> CStatTabDlg : SetContext 9 次
+    CPlayStatisticsDlg --> CStatReportDlg : 打开
+    CPlayStatisticsDlg --> CStatHelpDlg : 打开
+    StatContext *-- StatFilter
+    StatContext *-- StatSummary
+    StatSummary *-- Badge
+    CStatAnalysis ..> PlayRecord : 只读聚合
+    CStatAnalysis ..> StatSummary : 产出
+    CStatAnalysis ..> PeriodBucket
+    CStatAnalysis ..> HeatCell
+    CStatAnalysis ..> GenreShare
+    CStatAnalysis ..> PeriodComparison
+    CStatAnalysis ..> RadarScore
+    CStatTabDlg ..> CStatAnalysis : 调用聚合
+    CStatTabDlg ..> CStatTheme : 取色
+    CStatProfileTabDlg ..> CStatAiInsight : 洞察
+    CStatAiInsight ..> Insight
+    CStatAnalysis ..> FavouriteEvent : 红心趋势
+    CFavouriteLog ..> FavouriteEvent
+    CStatHelpDlg ..> StatMeta : schema 版本

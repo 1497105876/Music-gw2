@@ -699,6 +699,21 @@
     <ClInclude Include="StatSongsTabDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
+    <ClInclude Include="StatCommon.h">
+      <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClInclude>
+    <ClInclude Include="StatTheme.h">
+      <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClInclude>
+    <ClInclude Include="StatMeta.h">
+      <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClInclude>
+    <ClInclude Include="StatTabDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="StatHelpDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
     <ClInclude Include="CDonateDlg.h">
       <Filter>对话框类\DonateDlg</Filter>
     </ClInclude>
@@ -1446,6 +1461,18 @@
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
     <ClCompile Include="StatSongsTabDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="StatTheme.cpp">
+      <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClCompile>
+    <ClCompile Include="StatMeta.cpp">
+      <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClCompile>
+    <ClCompile Include="StatTabDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="StatHelpDlg.cpp">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
     <ClCompile Include="CDonateDlg.cpp">

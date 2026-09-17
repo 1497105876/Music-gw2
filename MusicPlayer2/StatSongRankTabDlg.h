@@ -1,12 +1,11 @@
 ﻿#pragma once
-#include "TabDlg.h"
+#include "StatTabDlg.h"
 #include "ListCtrlEx.h"
-#include "PlayStatistics.h"
 #include <vector>
 
 struct RankItem;  // forward declaration
 
-class CStatSongRankTabDlg : public CTabDlg
+class CStatSongRankTabDlg : public CStatTabDlg
 {
     DECLARE_DYNAMIC(CStatSongRankTabDlg)
 public:
@@ -15,12 +14,11 @@ public:
 
     enum { IDD = IDD_STAT_SONG_RANK_DLG };
 
-    void SetRecords(const std::vector<PlayRecord>& records);
+    virtual void Refresh() override;
 
 protected:
     CListCtrlEx m_list;
     CStatic m_chart;
-    std::vector<PlayRecord> m_records;
 
     struct SongRankItem
     {

@@ -278,6 +278,11 @@
     <ClInclude Include="StatAnalysis.h" />
     <ClInclude Include="StatAiInsight.h" />
     <ClInclude Include="StatProfileTabDlg.h" />
+    <ClInclude Include="StatCommon.h" />
+    <ClInclude Include="StatTheme.h" />
+    <ClInclude Include="StatMeta.h" />
+    <ClInclude Include="StatTabDlg.h" />
+    <ClInclude Include="StatHelpDlg.h" />
     <ClInclude Include="ClosseMainWindowInqueryDlg.h" />
     <ClInclude Include="CMMNotificationClient.h" />
     <ClInclude Include="CommonDialogMgr.h" />
@@ -536,6 +541,10 @@
     <ClCompile Include="StatAnalysis.cpp" />
     <ClCompile Include="StatAiInsight.cpp" />
     <ClCompile Include="StatProfileTabDlg.cpp" />
+    <ClCompile Include="StatTheme.cpp" />
+    <ClCompile Include="StatMeta.cpp" />
+    <ClCompile Include="StatTabDlg.cpp" />
+    <ClCompile Include="StatHelpDlg.cpp" />
     <ClCompile Include="ClosseMainWindowInqueryDlg.cpp" />
     <ClCompile Include="CMMNotificationClient.cpp" />
     <ClCompile Include="CommonData.cpp" />

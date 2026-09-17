@@ -1,9 +1,8 @@
 ﻿#pragma once
-#include "TabDlg.h"
+#include "StatTabDlg.h"
 #include "ListCtrlEx.h"
-#include "PlayStatistics.h"
 
-class CStatSongsTabDlg : public CTabDlg
+class CStatSongsTabDlg : public CStatTabDlg
 {
     DECLARE_DYNAMIC(CStatSongsTabDlg)
 public:
@@ -12,7 +11,7 @@ public:
 
     enum { IDD = IDD_STAT_SONGS_DLG };
 
-    void SetRecords(const std::vector<PlayRecord>& records);
+    virtual void Refresh() override;
 
 protected:
     CListCtrlEx m_list;

@@ -1119,6 +1119,34 @@
 #define IDC_STAT_SONG_RANK_CHART        1422
 #define IDC_STAT_PROFILE_CHART          1423
 #define IDD_STAT_PROFILE_DLG            699
+
+// 播放统计优化新增资源 ID（架构文档 D5）
+#define IDD_STAT_HEATMAP_DLG            700
+#define IDD_STAT_ALBUM_RANK_DLG         701
+#define IDD_STAT_GENRE_DLG              702
+#define IDD_STAT_REPORT_DLG             703
+#define IDD_STAT_HELP_DLG               704
+
+#define IDC_STAT_RANGE_PRESET           1424
+#define IDC_STAT_DATE_FROM              1425
+#define IDC_STAT_DATE_TO                1426
+#define IDC_STAT_GRAIN_DAY              1427
+#define IDC_STAT_GRAIN_WEEK             1428
+#define IDC_STAT_GRAIN_MONTH            1429
+#define IDC_STAT_GRAIN_YEAR             1430
+#define IDC_STAT_HELP_BTN               1431
+#define IDC_STAT_UPDATED_TEXT           1432
+#define IDC_STAT_EXPORT_AGG_BTN         1433
+#define IDC_STAT_REPORT_BTN             1434
+#define IDC_STAT_HEATMAP_CHART          1435
+#define IDC_STAT_HEATMAP_SCROLL         1436
+#define IDC_STAT_ALBUM_RANK_CHART       1437
+#define IDC_STAT_ALBUM_RANK_LIST        1438
+#define IDC_STAT_GENRE_CHART            1439
+#define IDC_STAT_REPORT_CHART           1440
+#define IDC_STAT_REPORT_SAVE_BTN        1441
+#define IDC_STAT_REPORT_WATERMARK_CHK   1442
+#define IDC_STAT_HELP_TEXT              1443
 #define ID_ORIGINAL_PITCH               33480
 #define ID_SONGS_MULTI_VERSION_ITEM_START 33481
 #define ID_SONGS_MULTI_VERSION_ITEM_MAX 33511
@@ -1128,9 +1156,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        700
+#define _APS_NEXT_RESOURCE_VALUE        705
 #define _APS_NEXT_COMMAND_VALUE         33514
-#define _APS_NEXT_CONTROL_VALUE         1424
+#define _APS_NEXT_CONTROL_VALUE         1444
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

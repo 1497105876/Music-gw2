@@ -1,8 +1,7 @@
 ﻿#pragma once
-#include "TabDlg.h"
-#include "PlayStatistics.h"
+#include "StatTabDlg.h"
 
-class CStatTrendTabDlg : public CTabDlg
+class CStatTrendTabDlg : public CStatTabDlg
 {
     DECLARE_DYNAMIC(CStatTrendTabDlg)
 public:
@@ -11,11 +10,10 @@ public:
 
     enum { IDD = IDD_STAT_TREND_DLG };
 
-    void SetRecords(const std::vector<PlayRecord>& records);
+    virtual void Refresh() override;
 
 protected:
     CStatic m_chart;
-    std::vector<PlayRecord> m_records;
 
     void DrawTrendChart(CDC* pDC, const CRect& rect);
 

@@ -2,10 +2,10 @@
 #include "MusicPlayer2.h"
 #include "StatSongsTabDlg.h"
 
-IMPLEMENT_DYNAMIC(CStatSongsTabDlg, CTabDlg)
+IMPLEMENT_DYNAMIC(CStatSongsTabDlg, CStatTabDlg)
 
 CStatSongsTabDlg::CStatSongsTabDlg(CWnd* pParent)
-    : CTabDlg(IDD_STAT_SONGS_DLG, pParent)
+    : CStatTabDlg(IDD_STAT_SONGS_DLG, pParent)
 {
 }
 
@@ -15,34 +15,40 @@ CStatSongsTabDlg::~CStatSongsTabDlg()
 
 void CStatSongsTabDlg::DoDataExchange(CDataExchange* pDX)
 {
-    CTabDlg::DoDataExchange(pDX);
+    CStatTabDlg::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_STAT_SONGS_LIST, m_list);
 }
 
-BEGIN_MESSAGE_MAP(CStatSongsTabDlg, CTabDlg)
+BEGIN_MESSAGE_MAP(CStatSongsTabDlg, CStatTabDlg)
 END_MESSAGE_MAP()
 
 BOOL CStatSongsTabDlg::OnInitDialog()
 {
-    CTabDlg::OnInitDialog();
+    CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-    m_list.InsertColumn(DCOL_INDEX, L"序号", LVCFMT_LEFT, 50);
-    m_list.InsertColumn(DCOL_TIME, L"播放时间", LVCFMT_LEFT, 140);
-    m_list.InsertColumn(DCOL_TITLE, L"标题", LVCFMT_LEFT, 200);
-    m_list.InsertColumn(DCOL_ARTIST, L"艺术家", LVCFMT_LEFT, 120);
-    m_list.InsertColumn(DCOL_ALBUM, L"专辑", LVCFMT_LEFT, 120);
-    m_list.InsertColumn(DCOL_PLAY_DUR, L"播放时长", LVCFMT_RIGHT, 70);
-    m_list.InsertColumn(DCOL_SONG_LEN, L"歌曲长度", LVCFMT_RIGHT, 70);
-    m_list.InsertColumn(DCOL_RESULT, L"结果", LVCFMT_CENTER, 60);
-    m_list.InsertColumn(DCOL_SOURCE, L"来源", LVCFMT_LEFT, 80);
+    m_list.InsertColumn(DCOL_INDEX, L"序号", LVCFMT_LEFT, theApp.DPI(50));
+    m_list.InsertColumn(DCOL_TIME, L"播放时间", LVCFMT_LEFT, theApp.DPI(140));
+    m_list.InsertColumn(DCOL_TITLE, L"标题", LVCFMT_LEFT, theApp.DPI(200));
+    m_list.InsertColumn(DCOL_ARTIST, L"艺术家", LVCFMT_LEFT, theApp.DPI(120));
+    m_list.InsertColumn(DCOL_ALBUM, L"专辑", LVCFMT_LEFT, theApp.DPI(120));
+    m_list.InsertColumn(DCOL_PLAY_DUR, L"播放时长", LVCFMT_RIGHT, theApp.DPI(70));
+    m_list.InsertColumn(DCOL_SONG_LEN, L"歌曲长度", LVCFMT_RIGHT, theApp.DPI(70));
+    m_list.InsertColumn(DCOL_RESULT, L"结果", LVCFMT_CENTER, theApp.DPI(60));
+    m_list.InsertColumn(DCOL_SOURCE, L"来源", LVCFMT_LEFT, theApp.DPI(80));
 
     return TRUE;
 }
 
-void CStatSongsTabDlg::SetRecords(const std::vector<PlayRecord>& records)
+// 明细页：展示过滤后的全部记录（不做 15 秒过滤，明细用于核查）
+void CStatSongsTabDlg::Refresh()
 {
+    m_dirty = false;
     m_list.DeleteAllItems();
+
+    if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr)
+        return;
+    const std::vector<PlayRecord>& records = *m_stat_ctx->records;
 
     auto format_dur = [](int sec) -> std::wstring {
         int m = sec / 60;
