@@ -73,17 +73,20 @@ void CStatOverviewTabDlg::Refresh()
 
 int CStatOverviewTabDlg::CalcContentHeight(int width)
 {
+    // 注意：此处的每段高度必须与 DrawOverview() 的实际绘制严格一致，
+    // 否则滚动条会出现“滚到底还有空白”或“内容被裁掉”。
     int y = 8;
     y += 30;                                   // 核心指标 标题
-    y += theApp.DPI(78) + 10;                  // 四指标卡
+    y += theApp.DPI(70) + 10;                  // 四指标卡（card_h = DPI(70)，下移 10）
     y += 30;                                   // 24 小时 标题
     y += theApp.DPI(120) + 10;                 // 24h 柱状图
     y += 30;                                   // 播放结果 标题
-    y += theApp.DPI(40) + 6;                   // 完播/跳过文本行
-    y += (int)m_skip.size() * theApp.DPI(22) + 8;
+    y += theApp.DPI(28) + 4;                   // 完播/跳过率行 + 行距
+    y += (int)m_skip.size() * theApp.DPI(22);  // 跳过位置各桶
     if (m_streak_miss > 0) y += theApp.DPI(30); // 差点就连续
     y += 30;                                   // 歌单贡献 标题
-    y += (int)m_playlist.size() * theApp.DPI(22) + 8;
+    // 空列表时绘制一行“—”，非空时每来源一行
+    y += max(1, (int)m_playlist.size()) * theApp.DPI(22);
     y += 12;
     return y;
 }
@@ -213,8 +216,11 @@ void CStatOverviewTabDlg::DrawOverview(CDC* pDC, const CRect& rect)
     bool has_data = (m_summary.total_count > 0);
 
     auto draw_text = [&](const std::wstring& text, int x, int yy, COLORREF color, int pt, bool bold = false) {
+        // CreatePointFont 的参数单位是"十分之一磅"，调用方传入的 pt（如 80）即 8.0 磅，
+        // 此处不可再乘 10（否则会变成 80 磅，文字巨大覆盖整个页面）。
+        UNREFERENCED_PARAMETER(bold);   // CreatePointFont 不支持字重，粗体由后续批次统一处理
         CFont font;
-        font.CreatePointFont(pt * 10, bold ? L"Microsoft YaHei" : L"Microsoft YaHei", pDC);
+        font.CreatePointFont(pt, L"Microsoft YaHei", pDC);
         HFONT old = (HFONT)pDC->SelectObject(font.GetSafeHandle());
         pDC->SetTextColor(color);
         pDC->TextOutW(x, yy, text.c_str(), (int)text.size());
