@@ -2,6 +2,7 @@
 #include "BaseDialog.h"
 #include "CTabCtrlEx.h"
 #include "MyComboBox.h"
+#include "EditEx.h"
 #include "StatCommon.h"
 #include "StatOverviewTabDlg.h"
 #include "StatArtistRankTabDlg.h"
@@ -28,8 +29,8 @@ public:
 protected:
     CTabCtrlEx m_tab;
     CMyComboBox   m_preset_combo;   // 项目统一下拉框（AppearanceSettingDlg / DataSettingsDlg 等同样使用）
-    CDateTimeCtrl m_date_from;      // 起始日期：MFC 包装，替代裸 SendDlgItemMessage
-    CDateTimeCtrl m_date_to;        // 结束日期
+    CEditEx      m_date_from;      // 起始日期：项目自带输入框（yyyy-MM-dd）
+    CEditEx      m_date_to;        // 结束日期（yyyy-MM-dd）
 
     // 8 个子页（批次 2：在 6 页基础上新增 专辑 / 流派）
     CStatOverviewTabDlg m_overview_dlg;
@@ -73,8 +74,8 @@ public:
     afx_msg void OnBnClickedExportCsvButton();
     afx_msg void OnBnClickedExportJsonButton();
     afx_msg void OnCbnSelchangeRangePreset();
-    afx_msg void OnDtnDatetimechangeDateFrom(NMHDR* pNMHDR, LRESULT* pResult);
-    afx_msg void OnDtnDatetimechangeDateTo(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnEnKillfocusDateFrom();
+    afx_msg void OnEnKillfocusDateTo();
     afx_msg void OnBnClickedGrainDay();
     afx_msg void OnBnClickedGrainWeek();
     afx_msg void OnBnClickedGrainMonth();
