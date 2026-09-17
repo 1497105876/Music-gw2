@@ -51,6 +51,7 @@ static std::wstring BuildJson(const std::vector<PlayRecord>& records,
                          const StatFilter& filter)
 {
     std::wstring j;
+    j += L"{";
 
     // summary
     j += L"\"total\":" + std::to_wstring(s.total_count) + L",";
@@ -201,6 +202,13 @@ static std::wstring BuildJson(const std::vector<PlayRecord>& records,
     }
     j += L"cosine:" + std::to_wstring(static_cast<int>(cosine + 0.5));
 
+    // 副标题（日期区间）
+    if (filter.from_ymd > 0 && filter.to_ymd > 0)
+        j += L",\"sub_title\":\"" + YmdToStr(filter.from_ymd) + L" ~ " + YmdToStr(filter.to_ymd) + L"\"";
+    else
+        j += L",\"sub_title\":\"全部记录\"";
+
+    j += L"}";
     return j;
 }
 
@@ -227,6 +235,10 @@ td{padding:6px 10px 6px 0;border-bottom:1px solid #e8e8e4}
 .badge{display:inline-block;background:#e5efec;color:#0f6b5c;padding:2px 10px;border-radius:3px;font-size:12px;margin:2px 4px 2px 0}
 .heat{display:grid;grid-template-columns:repeat(26,10px);gap:2px}
 .heat i{width:10px;height:10px;border-radius:1px;cursor:pointer}
+.skip-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+.skip-row>span:first-child{flex:none;width:110px;text-align:right;color:#4a4f57}
+.skip-row>div{flex:1;background:#eceee9;border-radius:3px;height:14px;overflow:hidden}
+.skip-bar{background:#2f5d9e;height:14px;border-radius:3px;min-width:2px}
 .tip{position:fixed;background:#14161a;color:#fff;padding:4px 10px;border-radius:3px;font-size:12px;pointer-events:none;display:none;z-index:9}
 .foot{margin-top:48px;padding-top:14px;border-top:1px solid #d9dad5;font-size:11px;color:#878d96;font-family:Consolas,monospace}
 svg text{font-family:"Segoe UI","Microsoft YaHei",sans-serif;font-size:10px;fill:#878d96}
@@ -271,7 +283,7 @@ if(px>=0)svg+=`<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="#0f6b5c" 
 px=x;py=y});
 const step=n>12?Math.ceil(n/10):1;
 D.buckets.forEach((b,i)=>{if(i%step)return;const x=ml+cw*i/n+bw/2;
-svg+=`<text x="${x}" y="${mt+ch+14}" text-anchor="middle">${b.label}</text>`});
+svg+=`<text x="${x}" y="${mt+ch+14}" text-anchor="middle">${b.l}</text>`});
 el.innerHTML=svg})();
 // 雷达 SVG
 (function(){const el=$("#svg-radar");if(!el)return;
@@ -305,8 +317,10 @@ segs+=`<path d="M${x0.toFixed(1)},${y0.toFixed(1)} A${R},${R} 0 ${large} 1 ${x1.
 start+=sweep});
 el.setAttribute("width",W);el.setAttribute("height",H);el.innerHTML=segs})();
 // 环形图例
-(function(){const el=$("#donut-legend");if(!el)return;
-el.innerHTML=D.genre.map((g,i)=>`<span style="margin-right:12px"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;background:hsl(${(i*180/8)%360},55%,45%)"></i>${g.g} ${g.p}%</span>`).join("")})();
+(function(){const el=$("#donut-legend");if(!el||!D.genre.length)return;
+let st=0;
+el.innerHTML=D.genre.map(g=>{const col=`hsl(${(st*7)%360},55%,45%)`;st+=g.p/100*360;
+return `<span style="margin-right:12px"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;background:${col}"></i>${g.g} ${g.p}%</span>`}).join("")})();
 // 跳过条
 (function(){const el=$("#skip-bars");if(!el)return;
 el.innerHTML=D.skip.map(s=>`<div class="skip-row"><span>${s.l}</span><div><div class="skip-bar" style="width:${s.p}%"></div></div><span>${s.c} 次</span></div>`).join("")})();
@@ -349,8 +363,9 @@ const arrow=D.comparison.delta>=0?"↑":"↓";
 html+=`<div style="font-size:14px;margin:4px 0"><b>环比（vs ${D.comparison.prev_label}）</b>：${arrow} ${Math.abs(D.comparison.delta)} 次（${D.comparison.delta_pct}%）</div>`}
 else html+=`<div style="color:#878d96;font-size:13px">环比：无上期数据</div>`;
 if(D.comparison.has_ly){
-const arrow=D.comparison.ly_delta>=0?"↑":"↓";
-html+=`<div style="font-size:14px;margin:4px 0"><b>同比（vs ${D.comparison.ly_label}）</b>：${arrow} ${Math.abs(D.comparison.ly_delta)} 次</div>`}
+const lyDelta=D.total-D.comparison.ly_count;
+const arrow=lyDelta>=0?"↑":"↓";
+html+=`<div style="font-size:14px;margin:4px 0"><b>同比（vs ${D.comparison.ly_label}）</b>：${arrow} ${Math.abs(lyDelta)} 次</div>`}
 el.innerHTML=html})();
 // 口味一致性
 (function(){const el=$("#cosine-box");if(!el)return;
@@ -362,7 +377,7 @@ el.innerHTML=`<div style="display:flex;align-items:center;gap:16px">
 (function(){const el=$("#streak-miss");if(!el)return;
 if(D.streak_miss>0)el.innerHTML=`<div style="font-size:14px;color:#9a6b1f">差点就连续 <b>${D.streak_miss+1}</b> 天：上一次连续听了 ${D.streak_miss} 天后中断了</div>`;
 else el.innerHTML=""})();
-</script></body></html>
+</script>
 )html";
 
 // ── 主体 ──
@@ -371,14 +386,6 @@ void CStatHtmlReport::GenerateAndOpen(const std::vector<PlayRecord>& records,
                                        const StatFilter& filter)
 {
     std::wstring json = BuildJson(records, s, filter);
-
-    std::wstring sub;
-    if (filter.from_ymd > 0 && filter.to_ymd > 0)
-    {
-        sub = YmdToStr(filter.from_ymd) + L" ~ " + YmdToStr(filter.to_ymd);
-    }
-    else
-        sub = L"全部记录";
 
     std::wstring html{ HTML_HEAD };
     html += L"<h2>核心指标</h2>\n<div class=\"grid\">\n";
@@ -406,9 +413,8 @@ void CStatHtmlReport::GenerateAndOpen(const std::vector<PlayRecord>& records,
 
     std::wstring tail{ HTML_TAIL };
     { auto p = tail.find(L"__DATA__"); if (p != std::wstring::npos) tail.replace(p, 8, json); }
-    { auto p = tail.find(L"__SUBTITLE__"); if (p != std::wstring::npos) tail.replace(p, 12, sub); }
     html += tail;
-    html += L"</div></body></html>\n";
+    html += L"</body></html>\n";
 
     // 写文件到 %TEMP%
     wchar_t temp_dir[MAX_PATH];

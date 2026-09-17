@@ -1,0 +1,206 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>MusicPlayer2 播放统计报告</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;background:#f5f6f4;color:#14161a;line-height:1.65;padding:36px 20px 72px}
+.w{max-width:860px;margin:0 auto}
+h1{font-size:26px;font-weight:600;margin-bottom:4px}
+.sub{color:#878d96;font-size:13px;margin-bottom:28px;font-family:Consolas,monospace}
+h2{font-size:17px;font-weight:600;margin:34px 0 12px;padding-top:16px;border-top:1px solid #d9dad5}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px}
+.kpi{background:#fff;border:1px solid #d9dad5;padding:12px 14px}
+.kpi b{display:block;font-size:20px;font-weight:600}
+.kpi span{font-size:11px;color:#878d96}
+.cb{background:#fff;border:1px solid #d9dad5;padding:14px 16px;margin-bottom:6px}
+.cb h3{font-size:13.5px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+th{text-align:left;font-size:11px;color:#878d96;padding:5px 10px 5px 0;border-bottom:1.5px solid #14161a}
+td{padding:6px 10px 6px 0;border-bottom:1px solid #e8e8e4}
+.badge{display:inline-block;background:#e5efec;color:#0f6b5c;padding:2px 10px;border-radius:3px;font-size:12px;margin:2px 4px 2px 0}
+.heat{display:grid;grid-template-columns:repeat(26,10px);gap:2px}
+.heat i{width:10px;height:10px;border-radius:1px;cursor:pointer}
+.skip-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+.skip-row>span:first-child{flex:none;width:110px;text-align:right;color:#4a4f57}
+.skip-row>div{flex:1;background:#eceee9;border-radius:3px;height:14px;overflow:hidden}
+.skip-bar{background:#2f5d9e;height:14px;border-radius:3px;min-width:2px}
+.tip{position:fixed;background:#14161a;color:#fff;padding:4px 10px;border-radius:3px;font-size:12px;pointer-events:none;display:none;z-index:9}
+.foot{margin-top:48px;padding-top:14px;border-top:1px solid #d9dad5;font-size:11px;color:#878d96;font-family:Consolas,monospace}
+svg text{font-family:"Segoe UI","Microsoft YaHei",sans-serif;font-size:10px;fill:#878d96}
+</style></head><body><div class="w">
+<h1>播放统计报告</h1><div class="sub" id="sub"></div>
+<h2>核心指标</h2>
+<div class="grid">
+<div class="kpi"><b>1284</b><span>播放次数</span></div>
+<div class="kpi"><b>72小时0分</b><span>播放时长</span></div>
+<div class="kpi"><b>210 天</b><span>活跃天数</span></div>
+<div class="kpi"><b>76%</b><span>完整收听率</span></div>
+</div>
+<h2>播放趋势</h2>
+<div class="cb"><svg id="svg-trend"></svg></div>
+<h2>每日热力图</h2>
+<div class="cb"><div class="heat" id="heatmap"></div></div>
+<h2>听歌画像</h2>
+<div class="cb" style="text-align:center"><svg id="svg-radar"></svg></div>
+<h2>流派占比</h2>
+<div style="display:flex;gap:20px;align-items:center"><svg id="svg-donut"></svg><div id="donut-legend" style="font-size:13px"></div></div>
+<h2>跳过位置分布</h2>
+<div class="cb"><div id="skip-bars"></div></div>
+<h2>歌单 / 来源贡献</h2>
+<div class="cb"><div id="pl-table"></div></div>
+<h2>年度回顾</h2>
+<div class="cb"><div id="year-table"></div></div>
+<h2>24 小时时段分布</h2>
+<div class="cb"><svg id="svg-hours"></svg></div>
+<h2>新发现趋势</h2>
+<div class="cb"><svg id="svg-news"></svg></div>
+<h2>环比 / 同比</h2>
+<div class="cb" id="comparison-box"></div>
+<h2>口味一致性</h2>
+<div class="cb" id="cosine-box"></div>
+</div>
+<div class="tip" id="tip"></div>
+<script>
+"use strict";
+const D={"total":1284,"duration":259200,"active_days":210,"completed_rate":76,"skip_rate":18,"avg_completion":81,"streak":6,"longest_streak":23,"night_pct":34,"weekend_pct":22,"new_songs":41,"repeat":3,"explore":37,
+"top_artist":"周杰伦","top_artist_dur":43200,"top_song":"晴天","top_song_artist":"周杰伦","top_song_count":57,"top_genre":"Pop",
+"buckets":[{"l":"1月","c":80,"d":20000},{"l":"2月","c":117,"d":20911},{"l":"3月","c":154,"d":21822},{"l":"4月","c":191,"d":22733},{"l":"5月","c":228,"d":23644},{"l":"6月","c":105,"d":24555},{"l":"7月","c":142,"d":25466},{"l":"8月","c":179,"d":26377},{"l":"9月","c":216,"d":27288},{"l":"10月","c":93,"d":28199},{"l":"11月","c":130,"d":29110},{"l":"12月","c":167,"d":30021},{"l":"13月","c":204,"d":30932},{"l":"14月","c":81,"d":31843}],
+"heat":[{"d":"2026-05-01","c":1,"s":600},{"d":"2026-05-02","c":8,"s":1411},{"d":"2026-05-03","c":2,"s":2222},{"d":"2026-05-04","c":9,"s":3033},{"d":"2026-05-05","c":3,"s":3844},{"d":"2026-05-06","c":10,"s":4655},{"d":"2026-05-07","c":4,"s":5466},{"d":"2026-05-08","c":11,"s":6277},{"d":"2026-05-09","c":5,"s":7088},{"d":"2026-05-10","c":12,"s":7899},{"d":"2026-05-11","c":6,"s":8710},{"d":"2026-05-12","c":13,"s":9521},{"d":"2026-05-13","c":7,"s":10332},{"d":"2026-05-14","c":1,"s":11143},{"d":"2026-05-15","c":8,"s":11954},{"d":"2026-05-16","c":2,"s":12765},{"d":"2026-05-17","c":9,"s":13576},{"d":"2026-05-18","c":3,"s":14387},{"d":"2026-05-19","c":10,"s":15198},{"d":"2026-05-20","c":4,"s":16009},{"d":"2026-05-21","c":11,"s":16820},{"d":"2026-05-22","c":5,"s":17631},{"d":"2026-05-23","c":12,"s":18442},{"d":"2026-05-24","c":6,"s":19253},{"d":"2026-05-25","c":13,"s":20064},{"d":"2026-05-26","c":7,"s":875},{"d":"2026-05-27","c":1,"s":1686},{"d":"2026-05-28","c":8,"s":2497},{"d":"2026-05-29","c":2,"s":3308},{"d":"2026-05-30","c":9,"s":4119},{"d":"2026-06-01","c":3,"s":4930},{"d":"2026-06-02","c":10,"s":5741},{"d":"2026-06-03","c":4,"s":6552},{"d":"2026-06-04","c":11,"s":7363},{"d":"2026-06-05","c":5,"s":8174},{"d":"2026-06-06","c":12,"s":8985},{"d":"2026-06-07","c":6,"s":9796},{"d":"2026-06-08","c":13,"s":10607},{"d":"2026-06-09","c":7,"s":11418},{"d":"2026-06-10","c":1,"s":12229},{"d":"2026-06-11","c":8,"s":13040},{"d":"2026-06-12","c":2,"s":13851},{"d":"2026-06-13","c":9,"s":14662},{"d":"2026-06-14","c":3,"s":15473},{"d":"2026-06-15","c":10,"s":16284},{"d":"2026-06-16","c":4,"s":17095},{"d":"2026-06-17","c":11,"s":17906},{"d":"2026-06-18","c":5,"s":18717},{"d":"2026-06-19","c":12,"s":19528},{"d":"2026-06-20","c":6,"s":20339},{"d":"2026-06-21","c":13,"s":1150},{"d":"2026-06-22","c":7,"s":1961},{"d":"2026-06-23","c":1,"s":2772},{"d":"2026-06-24","c":8,"s":3583},{"d":"2026-06-25","c":2,"s":4394},{"d":"2026-06-26","c":9,"s":5205},{"d":"2026-06-27","c":3,"s":6016},{"d":"2026-06-28","c":10,"s":6827},{"d":"2026-06-29","c":4,"s":7638},{"d":"2026-06-30","c":11,"s":8449},{"d":"2026-07-01","c":5,"s":9260},{"d":"2026-07-02","c":12,"s":10071},{"d":"2026-07-03","c":6,"s":10882},{"d":"2026-07-04","c":13,"s":11693},{"d":"2026-07-05","c":7,"s":12504},{"d":"2026-07-06","c":1,"s":13315},{"d":"2026-07-07","c":8,"s":14126},{"d":"2026-07-08","c":2,"s":14937},{"d":"2026-07-09","c":9,"s":15748},{"d":"2026-07-10","c":3,"s":16559},{"d":"2026-07-11","c":10,"s":17370},{"d":"2026-07-12","c":4,"s":18181},{"d":"2026-07-13","c":11,"s":18992},{"d":"2026-07-14","c":5,"s":19803},{"d":"2026-07-15","c":12,"s":614},{"d":"2026-07-16","c":6,"s":1425},{"d":"2026-07-17","c":13,"s":2236},{"d":"2026-07-18","c":7,"s":3047},{"d":"2026-07-19","c":1,"s":3858},{"d":"2026-07-20","c":8,"s":4669},{"d":"2026-07-21","c":2,"s":5480},{"d":"2026-07-22","c":9,"s":6291},{"d":"2026-07-23","c":3,"s":7102},{"d":"2026-07-24","c":10,"s":7913},{"d":"2026-07-25","c":4,"s":8724},{"d":"2026-07-26","c":11,"s":9535},{"d":"2026-07-27","c":5,"s":10346},{"d":"2026-07-28","c":12,"s":11157},{"d":"2026-07-29","c":6,"s":11968},{"d":"2026-07-30","c":13,"s":12779},{"d":"2026-08-01","c":7,"s":13590},{"d":"2026-08-02","c":1,"s":14401},{"d":"2026-08-03","c":8,"s":15212},{"d":"2026-08-04","c":2,"s":16023},{"d":"2026-08-05","c":9,"s":16834},{"d":"2026-08-06","c":3,"s":17645},{"d":"2026-08-07","c":10,"s":18456},{"d":"2026-08-08","c":4,"s":19267},{"d":"2026-08-09","c":11,"s":20078},{"d":"2026-08-10","c":5,"s":889},{"d":"2026-08-11","c":12,"s":1700},{"d":"2026-08-12","c":6,"s":2511},{"d":"2026-08-13","c":13,"s":3322},{"d":"2026-08-14","c":7,"s":4133},{"d":"2026-08-15","c":1,"s":4944},{"d":"2026-08-16","c":8,"s":5755},{"d":"2026-08-17","c":2,"s":6566},{"d":"2026-08-18","c":9,"s":7377},{"d":"2026-08-19","c":3,"s":8188},{"d":"2026-08-20","c":10,"s":8999},{"d":"2026-08-21","c":4,"s":9810},{"d":"2026-08-22","c":11,"s":10621},{"d":"2026-08-23","c":5,"s":11432},{"d":"2026-08-24","c":12,"s":12243},{"d":"2026-08-25","c":6,"s":13054},{"d":"2026-08-26","c":13,"s":13865},{"d":"2026-08-27","c":7,"s":14676},{"d":"2026-08-28","c":1,"s":15487},{"d":"2026-08-29","c":8,"s":16298},{"d":"2026-08-30","c":2,"s":17109}],
+"genre":[{"g":"流行","d":90000,"p":42},{"g":"摇滚","d":64000,"p":30},{"g":"电子","d":30000,"p":14},{"g":"古典","d":15000,"p":7},{"g":"民谣","d":15000,"p":7}],
+"skip":[{"l":"0-25%","c":90,"p":18},{"l":"25-50%","c":60,"p":12},{"l":"50-75%","c":80,"p":16},{"l":"75-99%","c":70,"p":14},{"l":"听完","c":200,"p":40}],
+"playlist":[{"s":"每日推荐","d":80000,"p":38},{"s":"我喜欢","d":60000,"p":28},{"s":"本地音乐","d":40000,"p":19}],
+"yearly":[{"y":2024,"c":2100,"d":432000},{"y":2025,"c":3200,"d":648000},{"y":2026,"c":1284,"d":259200}],
+"radar":[{"d":"探索","v":72},{"d":"专注","v":58},{"d":"夜行","v":64},{"d":"专一","v":45},{"d":"新鲜","v":81}],
+"hours":[0,6,12,17,22,27,32,36,39,42,43,45,45,45,43,42,39,36,32,42,37,32,27,21],
+"streak_miss":2,
+"comparison":{has_prev:true,"prev_label":"上月","prev_count":210,delta:-58,delta_pct:-28,has_ly:true,"ly_label":"去年同期","ly_count":900},
+"news":[{"l":"3月","c":12},{"l":"4月","c":9},{"l":"5月","c":15},{"l":"6月","c":8},{"l":"7月","c":11},{"l":"8月","c":14}],
+"cosine":88,"sub_title":"2026-06-01 ~ 2026-09-17"};
+const tip=document.getElementById("tip");
+const $=s=>document.querySelector(s);
+const fmt=s=>{const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h>0?h+"时"+m+"分"+(x>0?x+"秒":""):m>0?m+"分"+(x>0?x+"秒":""):x+"秒"};
+function bindTip(sel,fn){document.querySelectorAll(sel).forEach(el=>{el.addEventListener("mousemove",e=>{tip.textContent=fn(el);tip.style.display="block";tip.style.left=(e.clientX+12)+"px";tip.style.top=(e.clientY-28)+"px"});el.addEventListener("mouseleave",()=>{tip.style.display="none"})})}
+$("#sub").textContent=D.sub_title;
+// 热力图
+(function(){const el=$("#heatmap");if(!el)return;
+const colors=["#e8e8e4","#cde8d5","#93cfa8","#4da875","#1a7a4a"];
+D.heat.forEach(d=>{const i=document.createElement("i");
+const v=Math.min(d.s/3600,4);const idx=Math.min(Math.floor(v/1),3);
+i.style.background=colors[idx];i.dataset.tip=d.d+" · "+fmt(d.s)+" · "+d.c+" 次";
+el.appendChild(i)});
+bindTip("#heatmap i",el=>el.dataset.tip)})();
+// 趋势 SVG
+(function(){const el=$("#svg-trend");if(!el)return;
+const W=el.parentElement.clientWidth-32,H=180,ml=30,mr=8,mt=10,mb=22;
+const cw=W-ml-mr,ch=H-mt-mb;el.setAttribute("width",W);el.setAttribute("height",H);
+if(!D.buckets.length)return;
+const max=Math.max(...D.buckets.map(b=>b.c),1);
+const n=D.buckets.length,bw=Math.max(cw/n,2);
+let svg="";
+svg+=`<line x1="${ml}" y1="${mt}" x2="${ml}" y2="${mt+ch}" stroke="#c0c0c0"/>`;
+svg+=`<line x1="${ml}" y1="${mt+ch}" x2="${ml+cw}" y2="${mt+ch}" stroke="#c0c0c0"/>`;
+svg+=`<text x="${ml-20}" y="${mt+4}">${max}</text>`;
+svg+=`<text x="${ml-14}" y="${mt+ch+4}">0</text>`;
+let px=-1,py=-1;
+D.buckets.forEach((b,i)=>{const x=ml+cw*i/n+bw/2;const bh=b.c/max*ch;const y=mt+ch-bh;
+svg+=`<rect x="${x-bw/2}" y="${y}" width="${Math.max(bw-2,1)}" height="${bh}" fill="#2f5d9e" opacity="0.85"/>`;
+if(px>=0)svg+=`<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="#0f6b5c" stroke-width="2"/>`;
+px=x;py=y});
+const step=n>12?Math.ceil(n/10):1;
+D.buckets.forEach((b,i)=>{if(i%step)return;const x=ml+cw*i/n+bw/2;
+svg+=`<text x="${x}" y="${mt+ch+14}" text-anchor="middle">${b.l}</text>`});
+el.innerHTML=svg})();
+// 雷达 SVG
+(function(){const el=$("#svg-radar");if(!el)return;
+const W=220,H=190,cx=W/2,cy=H/2+6,R=70,n=D.radar.length;if(n<3)return;
+const ang=i=>Math.PI*2*i/n-Math.PI/2;
+function pt(i,r){const a=ang(i);return[cx+Math.cos(a)*r,cy+Math.sin(a)*r]}
+let grid="";
+for(let ring=1;ring<=3;ring++){let pts=[];
+for(let i=0;i<n;i++){const[p,q]=pt(i,R*ring/3);pts.push(p.toFixed(1)+","+q.toFixed(1))}
+grid+=`<polygon points="${pts.join(" ")}" fill="none" stroke="#d9dad5"/>`}
+let labels="";
+D.radar.forEach((r,i)=>{const[x,y]=pt(i,R+16);labels+=`<text x="${x}" y="${y+4}" text-anchor="middle" font-size="10">${r.d}</text>`});
+let vals=[];
+D.radar.forEach((r,i)=>{const[x,y]=pt(i,R*r.v/100);vals.push([x,y])});
+let poly=vals.map(v=>v[0].toFixed(1)+","+v[1].toFixed(1)).join(" ");
+let dots=vals.map(v=>`<circle cx="${v[0].toFixed(1)}" cy="${v[1].toFixed(1)}" r="3" fill="#0f6b5c"/>`).join("");
+el.setAttribute("width",W);el.setAttribute("height",H);
+el.innerHTML=grid+`<polygon points="${poly}" fill="rgba(15,107,92,0.15)" stroke="#0f6b5c" stroke-width="1.5"/>`+dots+labels})();
+// 流派环形
+(function(){const el=$("#svg-donut");if(!el||!D.genre.length)return;
+const W=180,H=180,cx=W/2,cy=H/2,R=70,r=42;
+let start=0,segs="";
+D.genre.forEach(g=>{const sweep=g.p/100*360;
+const a0=(start-90)*Math.PI/180,a1=(start+sweep-90)*Math.PI/180;
+const x0=cx+R*Math.cos(a0),y0=cy+R*Math.sin(a0);
+const x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1);
+const xi=cx+r*Math.cos(a1),yi=cy+r*Math.sin(a1);
+const xi2=cx+r*Math.cos(a0),yi2=cy+r*Math.sin(a0);
+const large=sweep>180?1:0;
+segs+=`<path d="M${x0.toFixed(1)},${y0.toFixed(1)} A${R},${R} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)} L${xi.toFixed(1)},${yi.toFixed(1)} A${r},${r} 0 ${large} 0 ${xi2.toFixed(1)},${yi2.toFixed(1)} Z" fill="hsl(${(start*7)%360},55%,45%)" opacity="0.85"/>`;
+start+=sweep});
+el.setAttribute("width",W);el.setAttribute("height",H);el.innerHTML=segs})();
+// 环形图例
+(function(){const el=$("#donut-legend");if(!el||!D.genre.length)return;
+let st=0;
+el.innerHTML=D.genre.map(g=>{const col=`hsl(${(st*7)%360},55%,45%)`;st+=g.p/100*360;
+return `<span style="margin-right:12px"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;background:${col}"></i>${g.g} ${g.p}%</span>`}).join("")})();
+// 跳过条
+(function(){const el=$("#skip-bars");if(!el)return;
+el.innerHTML=D.skip.map(s=>`<div class="skip-row"><span>${s.l}</span><div><div class="skip-bar" style="width:${s.p}%"></div></div><span>${s.c} 次</span></div>`).join("")})();
+// 歌单
+(function(){const el=$("#pl-table");if(!el)return;
+el.innerHTML="<table><tr><th>来源</th><th>时长</th><th>占比</th></tr>"+
+(D.playlist.length?D.playlist.map(p=>`<tr><td>${p.s}</td><td>${fmt(p.d)}</td><td>${p.p}%</td></tr>`).join(""):"<tr><td colspan=3>无数据</td></tr>")+"</table>"})();
+// 年度
+(function(){const el=$("#year-table");if(!el)return;
+el.innerHTML="<table><tr><th>年份</th><th>次数</th><th>时长</th></tr>"+
+(D.yearly.length?D.yearly.map(y=>`<tr><td>${y.y}</td><td>${y.c} 首</td><td>${fmt(y.d)}</td></tr>`).join(""):"<tr><td colspan=3>无记录</td></tr>")+"</table>"})();
+// 24 小时分布
+(function(){const el=$("#svg-hours");if(!el)return;
+const W=el.parentElement.clientWidth-32,H=140,ml=26,mr=6,mt=8,mb=18;
+const cw=W-ml-mr,ch=H-mt-mb;el.setAttribute("width",W);el.setAttribute("height",H);
+const max=Math.max(...D.hours,1);
+const bw=cw/24;
+let svg="";
+for(let h=0;h<24;h++){const bh=D.hours[h]/max*ch;
+const x=ml+h*bw;svg+=`<rect x="${x+1}" y="${mt+ch-bh}" width="${Math.max(bw-2,1)}" height="${Math.max(bh,1)}" fill="#2f5d9e" opacity="0.8"/>`;
+if(h%3===0)svg+=`<text x="${x+bw/2}" y="${mt+ch+12}" text-anchor="middle">${String(h).padStart(2,"0")}</text>`}
+el.innerHTML=svg})();
+// 新发现趋势
+(function(){const el=$("#svg-news");if(!el||!D.news.length)return;
+const W=el.parentElement.clientWidth-32,H=120,ml=30,mr=8,mt=8,mb=20;
+const cw=W-ml-mr,ch=H-mt-mb;el.setAttribute("width",W);el.setAttribute("height",H);
+const max=Math.max(...D.news.map(n=>n.c),1);const n=D.news.length;
+let svg="";let px=-1,py=-1;
+D.news.forEach((nd,i)=>{const x=ml+cw*i/Math.max(n-1,1);const y=mt+ch-nd.c/max*ch;
+if(px>=0)svg+=`<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="#0f6b5c" stroke-width="2"/>`;
+svg+=`<circle cx="${x}" cy="${y}" r="3" fill="#0f6b5c"/>`;
+if(n<=12||i%Math.ceil(n/12)===0)svg+=`<text x="${x}" y="${mt+ch+12}" text-anchor="middle" font-size="9">${nd.l}</text>`;
+px=x;py=y});
+el.innerHTML=svg})();
+// 环比/同比
+(function(){const el=$("#comparison-box");if(!el)return;
+let html="";
+if(D.comparison.has_prev){
+const arrow=D.comparison.delta>=0?"↑":"↓";
+html+=`<div style="font-size:14px;margin:4px 0"><b>环比（vs ${D.comparison.prev_label}）</b>：${arrow} ${Math.abs(D.comparison.delta)} 次（${D.comparison.delta_pct}%）</div>`}
+else html+=`<div style="color:#878d96;font-size:13px">环比：无上期数据</div>`;
+if(D.comparison.has_ly){
+const lyDelta=D.total-D.comparison.ly_count;
+const arrow=lyDelta>=0?"↑":"↓";
+html+=`<div style="font-size:14px;margin:4px 0"><b>同比（vs ${D.comparison.ly_label}）</b>：${arrow} ${Math.abs(lyDelta)} 次</div>`}
+el.innerHTML=html})();
+// 口味一致性
+(function(){const el=$("#cosine-box");if(!el)return;
+el.innerHTML=`<div style="display:flex;align-items:center;gap:16px">
+<div style="font-size:36px;font-weight:700;color:#0f6b5c">${D.cosine}%</div>
+<div style="font-size:13px;color:#4a4f57">口味一致性<br><span style="font-size:11px;color:#878d96">基于流派占比向量的余弦相似度</span></div></div>
+<div style="background:#e8e8e4;border-radius:4px;height:8px;margin-top:8px"><div style="background:#0f6b5c;border-radius:4px;height:8px;width:${D.cosine}%"></div></div>`})();
+// 差点就连续
+(function(){const el=$("#streak-miss");if(!el)return;
+if(D.streak_miss>0)el.innerHTML=`<div style="font-size:14px;color:#9a6b1f">差点就连续 <b>${D.streak_miss+1}</b> 天：上一次连续听了 ${D.streak_miss} 天后中断了</div>`;
+else el.innerHTML=""})();
+</script>
+</body></html>
