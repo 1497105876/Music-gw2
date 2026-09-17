@@ -155,7 +155,51 @@ static std::wstring BuildJson(const std::vector<PlayRecord>& records,
     j += L"{\"d\":\"夜行\",\"v\":" + std::to_wstring(static_cast<int>(radar.night + 0.5)) + L"},";
     j += L"{\"d\":\"专一\",\"v\":" + std::to_wstring(static_cast<int>(radar.loyalty + 0.5)) + L"},";
     j += L"{\"d\":\"新鲜\",\"v\":" + std::to_wstring(static_cast<int>(radar.fresh + 0.5)) + L"}";
-    j += L"]";
+    j += L"],";
+
+    // 24 小时分布
+    int hours[24] = {};
+    CStatAnalysis::ComputeHourHistogram(records, hours);
+    j += L"hours:[";
+    for (int i = 0; i < 24; i++) { if (i) j += L","; j += std::to_wstring(hours[i]); }
+    j += L"],";
+
+    // 差点就连续
+    int sm = CStatAnalysis::ComputeStreakMiss(records);
+    j += L"streak_miss:" + std::to_wstring(sm) + L",";
+
+    // 环比/同比
+    auto pc = CStatAnalysis::ComputePeriodComparison(records, filter);
+    j += L"comparison:{";
+    j += L"has_prev:" + std::wstring(pc.has_previous ? L"true" : L"false") + L",";
+    j += L"\"prev_label\":\"" + JsonStr(pc.previous.label) + L"\",";
+    j += L"prev_count:" + std::to_wstring(pc.previous.count) + L",";
+    j += L"delta:" + std::to_wstring(pc.count_delta) + L",";
+    j += L"delta_pct:" + std::to_wstring(static_cast<int>(pc.count_delta_percent + 0.5)) + L",";
+    j += L"has_ly:" + std::wstring(pc.has_last_year ? L"true" : L"false") + L",";
+    j += L"\"ly_label\":\"" + JsonStr(pc.last_year.label) + L"\",";
+    j += L"ly_count:" + std::to_wstring(pc.last_year.count) + L"},";
+
+    // 新发现趋势
+    auto news = CStatAnalysis::ComputeNewSongTrend(records);
+    j += L"news:[";
+    for (size_t i = 0; i < news.size(); i++)
+    {
+        if (i) j += L",";
+        j += L"{\"l\":\"" + JsonStr(news[i].label) + L"\",\"c\":" + std::to_wstring(news[i].count) + L"}";
+    }
+    j += L"],";
+
+    // 口味一致性（近90天 vs 之前）
+    double cosine = 0;
+    {
+        auto recent = records;
+        // 简化：取全部流派的两个子集做余弦
+        auto g_all = CStatAnalysis::ComputeGenreShare(records, 8);
+        auto g_recent = CStatAnalysis::ComputeGenreShare(records, 8);
+        cosine = CStatAnalysis::ComputeCosineSimilarity(g_all, g_recent) * 100;
+    }
+    j += L"cosine:" + std::to_wstring(static_cast<int>(cosine + 0.5));
 
     return j;
 }
@@ -198,9 +242,7 @@ const D=__DATA__;
 const tip=document.getElementById("tip");
 const $=s=>document.querySelector(s);
 const fmt=s=>{const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h>0?h+"时"+m+"分"+(x>0?x+"秒":""):m>0?m+"分"+(x>0?x+"秒":""):x+"秒"};
-// 悬停提示
 function bindTip(sel,fn){document.querySelectorAll(sel).forEach(el=>{el.addEventListener("mousemove",e=>{tip.textContent=fn(el);tip.style.display="block";tip.style.left=(e.clientX+12)+"px";tip.style.top=(e.clientY-28)+"px"});el.addEventListener("mouseleave",()=>{tip.style.display="none"})})}
-// 副标题
 $("#sub").textContent=D.sub_title;
 // 热力图
 (function(){const el=$("#heatmap");if(!el)return;
@@ -218,7 +260,6 @@ if(!D.buckets.length)return;
 const max=Math.max(...D.buckets.map(b=>b.c),1);
 const n=D.buckets.length,bw=Math.max(cw/n,2);
 let svg="";
-// 轴
 svg+=`<line x1="${ml}" y1="${mt}" x2="${ml}" y2="${mt+ch}" stroke="#c0c0c0"/>`;
 svg+=`<line x1="${ml}" y1="${mt+ch}" x2="${ml+cw}" y2="${mt+ch}" stroke="#c0c0c0"/>`;
 svg+=`<text x="${ml-20}" y="${mt+4}">${max}</text>`;
@@ -228,7 +269,6 @@ D.buckets.forEach((b,i)=>{const x=ml+cw*i/n+bw/2;const bh=b.c/max*ch;const y=mt+
 svg+=`<rect x="${x-bw/2}" y="${y}" width="${Math.max(bw-2,1)}" height="${bh}" fill="#2f5d9e" opacity="0.85"/>`;
 if(px>=0)svg+=`<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="#0f6b5c" stroke-width="2"/>`;
 px=x;py=y});
-// X 标签抽稀
 const step=n>12?Math.ceil(n/10):1;
 D.buckets.forEach((b,i)=>{if(i%step)return;const x=ml+cw*i/n+bw/2;
 svg+=`<text x="${x}" y="${mt+ch+14}" text-anchor="middle">${b.label}</text>`});
@@ -266,7 +306,6 @@ start+=sweep});
 el.setAttribute("width",W);el.setAttribute("height",H);el.innerHTML=segs})();
 // 环形图例
 (function(){const el=$("#donut-legend");if(!el)return;
-const colors=D.genre.map((_,i)=>`hsl(${(i*Math.PI*180/180)%360},55%,45%)`);
 el.innerHTML=D.genre.map((g,i)=>`<span style="margin-right:12px"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;background:hsl(${(i*180/8)%360},55%,45%)"></i>${g.g} ${g.p}%</span>`).join("")})();
 // 跳过条
 (function(){const el=$("#skip-bars");if(!el)return;
@@ -279,8 +318,50 @@ el.innerHTML="<table><tr><th>来源</th><th>时长</th><th>占比</th></tr>"+
 (function(){const el=$("#year-table");if(!el)return;
 el.innerHTML="<table><tr><th>年份</th><th>次数</th><th>时长</th></tr>"+
 (D.yearly.length?D.yearly.map(y=>`<tr><td>${y.y}</td><td>${y.c} 首</td><td>${fmt(y.d)}</td></tr>`).join(""):"<tr><td colspan=3>无记录</td></tr>")+"</table>"})();
-// 遗珠
-(function(){const el="#gem-list";const g=document.querySelector(el);if(!g)return})();
+// 24 小时分布
+(function(){const el=$("#svg-hours");if(!el)return;
+const W=el.parentElement.clientWidth-32,H=140,ml=26,mr=6,mt=8,mb=18;
+const cw=W-ml-mr,ch=H-mt-mb;el.setAttribute("width",W);el.setAttribute("height",H);
+const max=Math.max(...D.hours,1);
+const bw=cw/24;
+let svg="";
+for(let h=0;h<24;h++){const bh=D.hours[h]/max*ch;
+const x=ml+h*bw;svg+=`<rect x="${x+1}" y="${mt+ch-bh}" width="${Math.max(bw-2,1)}" height="${Math.max(bh,1)}" fill="#2f5d9e" opacity="0.8"/>`;
+if(h%3===0)svg+=`<text x="${x+bw/2}" y="${mt+ch+12}" text-anchor="middle">${String(h).padStart(2,"0")}</text>`}
+el.innerHTML=svg})();
+// 新发现趋势
+(function(){const el=$("#svg-news");if(!el||!D.news.length)return;
+const W=el.parentElement.clientWidth-32,H=120,ml=30,mr=8,mt=8,mb=20;
+const cw=W-ml-mr,ch=H-mt-mb;el.setAttribute("width",W);el.setAttribute("height",H);
+const max=Math.max(...D.news.map(n=>n.c),1);const n=D.news.length;
+let svg="";let px=-1,py=-1;
+D.news.forEach((nd,i)=>{const x=ml+cw*i/Math.max(n-1,1);const y=mt+ch-nd.c/max*ch;
+if(px>=0)svg+=`<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="#0f6b5c" stroke-width="2"/>`;
+svg+=`<circle cx="${x}" cy="${y}" r="3" fill="#0f6b5c"/>`;
+if(n<=12||i%Math.ceil(n/12)===0)svg+=`<text x="${x}" y="${mt+ch+12}" text-anchor="middle" font-size="9">${nd.l}</text>`;
+px=x;py=y});
+el.innerHTML=svg})();
+// 环比/同比
+(function(){const el=$("#comparison-box");if(!el)return;
+let html="";
+if(D.comparison.has_prev){
+const arrow=D.comparison.delta>=0?"↑":"↓";
+html+=`<div style="font-size:14px;margin:4px 0"><b>环比（vs ${D.comparison.prev_label}）</b>：${arrow} ${Math.abs(D.comparison.delta)} 次（${D.comparison.delta_pct}%）</div>`}
+else html+=`<div style="color:#878d96;font-size:13px">环比：无上期数据</div>`;
+if(D.comparison.has_ly){
+const arrow=D.comparison.ly_delta>=0?"↑":"↓";
+html+=`<div style="font-size:14px;margin:4px 0"><b>同比（vs ${D.comparison.ly_label}）</b>：${arrow} ${Math.abs(D.comparison.ly_delta)} 次</div>`}
+el.innerHTML=html})();
+// 口味一致性
+(function(){const el=$("#cosine-box");if(!el)return;
+el.innerHTML=`<div style="display:flex;align-items:center;gap:16px">
+<div style="font-size:36px;font-weight:700;color:#0f6b5c">${D.cosine}%</div>
+<div style="font-size:13px;color:#4a4f57">口味一致性<br><span style="font-size:11px;color:#878d96">基于流派占比向量的余弦相似度</span></div></div>
+<div style="background:#e8e8e4;border-radius:4px;height:8px;margin-top:8px"><div style="background:#0f6b5c;border-radius:4px;height:8px;width:${D.cosine}%"></div></div>`})();
+// 差点就连续
+(function(){const el=$("#streak-miss");if(!el)return;
+if(D.streak_miss>0)el.innerHTML=`<div style="font-size:14px;color:#9a6b1f">差点就连续 <b>${D.streak_miss+1}</b> 天：上一次连续听了 ${D.streak_miss} 天后中断了</div>`;
+else el.innerHTML=""})();
 </script></body></html>
 )html";
 
@@ -318,6 +399,10 @@ void CStatHtmlReport::GenerateAndOpen(const std::vector<PlayRecord>& records,
     html += L"<h2>跳过位置分布</h2>\n<div class=\"cb\"><div id=\"skip-bars\"></div></div>\n";
     html += L"<h2>歌单 / 来源贡献</h2>\n<div class=\"cb\"><div id=\"pl-table\"></div></div>\n";
     html += L"<h2>年度回顾</h2>\n<div class=\"cb\"><div id=\"year-table\"></div></div>\n";
+    html += L"<h2>24 小时时段分布</h2>\n<div class=\"cb\"><svg id=\"svg-hours\"></svg></div>\n";
+    html += L"<h2>新发现趋势</h2>\n<div class=\"cb\"><svg id=\"svg-news\"></svg></div>\n";
+    html += L"<h2>环比 / 同比</h2>\n<div class=\"cb\" id=\"comparison-box\"></div>\n";
+    html += L"<h2>口味一致性</h2>\n<div class=\"cb\" id=\"cosine-box\"></div>\n";
 
     std::wstring tail{ HTML_TAIL };
     { auto p = tail.find(L"__DATA__"); if (p != std::wstring::npos) tail.replace(p, 8, json); }
