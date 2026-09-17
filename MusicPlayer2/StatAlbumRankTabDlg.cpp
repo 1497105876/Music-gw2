@@ -89,7 +89,7 @@ void CStatAlbumRankTabDlg::UpdateScrollbar()
     m_chart.GetClientRect(&rc);
     m_page_size = rc.Height();
 
-    int title_h = 36;  // margin_top(8) + title_h(28)
+    int title_h = 30;  // margin_top(8) + title_h(22)
     int content_h = (int)m_rank_data.size() * BAR_HEIGHT;
     m_scroll_max = title_h + content_h;
 
@@ -200,7 +200,7 @@ void CStatAlbumRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
     if (m_rank_data.empty())
     {
         CFont font;
-        font.CreatePointFont(90, L"Microsoft YaHei", pDC);
+        font.CreatePointFont(88, L"Microsoft YaHei", pDC);
         CFont* old = pDC->SelectObject(&font);
         pDC->SetTextColor(th.text_disabled);
         pDC->TextOutW(rect.left + 20, rect.top + 20, L"暂无专辑记录");
@@ -220,11 +220,11 @@ void CStatAlbumRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
     int margin_top = 8;
     int margin_left = 20;
     int margin_right = 50;
-    int title_h = 28;
+    int title_h = 22;
     int chart_w = rect.Width() - margin_left - margin_right;
 
     CFont fTitle;
-    fTitle.CreatePointFont(100, L"Microsoft YaHei", pDC);
+    fTitle.CreatePointFont(92, L"Microsoft YaHei", pDC);
     CFont* pOldFont = pDC->SelectObject(&fTitle);
     pDC->SetTextColor(th.text_primary);
     pDC->TextOutW(rect.left + margin_left, rect.top + margin_top - 2, L"专辑播放时长");
@@ -237,7 +237,7 @@ void CStatAlbumRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
     pDC->SelectClipRgn(&clipRgn);
 
     CFont small_font;
-    small_font.CreatePointFont(80, L"Microsoft YaHei", pDC);
+    small_font.CreatePointFont(78, L"Microsoft YaHei", pDC);
     pDC->SelectObject(&small_font);
 
     int bar_gap = 6;

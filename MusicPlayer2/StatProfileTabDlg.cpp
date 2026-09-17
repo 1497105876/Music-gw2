@@ -64,27 +64,27 @@ void CStatProfileTabDlg::Refresh()
 int CStatProfileTabDlg::CalcContentHeight(int width)
 {
     int y = 8;
-    int pad = 12;
-    int card_gap = 8;
+    int pad = 10;
+    int card_gap = 6;
     UNREFERENCED_PARAMETER(width);
 
     // 头部大数字卡片
-    y += 78 + card_gap;
+    y += 58 + card_gap;
     // 音乐 DNA
-    y += 30 + theApp.DPI(84) + card_gap;
+    y += 24 + theApp.DPI(64) + card_gap;
     // 听歌档案（徽章）
     int badges_h = 0;
     {
-        int cols = max(1, (width - pad * 2) / theApp.DPI(170));
+        int cols = max(1, (width - pad * 2) / theApp.DPI(150));
         int rows = max(1, ((int)m_summary.badges.size() + cols - 1) / cols);
-        badges_h = 30 + rows * theApp.DPI(56);
+        badges_h = 24 + rows * theApp.DPI(44);
     }
     y += badges_h + card_gap;
 
     // AI 洞察（按每条最多两行估算）
     {
         auto insights = CStatAiInsight::GenerateInsights(m_summary);
-        int text_w = width - pad * 2 - theApp.DPI(24);
+        int text_w = width - pad * 2 - theApp.DPI(20);
         int lines = 0;
         CDC* pDC = GetDC();
         CFont font;
@@ -96,18 +96,18 @@ int CStatProfileTabDlg::CalcContentHeight(int width)
             int h = pDC->DrawText(text.c_str(), -1, &rc, DT_CALCRECT | DT_WORDBREAK);
             UNREFERENCED_PARAMETER(h);
             lines += max(1, rc.Height());
-            lines += theApp.DPI(10);
+            lines += theApp.DPI(8);
         }
         pDC->SelectObject(old);
         ReleaseDC(pDC);
-        y += 30 + lines + theApp.DPI(14);
+        y += 24 + lines + theApp.DPI(12);
     }
 
     // 深度数字网格（2 行固定高度）
-    y += 30 + theApp.DPI(110) + card_gap;
+    y += 24 + theApp.DPI(92) + card_gap;
 
     // 年度回顾（每行 + 头部）
-    y += 30 + (int)m_yearly.size() * theApp.DPI(24) + theApp.DPI(10) + card_gap;
+    y += 24 + (int)m_yearly.size() * theApp.DPI(20) + theApp.DPI(8) + card_gap;
 
     return y + 12;
 }
@@ -220,12 +220,12 @@ void CStatProfileTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruc
 void CStatProfileTabDlg::DrawSectionTitle(CDC* pDC, const CRect& rect, int y, const std::wstring& title)
 {
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
-    int pad = 12;
+    int pad = 10;
     CRect bar(rect.left + pad, y + 2, rect.left + pad + 4, y + 18);
     pDC->FillSolidRect(bar, th.accent);
 
     CFont font;
-    font.CreatePointFont(100, L"Microsoft YaHei", pDC);
+    font.CreatePointFont(92, L"Microsoft YaHei", pDC);
     HFONT old = (HFONT)pDC->SelectObject(font.GetSafeHandle());
     pDC->SetTextColor(th.text_primary);
     pDC->TextOutW(rect.left + pad + 10, y, title.c_str(), (int)title.size());
@@ -236,9 +236,9 @@ void CStatProfileTabDlg::DrawSectionTitle(CDC* pDC, const CRect& rect, int y, co
 void CStatProfileTabDlg::DrawBadges(CDC* pDC, const CRect& rect, int y, int* out_height)
 {
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
-    int pad = 12;
-    int card_w = theApp.DPI(170);
-    int card_h = theApp.DPI(56);
+    int pad = 10;
+    int card_w = theApp.DPI(150);
+    int card_h = theApp.DPI(44);
     int cols = max(1, (rect.Width() - pad * 2) / card_w);
 
     if (m_summary.badges.empty())
@@ -250,7 +250,7 @@ void CStatProfileTabDlg::DrawBadges(CDC* pDC, const CRect& rect, int y, int* out
         std::wstring empty = L"继续听歌，解锁你的专属听歌档案";
         pDC->TextOutW(rect.left + pad + 10, y + card_h / 2 - 8, empty.c_str(), (int)empty.size());
         pDC->SelectObject(old);
-        *out_height = 30 + card_h;
+        *out_height = 24 + card_h;
         return;
     }
 
@@ -274,7 +274,7 @@ void CStatProfileTabDlg::DrawBadges(CDC* pDC, const CRect& rect, int y, int* out
 
         // 徽章名
         CFont font;
-        font.CreatePointFont(92, L"Microsoft YaHei", pDC);
+        font.CreatePointFont(88, L"Microsoft YaHei", pDC);
         HFONT old = (HFONT)pDC->SelectObject(font.GetSafeHandle());
         pDC->SetTextColor(th.text_primary);
         pDC->TextOutW(rc_card.left + 10, rc_card.top + 5, badge.title.c_str(), (int)badge.title.size());
@@ -299,15 +299,15 @@ void CStatProfileTabDlg::DrawBadges(CDC* pDC, const CRect& rect, int y, int* out
     }
 
     int rows = ((int)m_summary.badges.size() + cols - 1) / cols;
-    *out_height = 30 + rows * card_h;
+    *out_height = 24 + rows * card_h;
 }
 
 // 音乐 DNA 报告：大标题 + 标签 + 一段描述（模板 + 数据插槽）
 void CStatProfileTabDlg::DrawDna(CDC* pDC, const CRect& rect, int y, int* out_height)
 {
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
-    int pad = 12;
-    int card_h = theApp.DPI(84);
+    int pad = 10;
+    int card_h = theApp.DPI(64);
 
     CRect card(rect.left + pad, y, rect.right - pad, y + card_h);
     pDC->FillSolidRect(card, th.card_back_alt);
@@ -315,17 +315,17 @@ void CStatProfileTabDlg::DrawDna(CDC* pDC, const CRect& rect, int y, int* out_he
 
     // 标题
     CFont title_font;
-    title_font.CreatePointFont(130, L"Microsoft YaHei", pDC);
+    title_font.CreatePointFont(104, L"Microsoft YaHei", pDC);
     HFONT old = (HFONT)pDC->SelectObject(title_font.GetSafeHandle());
     pDC->SetTextColor(th.text_primary);
-    pDC->TextOutW(card.left + 14, card.top + 8, m_dna.title.c_str(), (int)m_dna.title.size());
+    pDC->TextOutW(card.left + 12, card.top + 6, m_dna.title.c_str(), (int)m_dna.title.size());
     pDC->SelectObject(old);
 
     // 标签（横向排列）
     int lx = card.left + 14;
-    int ly = card.top + 34;
+    int ly = card.top + 26;
     CFont tag_font;
-    tag_font.CreatePointFont(80, L"Microsoft YaHei", pDC);
+    tag_font.CreatePointFont(78, L"Microsoft YaHei", pDC);
     old = (HFONT)pDC->SelectObject(tag_font.GetSafeHandle());
     for (const auto& tag : m_dna.tags)
     {
@@ -340,22 +340,22 @@ void CStatProfileTabDlg::DrawDna(CDC* pDC, const CRect& rect, int y, int* out_he
 
     // 描述
     CFont text_font;
-    text_font.CreatePointFont(84, L"Microsoft YaHei", pDC);
+    text_font.CreatePointFont(88, L"Microsoft YaHei", pDC);
     old = (HFONT)pDC->SelectObject(text_font.GetSafeHandle());
     pDC->SetTextColor(th.text_secondary);
-    CRect rc_text(card.left + 14, card.top + 56, card.right - 12, card.bottom);
+    CRect rc_text(card.left + 12, card.top + 44, card.right - 12, card.bottom);
     pDC->DrawText(m_dna.text.c_str(), -1, &rc_text, DT_WORDBREAK | DT_END_ELLIPSIS);
     pDC->SelectObject(old);
 
-    *out_height = 30 + card_h;
+    *out_height = 24 + card_h;
 }
 
 // AI 洞察列表：每条一个小圆点 + 自然语言段落
 void CStatProfileTabDlg::DrawInsights(CDC* pDC, const CRect& rect, int y, int* out_height)
 {
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
-    int pad = 12;
-    int text_x = rect.left + pad + 10 + theApp.DPI(14);
+    int pad = 10;
+    int text_x = rect.left + pad + 8 + theApp.DPI(12);
     int text_w = rect.Width() - (text_x - rect.left) - pad;
 
     auto insights = CStatAiInsight::GenerateInsights(m_summary);
@@ -389,7 +389,7 @@ void CStatProfileTabDlg::DrawInsights(CDC* pDC, const CRect& rect, int y, int* o
         pDC->DrawText(text.c_str(), -1, &rc_text, DT_WORDBREAK);
         int line_h = rc_text.Height();
 
-        yy += line_h + theApp.DPI(10);
+        yy += line_h + theApp.DPI(8);
     }
 
     pDC->SelectObject(old);
@@ -400,22 +400,22 @@ void CStatProfileTabDlg::DrawInsights(CDC* pDC, const CRect& rect, int y, int* o
 void CStatProfileTabDlg::DrawYearly(CDC* pDC, const CRect& rect, int y, int* out_height)
 {
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
-    int pad = 12;
+    int pad = 10;
 
     if (m_yearly.empty())
     {
         CFont font;
-        font.CreatePointFont(84, L"Microsoft YaHei", pDC);
+        font.CreatePointFont(88, L"Microsoft YaHei", pDC);
         HFONT old = (HFONT)pDC->SelectObject(font.GetSafeHandle());
         pDC->SetTextColor(th.text_disabled);
         pDC->TextOutW(rect.left + pad + 10, y, L"无记录", 3);
         pDC->SelectObject(old);
-        *out_height = 30 + theApp.DPI(22);
+        *out_height = 24 + theApp.DPI(20);
         return;
     }
 
     CFont font;
-    font.CreatePointFont(84, L"Microsoft YaHei", pDC);
+    font.CreatePointFont(88, L"Microsoft YaHei", pDC);
     HFONT old = (HFONT)pDC->SelectObject(font.GetSafeHandle());
 
     int yy = y;
@@ -438,14 +438,14 @@ void CStatProfileTabDlg::DrawYearly(CDC* pDC, const CRect& rect, int y, int* out
 void CStatProfileTabDlg::DrawProfile(CDC* pDC, const CRect& rect)
 {
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
-    int pad = 12;
-    int card_gap = 8;
+    int pad = 10;
+    int card_gap = 6;
     int y = 8 - m_scroll_pos;
 
     // ── 头部：4 个大数字卡片（今日 / 本周 / 本月 / 累计） ──
     {
         int card_w = (rect.Width() - pad * 2 - theApp.DPI(24)) / 4;
-        int card_h = theApp.DPI(70);
+        int card_h = theApp.DPI(52);
         int x0 = rect.left + pad;
 
         struct HeadCard { std::wstring label; std::wstring value; COLORREF color; };
@@ -463,14 +463,14 @@ void CStatProfileTabDlg::DrawProfile(CDC* pDC, const CRect& rect)
             pDC->FillSolidRect(CRect(rc.left, rc.top, rc.left + 4, rc.bottom), cards[i].color);
 
             CFont small_font;
-            small_font.CreatePointFont(80, L"Microsoft YaHei", pDC);
+            small_font.CreatePointFont(78, L"Microsoft YaHei", pDC);
             HFONT old = (HFONT)pDC->SelectObject(small_font.GetSafeHandle());
             pDC->SetTextColor(th.text_secondary);
-            pDC->TextOutW(rc.left + 10, rc.top + 6, cards[i].label.c_str(), (int)cards[i].label.size());
+            pDC->TextOutW(rc.left + 10, rc.top + 4, cards[i].label.c_str(), (int)cards[i].label.size());
             pDC->SelectObject(old);
 
             CFont big;
-            big.CreatePointFont(120, L"Microsoft YaHei", pDC);
+            big.CreatePointFont(104, L"Microsoft YaHei", pDC);
             old = (HFONT)pDC->SelectObject(big.GetSafeHandle());
             pDC->SetTextColor(th.text_primary);
             CSize sz = pDC->GetTextExtent(cards[i].value.c_str(), (int)cards[i].value.size());
@@ -478,42 +478,42 @@ void CStatProfileTabDlg::DrawProfile(CDC* pDC, const CRect& rect)
             if (sz.cx > card_w - 20)
             {
                 CFont mid;
-                mid.CreatePointFont(95, L"Microsoft YaHei", pDC);
+                mid.CreatePointFont(88, L"Microsoft YaHei", pDC);
                 pDC->SelectObject(mid.GetSafeHandle());
             }
-            pDC->TextOutW(rc.left + 10, rc.top + 30, val.c_str(), (int)val.size());
+            pDC->TextOutW(rc.left + 10, rc.top + 24, val.c_str(), (int)val.size());
             pDC->SelectObject(old);
         }
-        y += card_h + card_gap + 6;
+        y += card_h + card_gap + 4;
     }
 
     // ── 音乐 DNA ──
     DrawSectionTitle(pDC, rect, y, L"你的音乐 DNA");
-    y += 30;
+    y += 24;
     int dna_h = 0;
     DrawDna(pDC, rect, y, &dna_h);
     y += dna_h + card_gap;
 
     // ── 听歌档案徽章 ──
     DrawSectionTitle(pDC, rect, y, L"你的听歌档案");
-    y += 30;
+    y += 24;
     int badges_h = 0;
     DrawBadges(pDC, rect, y, &badges_h);
     y += badges_h + card_gap;
 
     // ── AI 洞察 ──
     DrawSectionTitle(pDC, rect, y, L"AI 洞察");
-    y += 30;
+    y += 24;
     int insights_h = 0;
     DrawInsights(pDC, rect, y, &insights_h);
     y += insights_h + card_gap;
 
     // ── 深度数字网格：2 行指标 ──
     DrawSectionTitle(pDC, rect, y, L"深度数字");
-    y += 30;
+    y += 24;
     {
         int cell_w = (rect.Width() - pad * 2 - theApp.DPI(24)) / 4;
-        int cell_h = theApp.DPI(48);
+        int cell_h = theApp.DPI(40);
 
         struct Metric { std::wstring label; std::wstring value; };
         Metric metrics[8] = {
@@ -547,7 +547,7 @@ void CStatProfileTabDlg::DrawProfile(CDC* pDC, const CRect& rect)
             pDC->SelectObject(old);
 
             CFont val_font;
-            val_font.CreatePointFont(95, L"Microsoft YaHei", pDC);
+            val_font.CreatePointFont(88, L"Microsoft YaHei", pDC);
             old = (HFONT)pDC->SelectObject(val_font.GetSafeHandle());
             pDC->SetTextColor(th.text_primary);
             std::wstring val = metrics[i].value;
@@ -569,7 +569,7 @@ void CStatProfileTabDlg::DrawProfile(CDC* pDC, const CRect& rect)
 
     // ── 年度回顾 ──
     DrawSectionTitle(pDC, rect, y, L"年度回顾");
-    y += 30;
+    y += 24;
     int yearly_h = 0;
     DrawYearly(pDC, rect, y, &yearly_h);
     y += yearly_h + card_gap;

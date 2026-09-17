@@ -83,7 +83,7 @@ void CStatTrendTabDlg::DrawTrendChart(CDC* pDC, const CRect& rect)
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
 
     CFont fTitle;
-    fTitle.CreatePointFont(140, L"Microsoft YaHei", pDC);
+    fTitle.CreatePointFont(104, L"Microsoft YaHei", pDC);
     CFont* pOldFont = pDC->SelectObject(&fTitle);
     pDC->SetTextColor(th.text_primary);
 
@@ -146,7 +146,7 @@ void CStatTrendTabDlg::DrawTrendChart(CDC* pDC, const CRect& rect)
         for (const auto& b : news) total_new += b.count;
 
         CFont info_font;
-        info_font.CreatePointFont(84, L"Microsoft YaHei", pDC);
+        info_font.CreatePointFont(88, L"Microsoft YaHei", pDC);
         pDC->SelectObject(&info_font);
         pDC->SetTextColor(th.text_secondary);
         wchar_t buf[128];
@@ -160,7 +160,7 @@ void CStatTrendTabDlg::DrawTrendChart(CDC* pDC, const CRect& rect)
     }
 
     // 图表区
-    int margin_left = 50, margin_right = 16, margin_top = 74, margin_bottom = 34;
+    int margin_left = 40, margin_right = 14, margin_top = 56, margin_bottom = 26;
     int chart_w = rect.Width() - margin_left - margin_right;
     int chart_h = rect.Height() - margin_top - margin_bottom;
     if (chart_w <= 0 || chart_h <= 0) return;

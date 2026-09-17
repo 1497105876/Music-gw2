@@ -123,7 +123,7 @@ void CStatArtistRankTabDlg::UpdateScrollbar()
     m_page_size = rc.Height();  // 可视区域高度
 
     // 内容总高度 = 标题区(margin_top 8 + title_h 28 = 36) + 每条 BAR_HEIGHT(44) * 条数
-    int title_h = 36;  // margin_top(8) + title_h(28)
+    int title_h = 30;  // margin_top(8) + title_h(22)
     int content_h = (int)m_rank_data.size() * BAR_HEIGHT;
     m_scroll_max = title_h + content_h;
 
@@ -274,19 +274,19 @@ void CStatArtistRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
     int margin_top = 8;     // 顶部留白
     int margin_left = 20;    // 左侧留白
     int margin_right = 50;   // 右侧留白
-    int title_h = 28;       // 标题行高度（标题和条形图之间的间距）
+    int title_h = 22;       // 标题行高度（标题和条形图之间的间距）
 
     int chart_w = rect.Width() - margin_left - margin_right;  // 实际可用宽度
 
     // ===== 标题（固定不滚动，始终在顶部） =====
     CFont fTitle;
-    fTitle.CreatePointFont(100, L"Microsoft YaHei", pDC);
+    fTitle.CreatePointFont(92, L"Microsoft YaHei", pDC);
     CFont* pOldFont = pDC->SelectObject(&fTitle);
     pDC->SetTextColor(th.text_primary);
     pDC->TextOutW(rect.left + margin_left, rect.top + margin_top - 2, L"歌手播放时长");
 
     // ===== 内容区域（滚动时需要裁剪，防止画到标题上面） =====
-    int content_top = rect.top + margin_top + title_h;  // 内容起始 y = 8 + 28 = 36
+    int content_top = rect.top + margin_top + title_h;  // 内容起始 y = 8 + 22 = 30
     int content_bottom = rect.bottom;                    // 内容结束 y = 控件底部
 
     // 创建裁剪区域，只允许在 content_top ~ content_bottom 之间画
@@ -296,7 +296,7 @@ void CStatArtistRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
 
     // 条形图用的字体，比标题小一号
     CFont small_font;
-    small_font.CreatePointFont(80, L"Microsoft YaHei", pDC);
+    small_font.CreatePointFont(78, L"Microsoft YaHei", pDC);
     pDC->SelectObject(&small_font);
 
     int bar_gap = 6;  // 条与条之间的间距

@@ -127,7 +127,7 @@ void CStatGenreTabDlg::DrawGenre(CDC* pDC, const CRect& rect)
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
 
     CFont title_font;
-    title_font.CreatePointFont(110, L"Microsoft YaHei", pDC);
+    title_font.CreatePointFont(96, L"Microsoft YaHei", pDC);
     CFont* pOldFont = pDC->SelectObject(&title_font);
     pDC->SetTextColor(th.text_primary);
     pDC->TextOutW(rect.left + 14, rect.top + 6, L"流派分布");
@@ -136,7 +136,7 @@ void CStatGenreTabDlg::DrawGenre(CDC* pDC, const CRect& rect)
     if (m_share.empty())
     {
         CFont empty_font;
-        empty_font.CreatePointFont(95, L"Microsoft YaHei", pDC);
+        empty_font.CreatePointFont(88, L"Microsoft YaHei", pDC);
         pDC->SelectObject(&empty_font);
         pDC->SetTextColor(th.text_disabled);
         pDC->TextOutW(rect.left + 20, rect.top + 44, L"暂无流派数据");
@@ -146,11 +146,11 @@ void CStatGenreTabDlg::DrawGenre(CDC* pDC, const CRect& rect)
 
     // 底栏（遗珠 + 口味一致性）固定高度
     bool has_footer = (!m_gems.empty() || m_has_similarity);
-    int footer_h = has_footer ? theApp.DPI(92) : 0;
+    int footer_h = has_footer ? theApp.DPI(76) : 0;
 
     // 顶部区域：环形图（左）+ 图例（右）
     int top = rect.top + 40;
-    int total_h = rect.Height() - 60 - footer_h;
+    int total_h = rect.Height() - 52 - footer_h;
     if (total_h < 120) total_h = 120;
     int top_h = (int)(total_h * 0.60);
     if (top_h < 80) top_h = 80;
@@ -194,7 +194,7 @@ void CStatGenreTabDlg::DrawGenre(CDC* pDC, const CRect& rect)
 
     // 图例
     CFont legend_font;
-    legend_font.CreatePointFont(82, L"Microsoft YaHei", pDC);
+    legend_font.CreatePointFont(78, L"Microsoft YaHei", pDC);
     pDC->SelectObject(&legend_font);
     int lx = center.x + ring_size / 2 + 24;
     int ly = top + 8;
@@ -208,7 +208,7 @@ void CStatGenreTabDlg::DrawGenre(CDC* pDC, const CRect& rect)
         swprintf_s(buf, L"%s  %.1f%%", m_share[i].genre.c_str(), m_share[i].percent);
         pDC->SetTextColor(th.text_primary);
         pDC->TextOutW(lx + 18, ly, buf, (int)wcslen(buf));
-        ly += 22;
+        ly += 20;
     }
     pDC->SelectObject(pOldFont);
 
@@ -232,7 +232,7 @@ void CStatGenreTabDlg::DrawGenre(CDC* pDC, const CRect& rect)
             if (m_quarter_count < 2)
             {
                 CFont hint_font;
-                hint_font.CreatePointFont(82, L"Microsoft YaHei", pDC);
+                hint_font.CreatePointFont(78, L"Microsoft YaHei", pDC);
                 pDC->SelectObject(&hint_font);
                 pDC->SetTextColor(th.text_disabled);
                 pDC->TextOutW(dx, dy_top + 6, L"记录还不足以看出口味漂移");
@@ -314,7 +314,7 @@ void CStatGenreTabDlg::DrawFooter(CDC* pDC, const CRect& rect, int top)
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
 
     CFont font;
-    font.CreatePointFont(82, L"Microsoft YaHei", pDC);
+    font.CreatePointFont(78, L"Microsoft YaHei", pDC);
     CFont* old = pDC->SelectObject(&font);
 
     int y = top;
@@ -323,7 +323,7 @@ void CStatGenreTabDlg::DrawFooter(CDC* pDC, const CRect& rect, int top)
     {
         pDC->SetTextColor(th.text_primary);
         pDC->TextOutW(rect.left + 14, y, L"遗珠（反复听却从未完整听完）：", 15);
-        y += theApp.DPI(20);
+        y += theApp.DPI(18);
 
         pDC->SetTextColor(th.text_secondary);
         for (const auto& g : m_gems)
@@ -332,7 +332,7 @@ void CStatGenreTabDlg::DrawFooter(CDC* pDC, const CRect& rect, int top)
             swprintf_s(buf, L"· %s - %s（%d 次）",
                 g.artist.empty() ? L"未知艺术家" : g.artist.c_str(), g.title.c_str(), g.count);
             pDC->TextOutW(rect.left + 26, y, buf, (int)wcslen(buf));
-            y += theApp.DPI(18);
+            y += theApp.DPI(16);
         }
     }
 

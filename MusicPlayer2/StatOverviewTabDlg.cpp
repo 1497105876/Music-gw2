@@ -76,17 +76,17 @@ int CStatOverviewTabDlg::CalcContentHeight(int width)
     // 注意：此处的每段高度必须与 DrawOverview() 的实际绘制严格一致，
     // 否则滚动条会出现“滚到底还有空白”或“内容被裁掉”。
     int y = 8;
-    y += 30;                                   // 核心指标 标题
-    y += theApp.DPI(70) + 10;                  // 四指标卡（card_h = DPI(70)，下移 10）
-    y += 30;                                   // 24 小时 标题
-    y += theApp.DPI(120) + 10;                 // 24h 柱状图
-    y += 30;                                   // 播放结果 标题
-    y += theApp.DPI(28) + 4;                   // 完播/跳过率行 + 行距
-    y += (int)m_skip.size() * theApp.DPI(22);  // 跳过位置各桶
-    if (m_streak_miss > 0) y += theApp.DPI(30); // 差点就连续
-    y += 30;                                   // 歌单贡献 标题
+    y += 24;                                   // 核心指标 标题
+    y += theApp.DPI(52) + 8;                  // 四指标卡（card_h = DPI(52)，下移 8）
+    y += 24;                                   // 24 小时 标题
+    y += theApp.DPI(92) + 8;                 // 24h 柱状图
+    y += 24;                                   // 播放结果 标题
+    y += theApp.DPI(24) + 4;                   // 完播/跳过率行 + 行距
+    y += (int)m_skip.size() * theApp.DPI(20);  // 跳过位置各桶
+    if (m_streak_miss > 0) y += theApp.DPI(24); // 差点就连续
+    y += 24;                                   // 歌单贡献 标题
     // 空列表时绘制一行“—”，非空时每来源一行
-    y += max(1, (int)m_playlist.size()) * theApp.DPI(22);
+    y += max(1, (int)m_playlist.size()) * theApp.DPI(20);
     y += 12;
     return y;
 }
@@ -124,7 +124,7 @@ void CStatOverviewTabDlg::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
 {
     if (m_scroll_max > m_page_size)
     {
-        int step = theApp.DPI(36);
+        int step = theApp.DPI(28);
         switch (nSBCode)
         {
         case SB_LINEUP:        m_scroll_pos -= step; break;
@@ -151,7 +151,7 @@ BOOL CStatOverviewTabDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
     m_chart.GetWindowRect(&rc);
     if (rc.PtInRect(pt) && m_scroll_max > m_page_size)
     {
-        int step = theApp.DPI(60);
+        int step = theApp.DPI(48);
         m_scroll_pos -= zDelta / 120 * step;
         int max_pos = m_scroll_max - m_page_size;
         if (max_pos < 0) max_pos = 0;
@@ -196,12 +196,12 @@ void CStatOverviewTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStru
 void CStatOverviewTabDlg::DrawSectionTitle(CDC* pDC, const CRect& rect, int y, const std::wstring& title)
 {
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
-    int pad = 12;
-    CRect bar(rect.left + pad, y + 2, rect.left + pad + 4, y + 18);
+    int pad = 10;
+    CRect bar(rect.left + pad, y + 1, rect.left + pad + 4, y + 15);
     pDC->FillSolidRect(bar, th.accent);
 
     CFont font;
-    font.CreatePointFont(100, L"Microsoft YaHei", pDC);
+    font.CreatePointFont(92, L"Microsoft YaHei", pDC);
     HFONT old = (HFONT)pDC->SelectObject(font.GetSafeHandle());
     pDC->SetTextColor(th.text_primary);
     pDC->TextOutW(rect.left + pad + 10, y, title.c_str(), (int)title.size());
@@ -211,7 +211,7 @@ void CStatOverviewTabDlg::DrawSectionTitle(CDC* pDC, const CRect& rect, int y, c
 void CStatOverviewTabDlg::DrawOverview(CDC* pDC, const CRect& rect)
 {
     const StatPalette::StatPaletteColors& th = StatPalette::Get();
-    int pad = 12;
+    int pad = 10;
     int y = 8 - m_scroll_pos;
     bool has_data = (m_summary.total_count > 0);
 
@@ -229,10 +229,10 @@ void CStatOverviewTabDlg::DrawOverview(CDC* pDC, const CRect& rect)
 
     // ── 核心指标：四张卡 ──
     DrawSectionTitle(pDC, rect, y, L"核心指标");
-    y += 30;
+    y += 24;
     {
         int card_w = (rect.Width() - pad * 2 - theApp.DPI(24)) / 4;
-        int card_h = theApp.DPI(70);
+        int card_h = theApp.DPI(52);
         int x0 = rect.left + pad;
 
         struct Card { std::wstring label; std::wstring value; COLORREF color; };
@@ -252,31 +252,31 @@ void CStatOverviewTabDlg::DrawOverview(CDC* pDC, const CRect& rect)
             pDC->FillSolidRect(rc, th.card_back);
             pDC->FillSolidRect(CRect(rc.left, rc.top, rc.left + 4, rc.bottom), cards[i].color);
 
-            draw_text(cards[i].label, rc.left + 10, rc.top + 6, th.text_secondary, 80);
+            draw_text(cards[i].label, rc.left + 10, rc.top + 6, th.text_secondary, 78);
 
             std::wstring val = cards[i].value;
             CFont big;
-            big.CreatePointFont(120, L"Microsoft YaHei", pDC);
+            big.CreatePointFont(104, L"Microsoft YaHei", pDC);
             HFONT old = (HFONT)pDC->SelectObject(big.GetSafeHandle());
             pDC->SetTextColor(has_data ? th.text_primary : th.text_disabled);
             CSize sz = pDC->GetTextExtent(val.c_str(), (int)val.size());
             if (sz.cx > card_w - 20)
             {
                 CFont mid;
-                mid.CreatePointFont(95, L"Microsoft YaHei", pDC);
+                mid.CreatePointFont(88, L"Microsoft YaHei", pDC);
                 pDC->SelectObject(mid.GetSafeHandle());
             }
             pDC->TextOutW(rc.left + 10, rc.top + 30, val.c_str(), (int)val.size());
             pDC->SelectObject(old);
         }
-        y += card_h + 10;
+        y += card_h + 8;
     }
 
     // ── 24 小时收听分布（24 根柱 + 峰值标注）──
     DrawSectionTitle(pDC, rect, y, L"24 小时收听分布");
-    y += 30;
+    y += 24;
     {
-        int chart_h = theApp.DPI(120);
+        int chart_h = theApp.DPI(92);
         int chart_w = rect.Width() - pad * 2;
         int x0 = rect.left + pad;
         int base_y = y + chart_h - 16;
@@ -305,31 +305,31 @@ void CStatOverviewTabDlg::DrawOverview(CDC* pDC, const CRect& rect)
         {
             wchar_t buf[8];
             swprintf_s(buf, L"%02d", h);
-            draw_text(buf, x0 + 8 + h * bar_w, base_y + 2, th.text_secondary, 76);
+            draw_text(buf, x0 + 8 + h * bar_w, base_y + 2, th.text_secondary, 78);
         }
 
         if (has_data)
         {
             wchar_t buf[64];
             swprintf_s(buf, L"峰值 %02d:00（%d 次）", peak, m_hour[peak]);
-            draw_text(buf, x0 + 8, y + 2, th.text_primary, 80);
+            draw_text(buf, x0 + 8, y + 2, th.text_primary, 78);
         }
         else
         {
-            draw_text(L"无记录", x0 + 8, y + 2, th.text_disabled, 80);
+            draw_text(L"无记录", x0 + 8, y + 2, th.text_disabled, 78);
         }
         y += chart_h + 10;
     }
 
     // ── 播放结果分布（完播率/跳过率 + 跳过位置 4 桶）──
     DrawSectionTitle(pDC, rect, y, L"播放结果分布");
-    y += 30;
+    y += 24;
     {
         wchar_t buf[96];
         swprintf_s(buf, L"完整收听率 %.0f%%    跳过率 %.0f%%",
             m_summary.completed_rate, m_summary.skip_rate);
-        draw_text(has_data ? std::wstring(buf) : L"—", rect.left + pad + 10, y, th.text_primary, 84);
-        y += theApp.DPI(28);
+        draw_text(has_data ? std::wstring(buf) : L"—", rect.left + pad + 10, y, th.text_primary, 88);
+        y += theApp.DPI(24);
 
         int line_x = rect.left + pad + 10;
         int line_w = rect.Width() - pad * 2 - 20;
@@ -337,18 +337,18 @@ void CStatOverviewTabDlg::DrawOverview(CDC* pDC, const CRect& rect)
         {
             const auto& b = m_skip[i];
             std::wstring label = b.label;
-            draw_text(label, line_x, y, th.text_secondary, 80);
-            draw_text(std::to_wstring(b.count) + L" 次", line_x + theApp.DPI(70), y, th.text_secondary, 80);
+            draw_text(label, line_x, y, th.text_secondary, 78);
+            draw_text(std::to_wstring(b.count) + L" 次", line_x + theApp.DPI(62), y, th.text_secondary, 78);
 
-            int bar_w = (int)(b.percent / 100.0 * (line_w - theApp.DPI(160)));
+            int bar_w = (int)(b.percent / 100.0 * (line_w - theApp.DPI(140)));
             if (bar_w < 0) bar_w = 0;
-            CRect bar(line_x + theApp.DPI(130), y + 2, line_x + theApp.DPI(130) + bar_w, y + 14);
+            CRect bar(line_x + theApp.DPI(112), y + 2, line_x + theApp.DPI(112) + bar_w, y + 13);
             pDC->FillSolidRect(bar, th.warn);
 
             wchar_t pbuf[32];
             swprintf_s(pbuf, L"%.0f%%", b.percent);
-            draw_text(pbuf, line_x + theApp.DPI(130) + bar_w + 8, y, th.text_secondary, 78);
-            y += theApp.DPI(22);
+            draw_text(pbuf, line_x + theApp.DPI(112) + bar_w + 6, y, th.text_secondary, 78);
+            y += theApp.DPI(20);
         }
         y += 4;
     }
@@ -358,26 +358,26 @@ void CStatOverviewTabDlg::DrawOverview(CDC* pDC, const CRect& rect)
     {
         wchar_t buf[64];
         swprintf_s(buf, L"差点就连续 %d 天：上一次连续听了 %d 天后中断了。", m_streak_miss + 1, m_streak_miss);
-        draw_text(buf, rect.left + pad + 10, y, th.accent, 84);
-        y += theApp.DPI(30);
+        draw_text(buf, rect.left + pad + 10, y, th.accent, 88);
+        y += theApp.DPI(24);
     }
 
     // ── 歌单/来源贡献 ──
     DrawSectionTitle(pDC, rect, y, L"歌单 / 来源贡献");
-    y += 30;
+    y += 24;
     {
         if (m_playlist.empty())
         {
-            draw_text(L"—", rect.left + pad + 10, y, th.text_disabled, 82);
-            y += theApp.DPI(22);
+            draw_text(L"—", rect.left + pad + 10, y, th.text_disabled, 78);
+            y += theApp.DPI(20);
         }
         for (const auto& c : m_playlist)
         {
             wchar_t buf[96];
             swprintf_s(buf, L"%s    %s    %.0f%%", c.source.c_str(),
                 CStatAnalysis::FormatDuration(c.duration_sec).c_str(), c.percent);
-            draw_text(buf, rect.left + pad + 10, y, th.text_primary, 82);
-            y += theApp.DPI(22);
+            draw_text(buf, rect.left + pad + 10, y, th.text_primary, 78);
+            y += theApp.DPI(20);
         }
     }
 }

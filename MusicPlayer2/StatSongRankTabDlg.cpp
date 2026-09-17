@@ -112,7 +112,7 @@ void CStatSongRankTabDlg::UpdateScrollbar()
     m_chart.GetClientRect(&rc);
     m_page_size = rc.Height();
 
-    int title_h = 36;  // margin_top(8) + title_h(28)
+    int title_h = 30;  // margin_top(8) + title_h(22)
     int content_h = (int)m_rank_data.size() * BAR_HEIGHT;
     m_scroll_max = title_h + content_h;
 
@@ -252,13 +252,13 @@ void CStatSongRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
     int margin_top = 8;
     int margin_left = 4;
     int margin_right = 4;
-    int title_h = 28;
+    int title_h = 22;
 
     int chart_w = rect.Width() - margin_left - margin_right;
 
     // 标题
     CFont fTitle;
-    fTitle.CreatePointFont(100, L"Microsoft YaHei", pDC);
+    fTitle.CreatePointFont(92, L"Microsoft YaHei", pDC);
     CFont* pOldFont = pDC->SelectObject(&fTitle);
     pDC->SetTextColor(th.text_primary);
     pDC->TextOutW(rect.left + margin_left, rect.top + margin_top - 2, L"歌曲播放次数");
@@ -271,7 +271,7 @@ void CStatSongRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
     pDC->SelectClipRgn(&clipRgn);
 
     CFont small_font;
-    small_font.CreatePointFont(80, L"Microsoft YaHei", pDC);
+    small_font.CreatePointFont(78, L"Microsoft YaHei", pDC);
     pDC->SelectObject(&small_font);
 
     int bar_gap = 6;
