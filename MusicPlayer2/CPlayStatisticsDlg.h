@@ -74,7 +74,6 @@ public:
     afx_msg void OnCbnSelchangeRangePreset();
     afx_msg void OnEnKillfocusDateFrom();
     afx_msg void OnEnKillfocusDateTo();
-    afx_msg void OnBnClickedStatHelpBtn();
     afx_msg void OnBnClickedExportAggButton();
     afx_msg void OnBnClickedReportButton();
     afx_msg void OnDestroy();

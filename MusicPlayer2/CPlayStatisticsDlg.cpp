@@ -97,7 +97,6 @@ bool CPlayStatisticsDlg::InitializeControls()
     SetDlgItemTextW(IDC_EXPORT_JSON_BTN, L"导出JSON");
     SetDlgItemTextW(IDC_STAT_EXPORT_AGG_BTN, L"导出聚合CSV");
     SetDlgItemTextW(IDC_STAT_REPORT_BTN, L"生成报告");
-    SetDlgItemTextW(IDC_STAT_HELP_BTN, L"?");
     SetDlgItemTextW(IDCANCEL, L"关闭");
 
     // 主对话框最小尺寸（PRD 520x340）
@@ -127,7 +126,6 @@ BEGIN_MESSAGE_MAP(CPlayStatisticsDlg, CBaseDialog)
     ON_BN_CLICKED(IDC_EXPORT_JSON_BTN, &CPlayStatisticsDlg::OnBnClickedExportJsonButton)
     ON_BN_CLICKED(IDC_STAT_EXPORT_AGG_BTN, &CPlayStatisticsDlg::OnBnClickedExportAggButton)
     ON_BN_CLICKED(IDC_STAT_REPORT_BTN, &CPlayStatisticsDlg::OnBnClickedReportButton)
-    ON_BN_CLICKED(IDC_STAT_HELP_BTN, &CPlayStatisticsDlg::OnBnClickedStatHelpBtn)
     ON_CBN_SELCHANGE(IDC_STAT_RANGE_PRESET, &CPlayStatisticsDlg::OnCbnSelchangeRangePreset)
     ON_EN_KILLFOCUS(IDC_STAT_DATE_FROM, &CPlayStatisticsDlg::OnEnKillfocusDateFrom)
     ON_EN_KILLFOCUS(IDC_STAT_DATE_TO, &CPlayStatisticsDlg::OnEnKillfocusDateTo)
@@ -461,12 +459,6 @@ void CPlayStatisticsDlg::OnCbnSelchangeRangePreset()
 
     ApplyFilter();
     BroadcastContext();
-}
-
-void CPlayStatisticsDlg::OnBnClickedStatHelpBtn()
-{
-    CStatHelpDlg dlg(this);
-    dlg.DoModal();
 }
 
 void CPlayStatisticsDlg::OnBnClickedExportAggButton()
