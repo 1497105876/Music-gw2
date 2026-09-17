@@ -2,6 +2,7 @@
 #include "MusicPlayer2.h"
 #include "StatArtistRankTabDlg.h"
 #include "StatAnalysis.h"
+#include "StatTheme.h"
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -46,6 +47,7 @@ BOOL CStatArtistRankTabDlg::OnInitDialog()
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW | WS_VSCROLL);
 
+    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 
@@ -239,8 +241,8 @@ void CStatArtistRankTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemSt
         m_chart.GetClientRect(&rect);
         if (rect.Width() < 40 || rect.Height() < 40) return;
 
-        // 填充背景色
-        pDC->FillSolidRect(rect, RGB(252, 252, 255));
+        // 填充背景色（跟随主题，无硬编码浅色）
+        pDC->FillSolidRect(rect, CStatTheme::Get().panel_back);
         pDC->SetBkMode(TRANSPARENT);
 
         DrawBarChart(pDC, rect);
@@ -255,6 +257,8 @@ void CStatArtistRankTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemSt
 // rect 是图表控件的完整绘制区域
 void CStatArtistRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
 {
+    const StatThemeColors& th = CStatTheme::Get();
+
     if (m_rank_data.empty()) return;
 
     int show_count = (int)m_rank_data.size();
@@ -279,7 +283,7 @@ void CStatArtistRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
     CFont fTitle;
     fTitle.CreatePointFont(100, L"Microsoft YaHei", pDC);
     CFont* pOldFont = pDC->SelectObject(&fTitle);
-    pDC->SetTextColor(RGB(40, 40, 40));
+    pDC->SetTextColor(th.text_primary);
     pDC->TextOutW(rect.left + margin_left, rect.top + margin_top - 2, L"歌手播放时长");
 
     // ===== 内容区域（滚动时需要裁剪，防止画到标题上面） =====
@@ -295,29 +299,6 @@ void CStatArtistRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
     CFont small_font;
     small_font.CreatePointFont(80, L"Microsoft YaHei", pDC);
     pDC->SelectObject(&small_font);
-
-    // 渐变色：蓝(70,130,200) → 紫(160,100,200) → 橙(230,140,70)
-    auto get_color = [](int idx, int total) -> COLORREF {
-        float t = (total > 1) ? (float)idx / (total - 1) : 0.f;
-        if (t < 0.5f)
-        {
-            // 前半段：蓝 → 紫
-            float t2 = t * 2.f;
-            int r = (int)(70 + (160 - 70) * t2);
-            int g = (int)(130 + (100 - 130) * t2);
-            int b = (int)(200 + (200 - 200) * t2);
-            return RGB(r, g, b);
-        }
-        else
-        {
-            // 后半段：紫 → 橙
-            float t2 = (t - 0.5f) * 2.f;
-            int r = (int)(160 + (230 - 160) * t2);
-            int g = (int)(100 + (140 - 100) * t2);
-            int b = (int)(200 + (70 - 200) * t2);
-            return RGB(r, g, b);
-        }
-    };
 
     int bar_gap = 6;  // 条与条之间的间距
 
@@ -342,8 +323,8 @@ void CStatArtistRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
 
         int bar_x = rect.left + margin_left;
 
-        // 画条形（用 NULL_PEN 避免边框线）
-        COLORREF bar_color = get_color(i, show_count);
+        // 画条形（用 NULL_PEN 避免边框线）；颜色取主题系列色
+        COLORREF bar_color = th.series[i % 8];
         CBrush brush(bar_color);
         CBrush* old_brush = pDC->SelectObject(&brush);
         pDC->SelectObject(GetStockObject(NULL_PEN));
@@ -353,7 +334,7 @@ void CStatArtistRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
         // 排名标号（条形左侧）
         wchar_t rank_buf[8];
         swprintf_s(rank_buf, L"%d.", i + 1);
-        pDC->SetTextColor(RGB(100, 100, 100));
+        pDC->SetTextColor(th.text_secondary);
         pDC->TextOutW(bar_x, bar_y, rank_buf, (int)wcslen(rank_buf));
 
         // 测量排名文字宽度，后面歌手名留出固定间距
@@ -361,13 +342,13 @@ void CStatArtistRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
         int name_x = bar_x + rank_sz.cx + 6;  // 排名右边留6px间距
 
         // 歌手名（超8字截断）
-        pDC->SetTextColor(RGB(60, 60, 60));
+        pDC->SetTextColor(th.text_primary);
         std::wstring name = item.name;
         if (name.size() > 8) name = name.substr(0, 8) + L"..";
         pDC->TextOutW(name_x, bar_y, name.c_str(), (int)name.size());
 
         // 时长数值（条形右侧）
-        pDC->SetTextColor(RGB(80, 80, 80));
+        pDC->SetTextColor(th.text_secondary);
         std::wstring val = item.display_value;
         pDC->TextOutW(bar_x + bar_w + 6, bar_y, val.c_str(), (int)val.size());
     }

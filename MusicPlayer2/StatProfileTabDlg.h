@@ -1,6 +1,9 @@
 ﻿#pragma once
 #include "StatTabDlg.h"
 #include "StatAnalysis.h"
+#include "StatAiInsight.h"
+#include "StatCommon.h"
+#include <vector>
 
 class CStatProfileTabDlg : public CStatTabDlg
 {
@@ -17,13 +20,19 @@ protected:
     CStatic m_chart;
     StatSummary m_summary;
 
+    // 音乐 DNA 报告（REQ-118）与按年归档回顾（REQ-120）
+    DnaReport m_dna;
+    std::vector<YearReview> m_yearly;
+
     // 自绘整页内容
     void DrawProfile(CDC* pDC, const CRect& rect);
 
     // 分区块绘制辅助
     void DrawSectionTitle(CDC* pDC, const CRect& rect, int y, const std::wstring& title);
     void DrawBadges(CDC* pDC, const CRect& rect, int y, int* out_height);
+    void DrawDna(CDC* pDC, const CRect& rect, int y, int* out_height);
     void DrawInsights(CDC* pDC, const CRect& rect, int y, int* out_height);
+    void DrawYearly(CDC* pDC, const CRect& rect, int y, int* out_height);
 
     int CalcContentHeight(int width);
     void UpdateScrollbar();

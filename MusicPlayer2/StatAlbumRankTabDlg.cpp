@@ -1,45 +1,44 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
-#include "StatSongRankTabDlg.h"
+#include "StatAlbumRankTabDlg.h"
 #include "StatAnalysis.h"
 #include "StatTheme.h"
-#include <map>
 #include <vector>
-#include <algorithm>
 
-IMPLEMENT_DYNAMIC(CStatSongRankTabDlg, CStatTabDlg)
+IMPLEMENT_DYNAMIC(CStatAlbumRankTabDlg, CStatTabDlg)
 
-CStatSongRankTabDlg::CStatSongRankTabDlg(CWnd* pParent)
-    : CStatTabDlg(IDD_STAT_SONG_RANK_DLG, pParent)
+CStatAlbumRankTabDlg::CStatAlbumRankTabDlg(CWnd* pParent)
+    : CStatTabDlg(IDD_STAT_ALBUM_RANK_DLG, pParent)
 {
 }
 
-CStatSongRankTabDlg::~CStatSongRankTabDlg()
+CStatAlbumRankTabDlg::~CStatAlbumRankTabDlg()
 {
 }
 
-void CStatSongRankTabDlg::DoDataExchange(CDataExchange* pDX)
+void CStatAlbumRankTabDlg::DoDataExchange(CDataExchange* pDX)
 {
     CStatTabDlg::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_STAT_SONG_RANK_LIST, m_list);
-    DDX_Control(pDX, IDC_STAT_SONG_RANK_CHART, m_chart);
+    DDX_Control(pDX, IDC_STAT_ALBUM_RANK_LIST, m_list);
+    DDX_Control(pDX, IDC_STAT_ALBUM_RANK_CHART, m_chart);
 }
 
-BEGIN_MESSAGE_MAP(CStatSongRankTabDlg, CStatTabDlg)
+BEGIN_MESSAGE_MAP(CStatAlbumRankTabDlg, CStatTabDlg)
     ON_WM_DRAWITEM()
     ON_WM_VSCROLL()
     ON_WM_MOUSEWHEEL()
     ON_WM_SIZE()
 END_MESSAGE_MAP()
 
-BOOL CStatSongRankTabDlg::OnInitDialog()
+BOOL CStatAlbumRankTabDlg::OnInitDialog()
 {
     CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
+    // 列宽在填充数据时按 DPI 设定（B3 约定第 6 条），此处只建列
     m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, theApp.DPI(40));
-    m_list.InsertColumn(COL_NAME, L"歌曲", LVCFMT_LEFT, theApp.DPI(500));
-    m_list.InsertColumn(COL_VALUE, L"播放次数", LVCFMT_RIGHT, theApp.DPI(78));
+    m_list.InsertColumn(COL_ALBUM, L"专辑", LVCFMT_LEFT, theApp.DPI(200));
+    m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, theApp.DPI(90));
 
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW | WS_VSCROLL);
@@ -48,57 +47,35 @@ BOOL CStatSongRankTabDlg::OnInitDialog()
     return TRUE;
 }
 
-void CStatSongRankTabDlg::BuildRankData()
+void CStatAlbumRankTabDlg::BuildRankData()
 {
     m_rank_data.clear();
     if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr) return;
-    const std::vector<PlayRecord>& records = *m_stat_ctx->records;
-
-    std::map<std::wstring, int> song_count;
-    for (const auto& r : records)
-    {
-        if (!CStatAnalysis::IsCounted(r)) continue;     // 15 秒口径唯一入口
-        song_count[r.file_path]++;
-    }
-
-    std::vector<std::pair<std::wstring, int>> sorted(song_count.begin(), song_count.end());
-    std::sort(sorted.begin(), sorted.end(),
-        [](const auto& a, const auto& b) { return a.second > b.second; });
-
-    for (const auto& [path, count] : sorted)
-    {
-        SongRankItem item;
-        item.file_path = path;
-        item.play_count = count;
-
-        std::wstring name = path;
-        size_t pos = name.find_last_of(L"\\/");
-        if (pos != std::wstring::npos) name = name.substr(pos + 1);
-        size_t dot = name.find_last_of(L'.');
-        if (dot != std::wstring::npos) name = name.substr(0, dot);
-        item.name = name;
-
-        m_rank_data.push_back(std::move(item));
-    }
+    // 统一走聚合层（15 秒口径收口在 CStatAnalysis）
+    m_rank_data = CStatAnalysis::ComputeAlbumRank(*m_stat_ctx->records);
 }
 
-void CStatSongRankTabDlg::Refresh()
+void CStatAlbumRankTabDlg::Refresh()
 {
     m_dirty = false;
     BuildRankData();
 
-    m_list.DeleteAllItems();
+    // 列宽按 DPI 设定（不依赖 OnInitDialog 的固定宽度）
+    m_list.SetColumnWidth(COL_RANK, theApp.DPI(40));
+    m_list.SetColumnWidth(COL_ALBUM, theApp.DPI(200));
+    m_list.SetColumnWidth(COL_VALUE, theApp.DPI(90));
 
+    m_list.DeleteAllItems();
     for (int i = 0; i < (int)m_rank_data.size(); i++)
     {
         const auto& item = m_rank_data[i];
         wchar_t rank[8];
         swprintf_s(rank, L"%d", i + 1);
-        wchar_t val[16];
-        swprintf_s(val, L"%d次", item.play_count);
+        wchar_t val[64];
+        swprintf_s(val, L"%s / %d次", CStatAnalysis::FormatDuration(item.duration_sec).c_str(), item.count);
 
         m_list.InsertItem(i, rank);
-        m_list.SetItemText(i, COL_NAME, item.name.c_str());
+        m_list.SetItemText(i, COL_ALBUM, item.album.c_str());
         m_list.SetItemText(i, COL_VALUE, val);
     }
 
@@ -107,7 +84,7 @@ void CStatSongRankTabDlg::Refresh()
     m_chart.Invalidate(FALSE);
 }
 
-void CStatSongRankTabDlg::UpdateScrollbar()
+void CStatAlbumRankTabDlg::UpdateScrollbar()
 {
     CRect rc;
     m_chart.GetClientRect(&rc);
@@ -139,35 +116,21 @@ void CStatSongRankTabDlg::UpdateScrollbar()
     }
 }
 
-void CStatSongRankTabDlg::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+void CStatAlbumRankTabDlg::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
     if (m_scroll_max > m_page_size)
     {
         int step = BAR_HEIGHT;
         switch (nSBCode)
         {
-        case SB_LINEUP:
-            m_scroll_pos -= step;
-            break;
-        case SB_LINEDOWN:
-            m_scroll_pos += step;
-            break;
-        case SB_PAGEUP:
-            m_scroll_pos -= m_page_size;
-            break;
-        case SB_PAGEDOWN:
-            m_scroll_pos += m_page_size;
-            break;
+        case SB_LINEUP:        m_scroll_pos -= step; break;
+        case SB_LINEDOWN:      m_scroll_pos += step; break;
+        case SB_PAGEUP:        m_scroll_pos -= m_page_size; break;
+        case SB_PAGEDOWN:      m_scroll_pos += m_page_size; break;
         case SB_THUMBTRACK:
-        case SB_THUMBPOSITION:
-            m_scroll_pos = nPos;
-            break;
-        case SB_TOP:
-            m_scroll_pos = 0;
-            break;
-        case SB_BOTTOM:
-            m_scroll_pos = m_scroll_max - m_page_size;
-            break;
+        case SB_THUMBPOSITION: m_scroll_pos = nPos; break;
+        case SB_TOP:           m_scroll_pos = 0; break;
+        case SB_BOTTOM:        m_scroll_pos = m_scroll_max - m_page_size; break;
         }
 
         int max_pos = m_scroll_max - m_page_size;
@@ -178,11 +141,10 @@ void CStatSongRankTabDlg::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
         m_chart.SetScrollPos(SB_VERT, m_scroll_pos, TRUE);
         m_chart.Invalidate(FALSE);
     }
-
     CTabDlg::OnVScroll(nSBCode, nPos, pScrollBar);
 }
 
-BOOL CStatSongRankTabDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+BOOL CStatAlbumRankTabDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
     CRect rc;
     m_chart.GetWindowRect(&rc);
@@ -199,12 +161,10 @@ BOOL CStatSongRankTabDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
         m_chart.Invalidate(FALSE);
         return TRUE;
     }
-
     return CTabDlg::OnMouseWheel(nFlags, zDelta, pt);
 }
 
-// 窗口缩放时重新计算滚动条并重绘图表
-void CStatSongRankTabDlg::OnSize(UINT nType, int cx, int cy)
+void CStatAlbumRankTabDlg::OnSize(UINT nType, int cx, int cy)
 {
     CTabDlg::OnSize(nType, cx, cy);
     if (m_chart.GetSafeHwnd())
@@ -214,12 +174,11 @@ void CStatSongRankTabDlg::OnSize(UINT nType, int cx, int cy)
     }
 }
 
-void CStatSongRankTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
+void CStatAlbumRankTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
-    if (nIDCtl == IDC_STAT_SONG_RANK_CHART)
+    if (nIDCtl == IDC_STAT_ALBUM_RANK_CHART)
     {
         CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
-        // 用 GetClientRect 拿控件真实区域，lpDrawItemStruct->rcItem 在窗口缩放后可能不准
         CRect rect;
         m_chart.GetClientRect(&rect);
         if (rect.Width() < 40 || rect.Height() < 40) return;
@@ -235,34 +194,41 @@ void CStatSongRankTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStru
     }
 }
 
-void CStatSongRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
+void CStatAlbumRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
 {
     const StatThemeColors& th = CStatTheme::Get();
 
-    if (m_rank_data.empty()) return;
+    if (m_rank_data.empty())
+    {
+        CFont font;
+        font.CreatePointFont(90, L"Microsoft YaHei", pDC);
+        CFont* old = pDC->SelectObject(&font);
+        pDC->SetTextColor(th.text_disabled);
+        pDC->TextOutW(rect.left + 20, rect.top + 20, L"暂无专辑记录");
+        pDC->SelectObject(old);
+        return;
+    }
 
     int show_count = (int)m_rank_data.size();
 
     int max_value = 1;
     for (int i = 0; i < show_count; i++)
     {
-        if (m_rank_data[i].play_count > max_value)
-            max_value = m_rank_data[i].play_count;
+        if (m_rank_data[i].duration_sec > max_value)
+            max_value = m_rank_data[i].duration_sec;
     }
 
     int margin_top = 8;
-    int margin_left = 4;
-    int margin_right = 4;
+    int margin_left = 20;
+    int margin_right = 50;
     int title_h = 28;
-
     int chart_w = rect.Width() - margin_left - margin_right;
 
-    // 标题
     CFont fTitle;
     fTitle.CreatePointFont(100, L"Microsoft YaHei", pDC);
     CFont* pOldFont = pDC->SelectObject(&fTitle);
     pDC->SetTextColor(th.text_primary);
-    pDC->TextOutW(rect.left + margin_left, rect.top + margin_top - 2, L"歌曲播放次数");
+    pDC->TextOutW(rect.left + margin_left, rect.top + margin_top - 2, L"专辑播放时长");
 
     int content_top = rect.top + margin_top + title_h;
     int content_bottom = rect.bottom;
@@ -276,7 +242,6 @@ void CStatSongRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
     pDC->SelectObject(&small_font);
 
     int bar_gap = 6;
-
     for (int i = 0; i < show_count; i++)
     {
         int y = content_top + i * BAR_HEIGHT - m_scroll_pos;
@@ -289,7 +254,7 @@ void CStatSongRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
 
         const auto& item = m_rank_data[i];
 
-        float ratio = (float)item.play_count / max_value;
+        float ratio = (float)item.duration_sec / max_value;
         int bar_w = (int)(ratio * (chart_w - 50));
         if (bar_w < 2) bar_w = 2;
 
@@ -307,19 +272,17 @@ void CStatSongRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
         pDC->SetTextColor(th.text_secondary);
         pDC->TextOutW(bar_x, bar_y, rank_buf, (int)wcslen(rank_buf));
 
-        // 测量排名文字宽度，后面歌曲名留出固定间距
         CSize rank_sz = pDC->GetTextExtent(rank_buf, (int)wcslen(rank_buf));
         int name_x = bar_x + rank_sz.cx + 6;
 
         pDC->SetTextColor(th.text_primary);
-        std::wstring name = item.name;
+        std::wstring name = item.album;
         if (name.size() > 8) name = name.substr(0, 8) + L"..";
         pDC->TextOutW(name_x, bar_y, name.c_str(), (int)name.size());
 
         pDC->SetTextColor(th.text_secondary);
-        wchar_t val_buf[16];
-        swprintf_s(val_buf, L"%d次", item.play_count);
-        pDC->TextOutW(bar_x + bar_w + 6, bar_y, val_buf, (int)wcslen(val_buf));
+        std::wstring val = CStatAnalysis::FormatDuration(item.duration_sec);
+        pDC->TextOutW(bar_x + bar_w + 6, bar_y, val.c_str(), (int)val.size());
     }
 
     pDC->SelectClipRgn(nullptr);

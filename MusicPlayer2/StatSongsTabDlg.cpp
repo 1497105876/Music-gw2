@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatSongsTabDlg.h"
+#include "StatTheme.h"
 
 IMPLEMENT_DYNAMIC(CStatSongsTabDlg, CStatTabDlg)
 
@@ -27,16 +28,18 @@ BOOL CStatSongsTabDlg::OnInitDialog()
     CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-    m_list.InsertColumn(DCOL_INDEX, L"序号", LVCFMT_LEFT, theApp.DPI(50));
-    m_list.InsertColumn(DCOL_TIME, L"播放时间", LVCFMT_LEFT, theApp.DPI(140));
-    m_list.InsertColumn(DCOL_TITLE, L"标题", LVCFMT_LEFT, theApp.DPI(200));
-    m_list.InsertColumn(DCOL_ARTIST, L"艺术家", LVCFMT_LEFT, theApp.DPI(120));
-    m_list.InsertColumn(DCOL_ALBUM, L"专辑", LVCFMT_LEFT, theApp.DPI(120));
-    m_list.InsertColumn(DCOL_PLAY_DUR, L"播放时长", LVCFMT_RIGHT, theApp.DPI(70));
-    m_list.InsertColumn(DCOL_SONG_LEN, L"歌曲长度", LVCFMT_RIGHT, theApp.DPI(70));
-    m_list.InsertColumn(DCOL_RESULT, L"结果", LVCFMT_CENTER, theApp.DPI(60));
-    m_list.InsertColumn(DCOL_SOURCE, L"来源", LVCFMT_LEFT, theApp.DPI(80));
+    // 列宽不在此处设死（B3 约定第 6 条），改在 Refresh() 填充数据时按 DPI 设定
+    m_list.InsertColumn(DCOL_INDEX, L"序号", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(DCOL_TIME, L"播放时间", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(DCOL_TITLE, L"标题", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(DCOL_ARTIST, L"艺术家", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(DCOL_ALBUM, L"专辑", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(DCOL_PLAY_DUR, L"播放时长", LVCFMT_RIGHT, 0);
+    m_list.InsertColumn(DCOL_SONG_LEN, L"歌曲长度", LVCFMT_RIGHT, 0);
+    m_list.InsertColumn(DCOL_RESULT, L"结果", LVCFMT_CENTER, 0);
+    m_list.InsertColumn(DCOL_SOURCE, L"来源", LVCFMT_LEFT, 0);
 
+    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 
@@ -45,6 +48,17 @@ void CStatSongsTabDlg::Refresh()
 {
     m_dirty = false;
     m_list.DeleteAllItems();
+
+    // 列宽在此按 DPI 设定（不依赖 OnInitDialog 的固定宽度）
+    m_list.SetColumnWidth(DCOL_INDEX, theApp.DPI(50));
+    m_list.SetColumnWidth(DCOL_TIME, theApp.DPI(140));
+    m_list.SetColumnWidth(DCOL_TITLE, theApp.DPI(200));
+    m_list.SetColumnWidth(DCOL_ARTIST, theApp.DPI(120));
+    m_list.SetColumnWidth(DCOL_ALBUM, theApp.DPI(120));
+    m_list.SetColumnWidth(DCOL_PLAY_DUR, theApp.DPI(70));
+    m_list.SetColumnWidth(DCOL_SONG_LEN, theApp.DPI(70));
+    m_list.SetColumnWidth(DCOL_RESULT, theApp.DPI(60));
+    m_list.SetColumnWidth(DCOL_SOURCE, theApp.DPI(80));
 
     if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr)
         return;

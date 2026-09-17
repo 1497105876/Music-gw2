@@ -7,6 +7,7 @@
 #include <set>
 #include <algorithm>
 #include <ctime>
+#include <cmath>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 口径判定
@@ -35,9 +36,15 @@ int CStatAnalysis::YmdOf(const std::wstring& played_at)
 
 int CStatAnalysis::HourOf(const std::wstring& played_at)
 {
-    if (played_at.size() < 13) return -1;
-    if (played_at[10] != L'T') return -1;
-    if (played_at[13] != L':') return -1;
+    // 完整格式固定为 "YYYY-MM-DDTHH:MM:SS"（19 字符）。
+    // 收紧校验：长度不足 19 或任一分隔符位置不合法一律返回 -1，
+    // 避免把 "2026-01-05T1" 这类被截断的字符串误解析出小时数。
+    if (played_at.size() < 19) return -1;
+    if (played_at[4] != L'-' || played_at[7] != L'-' || played_at[10] != L'T' ||
+        played_at[13] != L':' || played_at[16] != L':') return -1;
+    // 小时两位必须是数字
+    if (played_at[11] < L'0' || played_at[11] > L'9' ||
+        played_at[12] < L'0' || played_at[12] > L'9') return -1;
     int hour = _wtoi(played_at.substr(11, 2).c_str());
     if (hour < 0 || hour > 23) return -1;
     return hour;
@@ -69,7 +76,8 @@ std::wstring CStatAnalysis::FormatBucketLabel(int key, Grain g)
         swprintf_s(buf, L"%02d-%02d", (key / 100) % 100, key % 100);
         return buf;
     case Grain::Week:
-        swprintf_s(buf, L"W%02d", key % 100);
+        // 周键 = 周一所在年份 * 100 + 年内第几周；标签带年份，避免跨年时出现两个 "W01"
+        swprintf_s(buf, L"%04d-W%02d", key / 100, key % 100);
         return buf;
     case Grain::Month:
         swprintf_s(buf, L"%04d-%02d", key / 100, key % 100);
@@ -105,6 +113,43 @@ static int WeekKeyOfYmd(int ymd)
     if (week < 1) week = 1;
     if (week > 53) week = 53;
     return wy * 100 + week;
+}
+
+// 日期键（YYYYMMDD）加/减天数
+static int YmdAddDaysLocal(int ymd, int days)
+{
+    if (ymd <= 0) return ymd;
+    struct tm tv = {};
+    tv.tm_year = ymd / 10000 - 1900;
+    tv.tm_mon = (ymd / 100) % 100 - 1;
+    tv.tm_mday = ymd % 100;
+    tv.tm_hour = 12;
+    time_t t = mktime(&tv);
+    if (t == static_cast<time_t>(-1)) return ymd;
+    t += static_cast<time_t>(days) * 86400;
+    struct tm out = {};
+    localtime_s(&out, &t);
+    return (out.tm_year + 1900) * 10000 + (out.tm_mon + 1) * 100 + out.tm_mday;
+}
+
+// 某月第一天（YYYYMMDD）
+static int FirstDayOfMonth(int ymd)
+{
+    if (ymd <= 0) return ymd;
+    return (ymd / 100) * 100 + 1;
+}
+
+// 粒度分桶键
+static int BucketKeyOfYmd(int ymd, Grain g)
+{
+    switch (g)
+    {
+    case Grain::Day:   return ymd;
+    case Grain::Week:  return WeekKeyOfYmd(ymd);
+    case Grain::Month: return ymd / 100;
+    case Grain::Year:  return ymd / 10000;
+    }
+    return ymd;
 }
 
 // 把秒数格式化成 "X小时X分X秒" / "X分X秒" / "X秒"
@@ -230,7 +275,7 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
         swprintf_s(today_key, L"%04d-%02d-%02d", today_year, today_month, today_day);
         for (const auto& r : records)
         {
-            if (r.played_at.size() >= 13 && r.played_at.compare(0, 10, today_key) == 0)
+            if (r.played_at.size() >= 10 && r.played_at.compare(0, 10, today_key) == 0)
             {
                 int hour = HourOf(r.played_at);
                 if (hour >= 0) s.today_active_hour = hour;
@@ -540,4 +585,532 @@ int CStatAnalysis::ComputeHourHistogram(const std::vector<PlayRecord>& records, 
         total++;
     }
     return total;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 批次 2 新增聚合接口
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 热力图单元格（一天一格，按日期升序）
+std::vector<HeatCell> CStatAnalysis::ComputeHeatmapGrid(const std::vector<PlayRecord>& records)
+{
+    std::map<int, HeatCell> grid;
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
+        HeatCell& c = grid[ymd];
+        c.ymd = ymd;
+        c.count++;
+        c.duration_sec += r.play_duration_sec;
+    }
+    std::vector<HeatCell> result;
+    result.reserve(grid.size());
+    for (auto& [ymd, c] : grid)
+        result.push_back(c);
+    return result;
+}
+
+// 流派占比（按时长），max_slices 之外的合并为“其他”
+std::vector<GenreShare> CStatAnalysis::ComputeGenreShare(const std::vector<PlayRecord>& records, int max_slices)
+{
+    std::map<std::wstring, int> dur;
+    std::map<std::wstring, int> cnt;
+    long long total = 0;
+
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        if (r.genre.empty()) continue;          // 空流派不参与占比
+        dur[r.genre] += r.play_duration_sec;
+        cnt[r.genre] += 1;
+        total += r.play_duration_sec;
+    }
+
+    std::vector<GenreShare> v;
+    v.reserve(dur.size());
+    for (const auto& [g, d] : dur)
+    {
+        GenreShare s;
+        s.genre = g;
+        s.count = cnt[g];
+        s.duration_sec = d;
+        s.percent = (total > 0) ? (double)d * 100.0 / (double)total : 0.0;
+        v.push_back(std::move(s));
+    }
+    std::sort(v.begin(), v.end(),
+        [](const GenreShare& a, const GenreShare& b) { return a.duration_sec > b.duration_sec; });
+
+    // >max_slices 类时，保留前 max_slices-1 类，其余合并为“其他”
+    if (max_slices > 0 && (int)v.size() > max_slices)
+    {
+        std::vector<GenreShare> out;
+        for (int i = 0; i < max_slices - 1; i++)
+            out.push_back(v[i]);
+
+        GenreShare other;
+        other.genre = L"其他";
+        for (int i = max_slices - 1; i < (int)v.size(); i++)
+        {
+            other.count += v[i].count;
+            other.duration_sec += v[i].duration_sec;
+            other.percent += v[i].percent;
+        }
+        out.push_back(std::move(other));
+        return out;
+    }
+    return v;
+}
+
+// 按季度计算“主导流派”——每个季度返回一个点（dominant genre + 其占比），供漂移叠图使用。
+// out_labels[i] 为季度标签（如 2025Q4）；返回的 vector 与 out_labels 一一对应。
+std::vector<GenreShare> CStatAnalysis::ComputeGenreShareByQuarter(const std::vector<PlayRecord>& records,
+                                                                  int quarters,
+                                                                  std::vector<std::wstring>& out_labels)
+{
+    out_labels.clear();
+    std::vector<GenreShare> result;
+    if (quarters <= 0) return result;
+
+    std::map<int, std::map<std::wstring, int>> q_genre_dur;   // 季度键 -> 流派 -> 时长
+    std::map<int, long long> q_total;                          // 季度键 -> 总时长（含空流派）
+
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
+        int year = ymd / 10000;
+        int month = (ymd / 100) % 100;
+        int q = (month - 1) / 3 + 1;                            // 1..4
+        int qk = year * 10 + q;
+        q_total[qk] += r.play_duration_sec;
+        if (!r.genre.empty())
+            q_genre_dur[qk][r.genre] += r.play_duration_sec;
+    }
+
+    // 取最后 quarters 个季度（map 已按季度键升序）
+    std::vector<int> keys;
+    for (const auto& [k, v] : q_total)
+        keys.push_back(k);
+    int start = (int)keys.size() - quarters;
+    if (start < 0) start = 0;
+
+    for (int i = start; i < (int)keys.size(); i++)
+    {
+        int qk = keys[i];
+        int year = qk / 10;
+        int q = qk % 10;
+        wchar_t buf[16];
+        swprintf_s(buf, L"%04dQ%d", year, q);
+        out_labels.push_back(buf);
+
+        GenreShare s;
+        long long total = q_total[qk];
+        auto git = q_genre_dur.find(qk);
+        if (git != q_genre_dur.end() && !git->second.empty())
+        {
+            // 找该季度时长最高的流派
+            int best_dur = -1;
+            for (const auto& [g, d] : git->second)
+            {
+                if (d > best_dur) { best_dur = d; s.genre = g; }
+            }
+            s.duration_sec = best_dur;
+            s.count = (int)git->second.size();                  // 该季度出现过的不同流派数
+            s.percent = (total > 0) ? (double)best_dur * 100.0 / (double)total : 0.0;
+        }
+        else
+        {
+            s.genre = L"";                                      // 该季度无流派数据：留空
+            s.duration_sec = 0;
+            s.count = 0;
+            s.percent = 0.0;
+        }
+        result.push_back(std::move(s));
+    }
+    return result;
+}
+
+// 跳过位置分桶（仅 SKIPPED；完成度 4 桶：0~25 / 25~50 / 50~75 / 75~100%）
+std::vector<SkipBucket> CStatAnalysis::ComputeSkipDistribution(const std::vector<PlayRecord>& records)
+{
+    std::vector<SkipBucket> buckets(4);
+    for (int i = 0; i < 4; i++)
+    {
+        buckets[i].index = i;
+        buckets[i].count = 0;
+        buckets[i].percent = 0.0;
+    }
+    buckets[0].label = L"0~25%";
+    buckets[1].label = L"25~50%";
+    buckets[2].label = L"50~75%";
+    buckets[3].label = L"75~100%";
+
+    int total = 0;
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;                                    // 与其它指标一致的口径
+        if (r.finish_reason != PlayRecord::FinishReason::SKIPPED) continue;
+        if (r.song_length_sec <= 0) continue;
+        double ratio = (double)r.play_duration_sec / (double)r.song_length_sec;
+        if (ratio < 0.0) ratio = 0.0;
+        if (ratio > 1.0) ratio = 1.0;
+        int idx = (ratio < 0.25) ? 0 : (ratio < 0.50) ? 1 : (ratio < 0.75) ? 2 : 3;
+        buckets[idx].count++;
+        total++;
+    }
+    if (total > 0)
+    {
+        for (auto& b : buckets)
+            b.percent = (double)b.count * 100.0 / (double)total;
+    }
+    return buckets;
+}
+
+// 同比 / 环比
+PeriodComparison CStatAnalysis::ComputePeriodComparison(const std::vector<PlayRecord>& records, const StatFilter& filter)
+{
+    PeriodComparison pc;
+    Grain g = filter.grain;
+
+    // 参考日期：优先 filter.to_ymd，否则取记录中的最大日期
+    int rep = filter.to_ymd;
+    if (rep == 0)
+    {
+        for (const auto& r : records)
+        {
+            int y = YmdOf(r.played_at);
+            if (y > rep) rep = y;
+        }
+    }
+    if (rep == 0) return pc;                    // 无数据
+
+    int cur_key = BucketKeyOfYmd(rep, g);
+
+    // 上一周期参考日
+    int prev_rep = rep;
+    switch (g)
+    {
+    case Grain::Day:   prev_rep = YmdAddDaysLocal(rep, -1); break;
+    case Grain::Week:  prev_rep = YmdAddDaysLocal(rep, -7); break;
+    case Grain::Month: prev_rep = YmdAddDaysLocal(FirstDayOfMonth(rep), -1); break;
+    case Grain::Year:  prev_rep = YmdAddDaysLocal(rep, -365); break;
+    }
+    // 去年同期参考日（年 -1，月日不变）
+    int ly_rep = (rep / 10000 - 1) * 10000 + ((rep / 100) % 100) * 100 + (rep % 100);
+
+    int prev_key = BucketKeyOfYmd(prev_rep, g);
+    int ly_key = BucketKeyOfYmd(ly_rep, g);
+
+    pc.current.key = cur_key;
+    pc.current.label = FormatBucketLabel(cur_key, g);
+    pc.previous.key = prev_key;
+    pc.previous.label = FormatBucketLabel(prev_key, g);
+    pc.last_year.key = ly_key;
+    pc.last_year.label = FormatBucketLabel(ly_key, g);
+
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
+        int k = BucketKeyOfYmd(ymd, g);
+
+        PeriodBucket* b = nullptr;
+        if (k == cur_key) b = &pc.current;
+        else if (k == prev_key) b = &pc.previous;
+        else if (k == ly_key) b = &pc.last_year;
+        if (b == nullptr) continue;
+
+        b->count++;
+        b->duration_sec += r.play_duration_sec;
+        if (r.finish_reason == PlayRecord::FinishReason::COMPLETED) b->completed_count++;
+        else if (r.finish_reason == PlayRecord::FinishReason::SKIPPED) b->skipped_count++;
+    }
+
+    pc.has_previous = pc.previous.count > 0;
+    pc.count_delta = pc.current.count - pc.previous.count;
+    if (pc.previous.count > 0)
+        pc.count_delta_percent = (double)pc.count_delta / (double)pc.previous.count * 100.0;
+
+    // 同比与环比是否指向同一周期：
+    //   年粒度下“上一周期”即上一年，与“去年同期”语义重合（ly_key == prev_key）。
+    //   此时不做“碰巧算空”处理，而是显式让 last_year 镜像 previous，使数据层如实
+    //   表达“去年同期 == 上一周期”，并置 same_as_previous 供显示层去重（避免重复/空行）。
+    pc.same_as_previous = (ly_key == prev_key);
+    if (pc.same_as_previous)
+    {
+        pc.last_year = pc.previous;
+        pc.has_last_year = pc.has_previous;
+    }
+    else
+    {
+        pc.has_last_year = pc.last_year.count > 0;
+    }
+
+    return pc;
+}
+
+// 专辑排行（按累计时长降序；空专辑名归“未知专辑”）
+std::vector<AlbumRankItem> CStatAnalysis::ComputeAlbumRank(const std::vector<PlayRecord>& records, int top_n)
+{
+    std::map<std::wstring, AlbumRankItem> agg;
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        std::wstring album = r.album.empty() ? std::wstring(L"未知专辑") : r.album;
+        AlbumRankItem& it = agg[album];
+        it.album = album;
+        it.count++;
+        it.duration_sec += r.play_duration_sec;
+    }
+
+    std::vector<AlbumRankItem> v;
+    v.reserve(agg.size());
+    for (auto& [k, it] : agg)
+        v.push_back(it);
+    std::sort(v.begin(), v.end(),
+        [](const AlbumRankItem& a, const AlbumRankItem& b) { return a.duration_sec > b.duration_sec; });
+
+    if (top_n > 0 && (int)v.size() > top_n)
+        v.resize(top_n);
+    return v;
+}
+
+// 新发现趋势：每月“第一次听”的歌曲数（按月份升序）
+std::vector<PeriodBucket> CStatAnalysis::ComputeNewSongTrend(const std::vector<PlayRecord>& records)
+{
+    std::map<std::wstring, int> first_ym;       // 路径 -> 最早的 YYYYMM
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
+        int ym = ymd / 100;
+        auto it = first_ym.find(r.file_path);
+        if (it == first_ym.end() || ym < it->second)
+            first_ym[r.file_path] = ym;
+    }
+
+    std::map<int, int> month_new;               // YYYYMM -> 新歌数
+    for (const auto& [path, ym] : first_ym)
+        month_new[ym]++;
+
+    std::vector<PeriodBucket> out;
+    out.reserve(month_new.size());
+    for (const auto& [ym, c] : month_new)
+    {
+        PeriodBucket b;
+        b.key = ym;
+        b.count = c;
+        b.label = FormatBucketLabel(ym, Grain::Month);
+        out.push_back(std::move(b));
+    }
+    return out;
+}
+
+// 余弦相似度（用于两段时间的口味对比），返回 0~1
+double CStatAnalysis::ComputeCosineSimilarity(const std::vector<GenreShare>& a, const std::vector<GenreShare>& b)
+{
+    std::map<std::wstring, double> va, vb;
+    for (const auto& s : a) va[s.genre] += s.percent;
+    for (const auto& s : b) vb[s.genre] += s.percent;
+
+    double dot = 0.0, na = 0.0, nb = 0.0;
+    for (const auto& [k, v] : va)
+    {
+        na += v * v;
+        auto it = vb.find(k);
+        if (it != vb.end()) dot += v * it->second;
+    }
+    for (const auto& [k, v] : vb)
+        nb += v * v;
+
+    if (na <= 0.0 || nb <= 0.0) return 0.0;
+    return dot / (std::sqrt(na) * std::sqrt(nb));
+}
+
+// 遗珠挖掘：反复听（count>=min_count）却从未完整听完（COMPLETED==0）
+std::vector<RetiredGem> CStatAnalysis::ComputeRetiredGems(const std::vector<PlayRecord>& records, int min_count)
+{
+    struct Agg { int count = 0; int completed = 0; std::wstring title; std::wstring artist; };
+    std::map<std::wstring, Agg> agg;
+
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        Agg& a = agg[r.file_path];
+        a.count++;
+        if (r.finish_reason == PlayRecord::FinishReason::COMPLETED) a.completed++;
+        if (!r.title.empty()) a.title = r.title;
+        if (!r.artist.empty()) a.artist = r.artist;
+    }
+
+    std::vector<RetiredGem> v;
+    for (const auto& [path, a] : agg)
+    {
+        if (a.count >= min_count && a.completed == 0)
+        {
+            RetiredGem g;
+            g.file_path = path;
+            g.title = a.title.empty() ? path : a.title;
+            g.artist = a.artist;
+            g.count = a.count;
+            v.push_back(std::move(g));
+        }
+    }
+    std::sort(v.begin(), v.end(),
+        [](const RetiredGem& x, const RetiredGem& y) { return x.count > y.count; });
+    return v;
+}
+
+// 歌单/来源贡献（按 playlist_source 聚合时长占比）
+std::vector<PlaylistContribution> CStatAnalysis::ComputePlaylistContribution(const std::vector<PlayRecord>& records)
+{
+    std::map<std::wstring, int> dur;
+    std::map<std::wstring, int> cnt;
+    long long total = 0;
+
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        std::wstring src = r.playlist_source.empty() ? std::wstring(L"未知来源") : r.playlist_source;
+        dur[src] += r.play_duration_sec;
+        cnt[src] += 1;
+        total += r.play_duration_sec;
+    }
+
+    std::vector<PlaylistContribution> v;
+    v.reserve(dur.size());
+    for (const auto& [src, d] : dur)
+    {
+        PlaylistContribution c;
+        c.source = src;
+        c.count = cnt[src];
+        c.duration_sec = d;
+        c.percent = (total > 0) ? (double)d * 100.0 / (double)total : 0.0;
+        v.push_back(std::move(c));
+    }
+    std::sort(v.begin(), v.end(),
+        [](const PlaylistContribution& a, const PlaylistContribution& b) { return a.duration_sec > b.duration_sec; });
+    return v;
+}
+
+// “差点就连续 x 天”：返回最近一次“已中断”的连续听歌天数（0 = 没有中断的连续段）
+int CStatAnalysis::ComputeStreakMiss(const std::vector<PlayRecord>& records)
+{
+    std::set<int> active;
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
+        active.insert(ymd);
+    }
+    if (active.empty()) return 0;
+
+    time_t now = time(nullptr);
+    struct tm tm_now;
+    localtime_s(&tm_now, &now);
+    int today = (tm_now.tm_year + 1900) * 10000 + (tm_now.tm_mon + 1) * 100 + tm_now.tm_mday;
+
+    int best = 0;
+    for (int ymd : active)
+    {
+        // 段落起点：前一天不活跃
+        int prev = YmdAddDaysLocal(ymd, -1);
+        if (active.count(prev)) continue;
+
+        int len = 0;
+        int cur = ymd;
+        while (active.count(cur))
+        {
+            len++;
+            cur = YmdAddDaysLocal(cur, 1);
+        }
+        // cur 为段落结束后的第一个不活跃日；cur <= today 表示这段已经中断（不在进行中）
+        if (cur <= today && len > best)
+            best = len;
+    }
+    return best;
+}
+
+// 五维雷达（0~100）：探索 / 专注 / 夜行 / 专一 / 新鲜
+RadarScore CStatAnalysis::ComputeRadar(const StatSummary& s)
+{
+    auto clamp100 = [](double v) -> double {
+        if (v < 0.0) return 0.0;
+        if (v > 100.0) return 100.0;
+        return v;
+        };
+
+    RadarScore r;
+    r.explore = clamp100((double)s.explore_percent);
+    r.focus = clamp100(100.0 - s.skip_rate);
+    r.night = clamp100((double)s.night_owl_percent);
+    r.loyalty = clamp100(100.0 - s.explore_percent);
+    r.fresh = clamp100(100.0 - s.inflation_percent);
+    return r;
+}
+
+// 按年归档回顾
+std::vector<YearReview> CStatAnalysis::ComputeYearlyReviews(const std::vector<PlayRecord>& records)
+{
+    struct Agg
+    {
+        int count = 0;
+        int duration = 0;
+        std::map<std::wstring, int> artist_time;
+        std::map<std::wstring, int> song_count;
+        std::map<std::wstring, std::wstring> song_title;
+        std::map<std::wstring, int> genre_count;
+    };
+    std::map<int, Agg> years;
+
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
+        int year = ymd / 10000;
+        Agg& a = years[year];
+        a.count++;
+        a.duration += r.play_duration_sec;
+        if (!r.artist.empty()) a.artist_time[r.artist] += r.play_duration_sec;
+        a.song_count[r.file_path] += 1;
+        if (!r.title.empty()) a.song_title[r.file_path] = r.title;
+        if (!r.genre.empty()) a.genre_count[r.genre] += 1;
+    }
+
+    std::vector<YearReview> result;
+    for (auto& [year, a] : years)
+    {
+        YearReview y;
+        y.year = year;
+        y.count = a.count;
+        y.duration_sec = a.duration;
+
+        int best = 0;
+        for (const auto& [name, d] : a.artist_time)
+            if (d > best) { best = d; y.top_artist = name; }
+
+        best = 0;
+        std::wstring top_path;
+        for (const auto& [path, c] : a.song_count)
+            if (c > best) { best = c; top_path = path; }
+        if (!top_path.empty())
+            y.top_song = a.song_title.count(top_path) ? a.song_title[top_path] : top_path;
+
+        best = 0;
+        for (const auto& [g, c] : a.genre_count)
+            if (c > best) { best = c; y.top_genre = g; }
+
+        result.push_back(std::move(y));
+    }
+    // 年份降序
+    std::sort(result.begin(), result.end(),
+        [](const YearReview& x, const YearReview& y) { return x.year > y.year; });
+    return result;
 }

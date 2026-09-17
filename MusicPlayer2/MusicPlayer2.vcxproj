@@ -272,6 +272,8 @@
     <ClInclude Include="CPlayStatisticsDlg.h" />
     <ClInclude Include="StatOverviewTabDlg.h" />
     <ClInclude Include="StatArtistRankTabDlg.h" />
+    <ClInclude Include="StatAlbumRankTabDlg.h" />
+    <ClInclude Include="StatGenreTabDlg.h" />
     <ClInclude Include="StatSongRankTabDlg.h" />
     <ClInclude Include="StatTrendTabDlg.h" />
     <ClInclude Include="StatSongsTabDlg.h" />
@@ -535,6 +537,8 @@
     <ClCompile Include="CPlayStatisticsDlg.cpp" />
     <ClCompile Include="StatOverviewTabDlg.cpp" />
     <ClCompile Include="StatArtistRankTabDlg.cpp" />
+    <ClCompile Include="StatAlbumRankTabDlg.cpp" />
+    <ClCompile Include="StatGenreTabDlg.cpp" />
     <ClCompile Include="StatSongRankTabDlg.cpp" />
     <ClCompile Include="StatTrendTabDlg.cpp" />
     <ClCompile Include="StatSongsTabDlg.cpp" />

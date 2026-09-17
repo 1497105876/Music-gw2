@@ -14,6 +14,15 @@ public:
     ~CListCtrlEx();
 
     //void SetColor(const ColorTable& colors);
+
+    //设置列表控件的主题配色（供深色模式 / 统计图表主题使用）。
+    //仅存 3 个成员并在 NM_CUSTOMDRAW 里使用，属低风险最小改动。
+    //- back     ：非选中行背景色
+    //- text     ：文字颜色
+    //- selected ：选中行背景色
+    //传入后立即生效；未调用时保持原有的主题色行为（向后兼容）。
+    void SetThemeColors(COLORREF back, COLORREF text, COLORREF selected);
+
     void GetItemSelected(vector<int>& item_selected) const;
     int GetCurSel() const;		//获取当前选中的项目
     void SetCurSel(int select);
@@ -64,6 +73,12 @@ protected:
     bool m_mouse_wheel_enable{ true };
     std::map<int, HICON> m_icons;
 
+    // ── SetThemeColors 提供的自定义配色（默认关闭，保持原行为）──
+    bool     m_theme_custom{ false };
+    COLORREF m_theme_back_color{ GRAY(255) };
+    COLORREF m_theme_text_color{ GRAY(0) };
+    COLORREF m_theme_selected_color{ GRAY(200) };
+
 public:
     DECLARE_MESSAGE_MAP()
     afx_msg void OnNMCustomdraw(NMHDR *pNMHDR, LRESULT *pResult);
@@ -80,4 +95,3 @@ public:
 protected:
     afx_msg LRESULT OnTabletQuerysystemgesturestatus(WPARAM wParam, LPARAM lParam);
 };
-

@@ -1,8 +1,46 @@
 ﻿#include "stdafx.h"
 #include "StatAiInsight.h"
 #include "StatAnalysis.h"
+#include "StatCommon.h"
 #include "PlayStatistics.h"
 #include <algorithm>
+#include <ctime>
+
+namespace
+{
+    // 轻量本地随机（不污染全局 rand 状态）：同一进程内每次调用都会推进。
+    unsigned int NextRand()
+    {
+        static unsigned int seed = static_cast<unsigned int>(time(nullptr)) ^ 0x9E3779B9u;
+        seed = seed * 1103515245u + 12345u;
+        return (seed >> 16) & 0x7fff;
+    }
+
+    // 依据 top_genre 关键词推断“流派家族”
+    std::wstring GenreFamily(const std::wstring& genre)
+    {
+        if (genre.empty()) return L"多元";
+        auto has = [&](const wchar_t* kw) { return genre.find(kw) != std::wstring::npos; };
+        if (has(L"电子") || has(L"electric") || has(L"House") || has(L"Techno")) return L"电子系";
+        if (has(L"摇滚") || has(L"Rock")) return L"摇滚系";
+        if (has(L"民谣") || has(L"Folk")) return L"民谣系";
+        if (has(L"古典") || has(L"Classical")) return L"古典系";
+        if (has(L"爵士") || has(L"Jazz")) return L"爵士系";
+        if (has(L"流行") || has(L"Pop")) return L"流行系";
+        if (has(L"嘻哈") || has(L"Hip") || has(L"Rap")) return L"嘻哈系";
+        return L"多元";
+    }
+
+    // 依据活跃时段推断“作息画像”
+    std::wstring TimePersona(int first_hour, int night_percent)
+    {
+        if (night_percent >= 40 || (first_hour >= 0 && first_hour < 6)) return L"深夜型";
+        if (first_hour >= 5 && first_hour < 11) return L"清晨型";
+        if (first_hour >= 11 && first_hour < 17) return L"午后型";
+        if (first_hour >= 17 && first_hour < 23) return L"黄昏型";
+        return L"全时段型";
+    }
+}
 
 // 本地统计洞察引擎：
 // 不调用任何在线模型，用规则模板从聚合数据里挑出最有信息量的结论，
@@ -135,5 +173,179 @@ std::vector<std::wstring> CStatAiInsight::GenerateInsights(const StatSummary& s)
             L"%，很多歌只听了一小段，试试给自己一首歌的完整时间。");
     }
 
+    return out;
+}
+
+// 生成带分类的洞察卡片（REQ-118）：模板覆盖趋势 / 口味 / 习惯 / 新鲜度 / 建议
+std::vector<Insight> CStatAiInsight::GenerateInsightCards(const StatSummary& s)
+{
+    std::vector<Insight> cards;
+
+    if (s.total_count <= 0)
+    {
+        Insight c;
+        c.key = L"empty";
+        c.title = L"等待数据";
+        c.text = L"还没有播放记录，听几首歌后再来看看你的音乐洞察。";
+        c.target_tab = 0;
+        cards.push_back(c);
+        return cards;
+    }
+
+    // ── 趋势卡 ──
+    {
+        Insight c;
+        c.key = L"trend";
+        c.title = L"收听趋势";
+        wchar_t buf[128];
+        if (s.active_days > 0)
+            swprintf_s(buf, L"你横跨 %d 天听了 %d 首歌，日均 %d 首。", s.active_days, s.total_count, s.avg_plays_per_day);
+        else
+            swprintf_s(buf, L"你一共听了 %d 首歌。", s.total_count);
+        c.text = buf;
+        c.target_tab = 1;   // 趋势页
+        cards.push_back(c);
+    }
+
+    // ── 口味卡 ──
+    {
+        Insight c;
+        c.key = L"taste";
+        c.title = L"口味偏好";
+        if (!s.top_artist.empty() && !s.top_genre.empty())
+            c.text = L"你最常听「" + s.top_artist + L"」，风格上偏爱「" + s.top_genre + L"」。";
+        else if (!s.top_genre.empty())
+            c.text = L"你最近偏爱「" + s.top_genre + L"」流派。";
+        else if (!s.top_artist.empty())
+            c.text = L"你最常听「" + s.top_artist + L"」。";
+        else
+            c.text = L"这个时间段的流派信息还不够，去给歌曲补上流派标签试试。";
+        c.target_tab = 5;   // 流派页
+        cards.push_back(c);
+    }
+
+    // ── 习惯卡 ──
+    {
+        Insight c;
+        c.key = L"habit";
+        c.title = L"收听习惯";
+        if (s.first_hour >= 0)
+        {
+            wchar_t buf[96];
+            swprintf_s(buf, L"你的黄金时段是 %02d:00-%02d:00，完整收听率 %.0f%%。",
+                s.first_hour, (s.first_hour + 1) % 24, s.completed_rate);
+            c.text = buf;
+        }
+        else
+            c.text = L"完整收听率 " + std::to_wstring((int)(s.completed_rate + 0.5)) + L"%。";
+        c.target_tab = 0;   // 概览页
+        cards.push_back(c);
+    }
+
+    // ── 新鲜度卡 ──
+    {
+        Insight c;
+        c.key = L"fresh";
+        c.title = L"探索与新鲜";
+        c.text = L"不同歌曲 " + std::to_wstring(s.total_songs) + L" 首，其中 " +
+            std::to_wstring(s.explore_percent) + L"% 只听过一次，本月新歌 " +
+            std::to_wstring(s.new_songs_month) + L" 首。";
+        c.target_tab = 4;   // 曲目页
+        cards.push_back(c);
+    }
+
+    // ── 建议卡 ──
+    {
+        Insight c;
+        c.key = L"suggestion";
+        c.title = L"给一点建议";
+        if (s.skip_rate >= 50 && s.total_count >= 20)
+            c.text = L"跳过率偏高（" + std::to_wstring((int)(s.skip_rate + 0.5)) + L"%），不妨精简歌单。";
+        else if (s.night_owl_percent >= 40)
+            c.text = L"深夜收听占了 " + std::to_wstring(s.night_owl_percent) + L"%，注意别太熬夜。";
+        else
+            c.text = L"保持这份节奏，可以试试为常听的歌手建一个专属歌单。";
+        c.target_tab = 2;   // 歌手页
+        cards.push_back(c);
+    }
+
+    return cards;
+}
+
+// 音乐 DNA 报告（REQ-118）：模板 + 数据插槽；本地轻随机化，两次调用结果不完全相同
+DnaReport CStatAiInsight::BuildDnaReport(const StatSummary& s)
+{
+    DnaReport r;
+
+    if (s.total_count <= 0)
+    {
+        r.title = L"等待激活";
+        r.tags.push_back(L"数据不足");
+        r.text = L"还没有播放记录，你的音乐 DNA 报告需要再听几首歌才能生成。";
+        return r;
+    }
+
+    std::wstring persona = TimePersona(s.first_hour, s.night_owl_percent);
+    std::wstring family = GenreFamily(s.top_genre);
+
+    // 场景候选，随机挑一个（两次调用会推进随机数，因此可能不同）
+    static const wchar_t* scenes[] = { L"通勤者", L"独处者", L"夜行者", L"旅人", L"思考者", L"漫游者", L"守望者" };
+    const int scene_count = 7;
+    std::wstring scene = scenes[NextRand() % scene_count];
+
+    r.title = persona + family + scene;
+
+    r.tags.push_back(persona);
+    r.tags.push_back(family);
+    if (!s.top_artist.empty()) r.tags.push_back(L"偏爱「" + s.top_artist + L"」");
+    else r.tags.push_back(L"口味" + std::to_wstring(s.top_genre_count > 0 ? s.top_genre_count : 0) + L"次");
+
+    wchar_t buf[256];
+    swprintf_s(buf,
+        L"你是「%s」：累计听了 %d 首歌、%s，横跨 %d 天；"
+        L"完整收听率 %.0f%%，最常出现的时间段是 %02d:00 前后。",
+        r.title.c_str(),
+        s.total_count,
+        CStatAnalysis::FormatDuration(s.total_duration_sec).c_str(),
+        s.active_days,
+        s.completed_rate,
+        (s.first_hour >= 0 ? s.first_hour : 0));
+    r.text = buf;
+
+    return r;
+}
+
+// 口味漂移叙述（REQ-115）：基于季度主导流派变化生成描述；数据不足给提示
+std::vector<std::wstring> CStatAiInsight::BuildDriftNarrative(const std::vector<GenreShare>& shares,
+                                                              const std::vector<std::wstring>& quarter_labels)
+{
+    std::vector<std::wstring> out;
+    if (shares.size() < 2 || shares.size() != quarter_labels.size())
+    {
+        out.push_back(L"记录还不足以看出明显的口味漂移，再积累一段时间吧。");
+        return out;
+    }
+
+    // 找出与上一季度相比发生主导流派切换的季度
+    bool any_change = false;
+    for (size_t i = 1; i < shares.size(); i++)
+    {
+        const std::wstring& prev = shares[i - 1].genre;
+        const std::wstring& cur = shares[i].genre;
+        if (prev.empty() || cur.empty()) continue;      // 数据缺失的季度跳过
+        if (prev != cur)
+        {
+            any_change = true;
+            std::wstring line = L"到了 " + quarter_labels[i] + L"，你的主导流派从「" + prev +
+                L"」转向了「" + cur + L"」。";
+            out.push_back(line);
+        }
+    }
+
+    if (!any_change)
+    {
+        std::wstring line = L"最近几个季度你的主导流派一直是「" + shares.back().genre + L"」，口味相当稳定。";
+        out.push_back(line);
+    }
     return out;
 }

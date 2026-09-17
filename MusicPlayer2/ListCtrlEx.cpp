@@ -295,6 +295,18 @@ BEGIN_MESSAGE_MAP(CListCtrlEx, CListCtrl)
 END_MESSAGE_MAP()
 
 
+// 设置列表控件的主题配色（深色模式入口）：仅存 3 个成员并在 NM_CUSTOMDRAW 中使用
+void CListCtrlEx::SetThemeColors(COLORREF back, COLORREF text, COLORREF selected)
+{
+    m_theme_custom = true;
+    m_theme_back_color = back;
+    m_theme_text_color = text;
+    m_theme_selected_color = selected;
+    if (m_hWnd != NULL)
+        Invalidate(FALSE);
+}
+
+
 void CListCtrlEx::OnNMCustomdraw(NMHDR *pNMHDR, LRESULT *pResult)
 {
     DWORD style = GetExtendedStyle();
@@ -348,6 +360,21 @@ void CListCtrlEx::OnNMCustomdraw(NMHDR *pNMHDR, LRESULT *pResult)
             {
                 lplvdr->clrText = CColorConvert::m_gray_color.dark3;
                 lplvdr->clrTextBk = CColorConvert::m_gray_color.light4;
+            }
+
+            //深色/主题自定义配色覆盖（SetThemeColors 提供）
+            if (m_theme_custom)
+            {
+                if (IsRowSelected(static_cast<int>(nmcd.dwItemSpec)))
+                {
+                    lplvdr->clrText = m_theme_text_color;
+                    lplvdr->clrTextBk = m_theme_selected_color;
+                }
+                else
+                {
+                    lplvdr->clrText = m_theme_text_color;
+                    lplvdr->clrTextBk = m_theme_back_color;
+                }
             }
 
             //用背景色填充单元格，以去掉每行前面的空白

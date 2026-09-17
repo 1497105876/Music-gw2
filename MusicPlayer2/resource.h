@@ -1151,6 +1151,7 @@
 #define ID_SONGS_MULTI_VERSION_ITEM_START 33481
 #define ID_SONGS_MULTI_VERSION_ITEM_MAX 33511
 #define ID_LIST_ITEM_PREVIEW            33512
+#define IDC_STAT_OVERVIEW_CHART         1444
 
 // Next default values for new objects
 // 
@@ -1158,7 +1159,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        705
 #define _APS_NEXT_COMMAND_VALUE         33514
-#define _APS_NEXT_CONTROL_VALUE         1444
+#define _APS_NEXT_CONTROL_VALUE         1445
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

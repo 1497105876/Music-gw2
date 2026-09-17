@@ -385,3 +385,7 @@ $RECYCLE.BIN/
 /test_stats_verify/
 /build_mine.txt
 /build_output_last.txt
+
+# ======== 需求文档（个人草稿，不入库） ========
+/用户故事*.md
+/用户故事*.html

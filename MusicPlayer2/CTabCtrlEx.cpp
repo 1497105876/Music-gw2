@@ -114,9 +114,23 @@ void CTabCtrlEx::CalSubWindowSize()
     CRect rc_temp = m_tab_rect;
     AdjustRect(FALSE, rc_temp);
     int margin = rc_temp.left - m_tab_rect.left;
-    CRect rcTabItem;
-    GetItemRect(0, rcTabItem);
-    m_tab_rect.top += rcTabItem.Height() + margin;
+    // 取所有 item 的最大 bottom 作为表头高度：多行（TCS_MULTILINE）下用 GetItemRect(0).Height() 会算错
+    int header_h = 0;
+    for (int i = 0; i < GetItemCount(); ++i)
+    {
+        CRect rcItem;
+        if (GetItemRect(i, rcItem))
+        {
+            if (rcItem.bottom > header_h) header_h = rcItem.bottom;
+        }
+    }
+    if (header_h <= 0)
+    {
+        CRect rcTabItem;
+        GetItemRect(0, rcTabItem);
+        header_h = rcTabItem.Height();
+    }
+    m_tab_rect.top += header_h + margin;
     m_tab_rect.left += margin;
     m_tab_rect.bottom -= margin;
     m_tab_rect.right -= margin;

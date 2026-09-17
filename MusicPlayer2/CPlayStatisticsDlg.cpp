@@ -258,7 +258,9 @@ void CPlayStatisticsDlg::BroadcastContext()
     m_overview_dlg.SetContext(&m_context);
     m_trend_dlg.SetContext(&m_context);
     m_artist_rank_dlg.SetContext(&m_context);
+    m_album_rank_dlg.SetContext(&m_context);
     m_song_rank_dlg.SetContext(&m_context);
+    m_genre_dlg.SetContext(&m_context);
     m_songs_dlg.SetContext(&m_context);
     m_profile_dlg.SetContext(&m_context);
 }
@@ -296,17 +298,21 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
 
     // 创建子对话框
     m_overview_dlg.Create(IDD_STAT_OVERVIEW_DLG, &m_tab);
-    m_artist_rank_dlg.Create(IDD_STAT_ARTIST_RANK_DLG, &m_tab);
-    m_song_rank_dlg.Create(IDD_STAT_SONG_RANK_DLG, &m_tab);
     m_trend_dlg.Create(IDD_STAT_TREND_DLG, &m_tab);
+    m_artist_rank_dlg.Create(IDD_STAT_ARTIST_RANK_DLG, &m_tab);
+    m_album_rank_dlg.Create(IDD_STAT_ALBUM_RANK_DLG, &m_tab);
+    m_song_rank_dlg.Create(IDD_STAT_SONG_RANK_DLG, &m_tab);
+    m_genre_dlg.Create(IDD_STAT_GENRE_DLG, &m_tab);
     m_songs_dlg.Create(IDD_STAT_SONGS_DLG, &m_tab);
     m_profile_dlg.Create(IDD_STAT_PROFILE_DLG, &m_tab);
 
-    // 添加到 Tab（本批 6 页：概览/趋势/歌手/曲目/明细/洞察）
+    // 添加到 Tab（本批 8 页：概览/趋势/歌手/专辑/曲目/流派/明细/洞察）
     m_tab.AddWindow(&m_overview_dlg, L"概览", IconMgr::IconType::IT_Info);
     m_tab.AddWindow(&m_trend_dlg, L"趋势", IconMgr::IconType::IT_Statistics);
     m_tab.AddWindow(&m_artist_rank_dlg, L"歌手", IconMgr::IconType::IT_Artist);
+    m_tab.AddWindow(&m_album_rank_dlg, L"专辑", IconMgr::IconType::IT_Album);
     m_tab.AddWindow(&m_song_rank_dlg, L"曲目", IconMgr::IconType::IT_Music);
+    m_tab.AddWindow(&m_genre_dlg, L"流派", IconMgr::IconType::IT_Genre);
     m_tab.AddWindow(&m_songs_dlg, L"明细", IconMgr::IconType::IT_File_Relate);
     m_tab.AddWindow(&m_profile_dlg, L"洞察", IconMgr::IconType::IT_Star);
 
@@ -558,8 +564,56 @@ void CPlayStatisticsDlg::OnBnClickedStatHelpBtn()
 
 void CPlayStatisticsDlg::OnBnClickedExportAggButton()
 {
-    // 聚合 CSV 导出在批次 2 实现（REQ-116）
-    AfxMessageBox(L"导出聚合 CSV 将在后续版本提供。", MB_ICONINFORMATION);
+    // 按当前粒度聚合导出（REQ-116）：字段为按粒度聚合指标，UTF-8 BOM，Excel 可直接打开
+    std::vector<PeriodBucket> buckets = CStatAnalysis::ComputeBuckets(m_filtered_records, m_filter.grain);
+
+    wchar_t file_path[MAX_PATH] = { 0 };
+    OPENFILENAME ofn = {};
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.hwndOwner = GetSafeHwnd();
+    ofn.lpstrFilter = L"CSV 文件 (*.csv)\0*.csv\0所有文件 (*.*)\0*.*\0";
+    ofn.lpstrFile = file_path;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+    ofn.lpstrDefExt = L"csv";
+    ofn.lpstrTitle = L"导出聚合统计 (CSV)";
+    if (!GetSaveFileName(&ofn))
+        return;
+
+    std::ofstream ofs(file_path, std::ios::binary);
+    if (!ofs.is_open())
+    {
+        AfxMessageBox(L"无法创建文件", MB_ICONERROR);
+        return;
+    }
+
+    auto to_utf8 = [](const std::wstring& w) -> std::string {
+        if (w.empty()) return std::string();
+        int len = ::WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), nullptr, 0, nullptr, nullptr);
+        std::string s(len, 0);
+        ::WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), &s[0], len, nullptr, nullptr);
+        return s;
+        };
+    auto esc = [](const std::wstring& s) -> std::wstring {
+        if (s.find(L',') == std::wstring::npos && s.find(L'"') == std::wstring::npos) return s;
+        std::wstring r = s;
+        size_t pos = 0;
+        while ((pos = r.find(L'"', pos)) != std::wstring::npos) { r.insert(pos, 1, L'"'); pos += 2; }
+        return L"\"" + r + L"\"";
+        };
+
+    ofs << "\xEF\xBB\xBF";     // UTF-8 BOM
+    ofs << "周期,播放次数,播放时长(秒),完播次数,跳过次数\r\n";
+    for (const auto& b : buckets)
+    {
+        std::wstring line = esc(b.label) + L"," + std::to_wstring(b.count) + L"," +
+            std::to_wstring(b.duration_sec) + L"," + std::to_wstring(b.completed_count) + L"," +
+            std::to_wstring(b.skipped_count) + L"\r\n";
+        ofs << to_utf8(line);
+    }
+    ofs.flush();
+    ofs.close();
+    AfxMessageBox(L"导出完成", MB_ICONINFORMATION);
 }
 
 void CPlayStatisticsDlg::OnBnClickedReportButton()

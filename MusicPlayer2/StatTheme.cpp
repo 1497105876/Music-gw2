@@ -3,6 +3,7 @@
 #include "MusicPlayer2.h"
 #include "CPlayerUIHelper.h"
 #include "BaseDialog.h"
+#include "ListCtrlEx.h"
 #include <algorithm>
 #include <cmath>
 
@@ -49,6 +50,18 @@ namespace
         c.warn = dark ? RGB(240, 190, 110) : RGB(240, 170, 70);
         c.bad = dark ? RGB(235, 110, 110) : RGB(220, 80, 80);
     }
+
+    // 枚举子窗口，为所有 CListCtrlEx 套用深色/主题配色
+    BOOL CALLBACK ApplyThemeToListProc(HWND hwnd, LPARAM /*lParam*/)
+    {
+        CListCtrlEx* pList = dynamic_cast<CListCtrlEx*>(CWnd::FromHandlePermanent(hwnd));
+        if (pList != nullptr)
+        {
+            const StatThemeColors& c = CStatTheme::Get();
+            pList->SetThemeColors(c.card_back_alt, c.text_primary, c.selected);
+        }
+        return TRUE;
+    }
 }
 
 const StatThemeColors& CStatTheme::Get()
@@ -68,8 +81,11 @@ const StatThemeColors& CStatTheme::Get()
 void CStatTheme::ApplyDialog(CWnd* pDlg)
 {
     if (pDlg == nullptr || pDlg->GetSafeHwnd() == nullptr) return;
+    // 1) 对话框背景
     if (CBaseDialog* pBase = dynamic_cast<CBaseDialog*>(pDlg))
         pBase->SetBackgroundColor(Get().back, FALSE);
+    // 2) 遍历子控件，为列表控件套用主题配色（owner-draw 静态控件各自在 OnDrawItem 里取色）
+    ::EnumChildWindows(pDlg->GetSafeHwnd(), &ApplyThemeToListProc, 0);
 }
 
 COLORREF CStatTheme::Lerp(COLORREF a, COLORREF b, double t)

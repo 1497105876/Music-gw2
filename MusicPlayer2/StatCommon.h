@@ -78,6 +78,7 @@ struct PeriodComparison
     double       count_delta_percent{ 0.0 };                // 与上期的次数变化百分比
     bool         has_previous{ false };                     // 上期是否有数据
     bool         has_last_year{ false };                    // 去年同期是否有数据
+    bool         same_as_previous{ false };                 // 去年同期与上一周期是否为同一周期（年粒度下二者重合）
 };
 
 // 专辑排行项

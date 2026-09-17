@@ -2,9 +2,25 @@
 #include "MusicPlayer2.h"
 #include "StatTrendTabDlg.h"
 #include "StatAnalysis.h"
+#include "StatTheme.h"
 #include <map>
 #include <vector>
 #include <algorithm>
+
+namespace
+{
+    const wchar_t* GrainName(Grain g)
+    {
+        switch (g)
+        {
+        case Grain::Day:   return L"天";
+        case Grain::Week:  return L"周";
+        case Grain::Month: return L"月";
+        case Grain::Year:  return L"年";
+        }
+        return L"天";
+    }
+}
 
 IMPLEMENT_DYNAMIC(CStatTrendTabDlg, CStatTabDlg)
 
@@ -34,6 +50,7 @@ BOOL CStatTrendTabDlg::OnInitDialog()
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW);
 
+    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 
@@ -51,7 +68,7 @@ void CStatTrendTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
         CRect rect(lpDrawItemStruct->rcItem);
         if (rect.Width() < 80 || rect.Height() < 80) return;
 
-        pDC->FillSolidRect(rect, RGB(252, 252, 255));
+        pDC->FillSolidRect(rect, CStatTheme::Get().panel_back);
         pDC->SetBkMode(TRANSPARENT);
 
         DrawTrendChart(pDC, rect);
@@ -64,57 +81,97 @@ void CStatTrendTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 void CStatTrendTabDlg::DrawTrendChart(CDC* pDC, const CRect& rect)
 {
-    if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr) return;
+    const StatThemeColors& th = CStatTheme::Get();
+
+    CFont fTitle;
+    fTitle.CreatePointFont(140, L"Microsoft YaHei", pDC);
+    CFont* pOldFont = pDC->SelectObject(&fTitle);
+    pDC->SetTextColor(th.text_primary);
+
+    if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr)
+    {
+        pDC->TextOutW(rect.left + 20, rect.top + 10, L"无记录");
+        pDC->SelectObject(pOldFont);
+        return;
+    }
+
     const std::vector<PlayRecord>& records = *m_stat_ctx->records;
+    Grain grain = m_stat_ctx->filter.grain;
 
-    // 聚合每日播放次数（口径统一：走 IsCounted）
-    std::map<std::wstring, int> daily_count;
-    for (const auto& r : records)
+    // 按当前粒度聚合（口径统一走 CStatAnalysis）
+    std::vector<PeriodBucket> buckets = CStatAnalysis::ComputeBuckets(records, grain);
+
+    std::wstring title = std::wstring(L"播放趋势（按") + GrainName(grain) + L"）";
+    pDC->TextOutW(rect.left + 30, rect.top + 8, title.c_str(), (int)title.size());
+
+    if (buckets.empty())
     {
-        if (!CStatAnalysis::IsCounted(r)) continue;     // 15 秒口径唯一入口
-        if (r.played_at.size() >= 10)
+        pDC->SetTextColor(th.text_disabled);
+        pDC->TextOutW(rect.left + 30, rect.top + 50, L"无记录");
+        pDC->SelectObject(pOldFont);
+        return;
+    }
+
+    // 环比 / 同比 文案：
+    //   年粒度下“去年同期”即“上一周期”，数据层以 same_as_previous 显式标记，
+    //   显示层据此不再重复渲染同比行，避免出现与环比重复或语义空白的“同比”行。
+    {
+        PeriodComparison pc = CStatAnalysis::ComputePeriodComparison(records, m_stat_ctx->filter);
+        CFont info_font;
+        info_font.CreatePointFont(88, L"Microsoft YaHei", pDC);
+        pDC->SelectObject(&info_font);
+        pDC->SetTextColor(th.text_secondary);
+
+        wchar_t buf[160];
+        if (pc.has_previous)
+            swprintf_s(buf, L"环比（vs %s）：%+d 次（%+.0f%%）", pc.previous.label.c_str(),
+                pc.count_delta, pc.count_delta_percent);
+        else
+            swprintf_s(buf, L"环比：无上期数据");
+        pDC->TextOutW(rect.left + 30, rect.top + 30, buf, (int)wcslen(buf));
+
+        if (pc.has_last_year && !pc.same_as_previous)
         {
-            std::wstring date = r.played_at.substr(0, 10);
-            daily_count[date]++;
+            int delta = pc.current.count - pc.last_year.count;
+            double pct = (pc.last_year.count > 0) ? (double)delta / pc.last_year.count * 100.0 : 0.0;
+            swprintf_s(buf, L"同比（vs %s）：%+d 次（%+.0f%%）", pc.last_year.label.c_str(), delta, pct);
+            pDC->TextOutW(rect.left + 30 + 320, rect.top + 30, buf, (int)wcslen(buf));
         }
+        pDC->SelectObject(pOldFont);
     }
 
-    time_t now = time(nullptr);
-    std::vector<std::wstring> dates;
-    std::vector<int> counts;
-
-    for (int i = 29; i >= 0; i--)
+    // 新发现趋势（每月首次听的歌）
     {
-        time_t t = now - i * 86400;
-        struct tm tm_buf;
-        localtime_s(&tm_buf, &t);
-        wchar_t buf[16];
-        swprintf_s(buf, L"%04d-%02d-%02d",
-            tm_buf.tm_year + 1900, tm_buf.tm_mon + 1, tm_buf.tm_mday);
-        std::wstring date(buf);
-        dates.push_back(date);
+        std::vector<PeriodBucket> news = CStatAnalysis::ComputeNewSongTrend(records);
+        int total_new = 0;
+        for (const auto& b : news) total_new += b.count;
 
-        auto it = daily_count.find(date);
-        counts.push_back(it != daily_count.end() ? it->second : 0);
+        CFont info_font;
+        info_font.CreatePointFont(84, L"Microsoft YaHei", pDC);
+        pDC->SelectObject(&info_font);
+        pDC->SetTextColor(th.text_secondary);
+        wchar_t buf[128];
+        if (!news.empty())
+            swprintf_s(buf, L"新发现：共 %d 首，最近一个月 %s 新增 %d 首",
+                total_new, news.back().label.c_str(), news.back().count);
+        else
+            swprintf_s(buf, L"新发现：无");
+        pDC->TextOutW(rect.left + 30, rect.top + 50, buf, (int)wcslen(buf));
+        pDC->SelectObject(pOldFont);
     }
 
-    int max_count = 1;
-    for (int c : counts) if (c > max_count) max_count = c;
-
-    int margin_left = 45, margin_right = 15, margin_top = 30, margin_bottom = 30;
+    // 图表区
+    int margin_left = 50, margin_right = 16, margin_top = 74, margin_bottom = 34;
     int chart_w = rect.Width() - margin_left - margin_right;
     int chart_h = rect.Height() - margin_top - margin_bottom;
     if (chart_w <= 0 || chart_h <= 0) return;
 
-    // 标题
-    CFont fTitle;
-    fTitle.CreatePointFont(140, L"Microsoft YaHei", pDC);
-    pDC->SelectObject(&fTitle);
-    pDC->SetTextColor(RGB(30, 30, 30));
-    pDC->TextOutW(rect.left + margin_left, rect.top + 5, L"30天播放趋势", 10);
+    int max_count = 1;
+    for (const auto& b : buckets)
+        if (b.count > max_count) max_count = b.count;
 
     // 坐标轴
-    CPen axis_pen(PS_SOLID, 1, RGB(180, 180, 180));
+    CPen axis_pen(PS_SOLID, 1, th.axis);
     CPen* old_pen = pDC->SelectObject(&axis_pen);
     pDC->MoveTo(rect.left + margin_left, rect.top + margin_top);
     pDC->LineTo(rect.left + margin_left, rect.top + margin_top + chart_h);
@@ -122,32 +179,33 @@ void CStatTrendTabDlg::DrawTrendChart(CDC* pDC, const CRect& rect)
     pDC->SelectObject(old_pen);
 
     CFont small_font;
-    small_font.CreatePointFont(80, L"Microsoft YaHei", pDC);
-    CFont* pOldFont = pDC->SelectObject(&small_font);
+    small_font.CreatePointFont(78, L"Microsoft YaHei", pDC);
+    CFont* pOldSmall = pDC->SelectObject(&small_font);
 
-    // Y轴刻度
-    pDC->SetTextColor(RGB(120, 120, 120));
-    wchar_t buf[16];
-    swprintf_s(buf, L"%d", max_count);
-    pDC->TextOutW(rect.left + 10, rect.top + margin_top - 5, buf);
-    pDC->TextOutW(rect.left + 15, rect.top + margin_top + chart_h - 5, L"0");
+    // Y 轴刻度
+    pDC->SetTextColor(th.text_secondary);
+    wchar_t ybuf[16];
+    swprintf_s(ybuf, L"%d", max_count);
+    pDC->TextOutW(rect.left + 8, rect.top + margin_top - 5, ybuf);
+    pDC->TextOutW(rect.left + 20, rect.top + margin_top + chart_h - 6, L"0");
 
-    // 柱+折线
-    int bar_w = chart_w / 30;
+    int n = (int)buckets.size();
+    int bar_w = chart_w / n;
     if (bar_w < 2) bar_w = 2;
-    CPen line_pen(PS_SOLID, 2, RGB(80, 140, 220));
-    CBrush bar_brush(RGB(100, 170, 230));
+
+    CPen line_pen(PS_SOLID, 2, th.highlight);
+    CBrush bar_brush(th.series[0]);
 
     int prev_x = -1, prev_y = -1;
-    for (int i = 0; i < 30; i++)
+    for (int i = 0; i < n; i++)
     {
-        int x = rect.left + margin_left + chart_w * i / 30 + bar_w / 2;
-        int bar_h = (int)((double)counts[i] / max_count * chart_h);
+        int x = rect.left + margin_left + chart_w * i / n + bar_w / 2;
+        int bar_h = (int)((double)buckets[i].count / max_count * (chart_h - 10));
         int y_pos = rect.top + margin_top + chart_h - bar_h;
 
         pDC->SelectObject(&bar_brush);
-        pDC->Rectangle(x - bar_w / 2, y_pos,
-            x + bar_w / 2, rect.top + margin_top + chart_h);
+        pDC->SelectObject(GetStockObject(NULL_PEN));
+        pDC->Rectangle(x - bar_w / 2, y_pos, x + bar_w / 2, rect.top + margin_top + chart_h);
 
         if (prev_x >= 0)
         {
@@ -159,16 +217,18 @@ void CStatTrendTabDlg::DrawTrendChart(CDC* pDC, const CRect& rect)
         prev_y = y_pos;
     }
 
-    // X轴标签
-    pDC->SetTextColor(RGB(100, 100, 100));
-    for (int i = 0; i < 30; i += 5)
+    // X 轴标签：标签过多时隔段显示
+    pDC->SetTextColor(th.text_secondary);
+    int step = (n > 12) ? (n / 10 + 1) : 1;
+    for (int i = 0; i < n; i += step)
     {
-        int x = rect.left + margin_left + chart_w * i / 30;
-        std::wstring label = dates[i].substr(5);
-        pDC->TextOutW(x, rect.top + margin_top + chart_h + 5,
+        int x = rect.left + margin_left + chart_w * i / n;
+        std::wstring label = buckets[i].label;
+        CSize sz = pDC->GetTextExtent(label.c_str(), (int)label.size());
+        pDC->TextOutW(x + bar_w / 2 - sz.cx / 2, rect.top + margin_top + chart_h + 4,
             label.c_str(), (int)label.size());
     }
 
+    pDC->SelectObject(pOldSmall);
     pDC->SelectObject(pOldFont);
-    pDC->SelectObject(old_pen);
 }

@@ -690,6 +690,12 @@
     <ClInclude Include="StatArtistRankTabDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
+    <ClInclude Include="StatAlbumRankTabDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="StatGenreTabDlg.h">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
     <ClInclude Include="StatSongRankTabDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
@@ -1452,6 +1458,12 @@
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
     <ClCompile Include="StatArtistRankTabDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="StatAlbumRankTabDlg.cpp">
+      <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClCompile>
+    <ClCompile Include="StatGenreTabDlg.cpp">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
     <ClCompile Include="StatSongRankTabDlg.cpp">

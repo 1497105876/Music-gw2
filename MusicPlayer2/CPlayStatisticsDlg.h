@@ -4,7 +4,9 @@
 #include "StatCommon.h"
 #include "StatOverviewTabDlg.h"
 #include "StatArtistRankTabDlg.h"
+#include "StatAlbumRankTabDlg.h"
 #include "StatSongRankTabDlg.h"
+#include "StatGenreTabDlg.h"
 #include "StatTrendTabDlg.h"
 #include "StatSongsTabDlg.h"
 #include "StatProfileTabDlg.h"
@@ -25,10 +27,13 @@ public:
 protected:
     CTabCtrlEx m_tab;
 
+    // 8 个子页（批次 2：在 6 页基础上新增 专辑 / 流派）
     CStatOverviewTabDlg m_overview_dlg;
-    CStatArtistRankTabDlg m_artist_rank_dlg;
-    CStatSongRankTabDlg m_song_rank_dlg;
     CStatTrendTabDlg m_trend_dlg;
+    CStatArtistRankTabDlg m_artist_rank_dlg;
+    CStatAlbumRankTabDlg m_album_rank_dlg;
+    CStatSongRankTabDlg m_song_rank_dlg;
+    CStatGenreTabDlg m_genre_dlg;
     CStatSongsTabDlg m_songs_dlg;
     CStatProfileTabDlg m_profile_dlg;
 
@@ -48,7 +53,7 @@ protected:
 
     void LoadRecords();                            // 解析全部 playlog -> m_all_records
     void ApplyFilter();                            // m_all_records -> m_filtered_records + m_context
-    void BroadcastContext();                       // 向 6 个子页投递 const StatContext*
+    void BroadcastContext();                       // 向 8 个子页投递 const StatContext*
     void UpdateUpdatedLabel();                     // 刷新"数据更新至 HH:MM"
     void RefreshAllViews();                        // LoadRecords + ApplyFilter + Broadcast + label
 
