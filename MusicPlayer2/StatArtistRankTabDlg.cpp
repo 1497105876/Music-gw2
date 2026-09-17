@@ -2,7 +2,7 @@
 #include "MusicPlayer2.h"
 #include "StatArtistRankTabDlg.h"
 #include "StatAnalysis.h"
-#include "StatTheme.h"
+#include "StatChart.h"
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -47,7 +47,6 @@ BOOL CStatArtistRankTabDlg::OnInitDialog()
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW | WS_VSCROLL);
 
-    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 
@@ -242,7 +241,7 @@ void CStatArtistRankTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemSt
         if (rect.Width() < 40 || rect.Height() < 40) return;
 
         // 填充背景色（跟随主题，无硬编码浅色）
-        pDC->FillSolidRect(rect, CStatTheme::Get().panel_back);
+        pDC->FillSolidRect(rect, StatPalette::Get().panel_back);
         pDC->SetBkMode(TRANSPARENT);
 
         DrawBarChart(pDC, rect);
@@ -257,7 +256,7 @@ void CStatArtistRankTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemSt
 // rect 是图表控件的完整绘制区域
 void CStatArtistRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
 
     if (m_rank_data.empty()) return;
 

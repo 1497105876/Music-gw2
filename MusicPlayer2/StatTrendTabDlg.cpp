@@ -2,7 +2,7 @@
 #include "MusicPlayer2.h"
 #include "StatTrendTabDlg.h"
 #include "StatAnalysis.h"
-#include "StatTheme.h"
+#include "StatChart.h"
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -50,7 +50,6 @@ BOOL CStatTrendTabDlg::OnInitDialog()
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW);
 
-    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 
@@ -68,7 +67,7 @@ void CStatTrendTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
         CRect rect(lpDrawItemStruct->rcItem);
         if (rect.Width() < 80 || rect.Height() < 80) return;
 
-        pDC->FillSolidRect(rect, CStatTheme::Get().panel_back);
+        pDC->FillSolidRect(rect, StatPalette::Get().panel_back);
         pDC->SetBkMode(TRANSPARENT);
 
         DrawTrendChart(pDC, rect);
@@ -81,7 +80,7 @@ void CStatTrendTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 void CStatTrendTabDlg::DrawTrendChart(CDC* pDC, const CRect& rect)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
 
     CFont fTitle;
     fTitle.CreatePointFont(140, L"Microsoft YaHei", pDC);

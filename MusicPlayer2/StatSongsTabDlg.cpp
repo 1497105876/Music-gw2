@@ -1,7 +1,7 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatSongsTabDlg.h"
-#include "StatTheme.h"
+#include "StatChart.h"
 
 IMPLEMENT_DYNAMIC(CStatSongsTabDlg, CStatTabDlg)
 
@@ -39,7 +39,6 @@ BOOL CStatSongsTabDlg::OnInitDialog()
     m_list.InsertColumn(DCOL_RESULT, L"结果", LVCFMT_CENTER, 0);
     m_list.InsertColumn(DCOL_SOURCE, L"来源", LVCFMT_LEFT, 0);
 
-    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 

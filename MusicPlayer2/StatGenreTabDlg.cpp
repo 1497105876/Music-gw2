@@ -2,7 +2,7 @@
 #include "MusicPlayer2.h"
 #include "StatGenreTabDlg.h"
 #include "StatAnalysis.h"
-#include "StatTheme.h"
+#include "StatChart.h"
 #include <cmath>
 #include <algorithm>
 #include <vector>
@@ -49,7 +49,6 @@ BOOL CStatGenreTabDlg::OnInitDialog()
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW | SS_NOTIFY);
 
-    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 
@@ -112,7 +111,7 @@ void CStatGenreTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
         m_chart.GetClientRect(&rect);
         if (rect.Width() < 60 || rect.Height() < 60) return;
 
-        pDC->FillSolidRect(rect, CStatTheme::Get().panel_back);
+        pDC->FillSolidRect(rect, StatPalette::Get().panel_back);
         pDC->SetBkMode(TRANSPARENT);
 
         DrawGenre(pDC, rect);
@@ -125,7 +124,7 @@ void CStatGenreTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 void CStatGenreTabDlg::DrawGenre(CDC* pDC, const CRect& rect)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
 
     CFont title_font;
     title_font.CreatePointFont(110, L"Microsoft YaHei", pDC);
@@ -312,7 +311,7 @@ void CStatGenreTabDlg::DrawGenre(CDC* pDC, const CRect& rect)
 
 void CStatGenreTabDlg::DrawFooter(CDC* pDC, const CRect& rect, int top)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
 
     CFont font;
     font.CreatePointFont(82, L"Microsoft YaHei", pDC);

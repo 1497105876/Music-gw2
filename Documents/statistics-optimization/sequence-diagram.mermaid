@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant MD as CPlayStatisticsDlg
+    participant TD as CStatTrendTabDlg
+    participant CH as CTrendChart
+    participant PA as OnPaint(CStatChart)
+    participant DC as CDrawCommon
+    participant ST as m_str_table
+
+    MD->>TD: SetContext(&m_context)
+    TD->>TD: Refresh() 聚合 ComputeBuckets/ComputePeriodComparison
+    TD->>CH: SetData(buckets, period, new_songs, grain)
+    TD->>CH: Invalidate(FALSE)
+    CH->>PA: WM_PAINT
+    PA->>DC: Create(&dc, GetFont())
+    PA->>DC: FillRect(rect, StatPalette::DialogBack())
+    PA->>CH: DrawChart(draw, pDC, rect)
+    CH->>ST: LoadText / LoadTextFormat(TXT_STAT_TREND_*)
+    ST-->>CH: 本地化字符串
+    CH->>DC: SetFont(GetFontBySize(StatFont::Title))
+    CH->>DC: FillRect / DrawLine / DrawWindowText
+    Note over CH: 无 SS_OWNERDRAW，无 OnDrawItem，无 CreatePointFont，无中文字面量

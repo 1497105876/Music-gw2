@@ -1,7 +1,7 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatProfileTabDlg.h"
-#include "StatTheme.h"
+#include "StatChart.h"
 #include <algorithm>
 
 IMPLEMENT_DYNAMIC(CStatProfileTabDlg, CStatTabDlg)
@@ -36,7 +36,6 @@ BOOL CStatProfileTabDlg::OnInitDialog()
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW | WS_VSCROLL);
 
-    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 
@@ -206,7 +205,7 @@ void CStatProfileTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruc
         m_chart.GetClientRect(&rect);
         if (rect.Width() < 40 || rect.Height() < 40) return;
 
-        pDC->FillSolidRect(rect, CStatTheme::Get().panel_back);
+        pDC->FillSolidRect(rect, StatPalette::Get().panel_back);
         pDC->SetBkMode(TRANSPARENT);
 
         DrawProfile(pDC, rect);
@@ -220,7 +219,7 @@ void CStatProfileTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruc
 // 分区标题：左侧竖条 + 文字
 void CStatProfileTabDlg::DrawSectionTitle(CDC* pDC, const CRect& rect, int y, const std::wstring& title)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
     int pad = 12;
     CRect bar(rect.left + pad, y + 2, rect.left + pad + 4, y + 18);
     pDC->FillSolidRect(bar, th.accent);
@@ -236,7 +235,7 @@ void CStatProfileTabDlg::DrawSectionTitle(CDC* pDC, const CRect& rect, int y, co
 // 听歌档案徽章：圆角色块 + 徽章名 + 说明
 void CStatProfileTabDlg::DrawBadges(CDC* pDC, const CRect& rect, int y, int* out_height)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
     int pad = 12;
     int card_w = theApp.DPI(170);
     int card_h = theApp.DPI(56);
@@ -306,7 +305,7 @@ void CStatProfileTabDlg::DrawBadges(CDC* pDC, const CRect& rect, int y, int* out
 // 音乐 DNA 报告：大标题 + 标签 + 一段描述（模板 + 数据插槽）
 void CStatProfileTabDlg::DrawDna(CDC* pDC, const CRect& rect, int y, int* out_height)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
     int pad = 12;
     int card_h = theApp.DPI(84);
 
@@ -354,7 +353,7 @@ void CStatProfileTabDlg::DrawDna(CDC* pDC, const CRect& rect, int y, int* out_he
 // AI 洞察列表：每条一个小圆点 + 自然语言段落
 void CStatProfileTabDlg::DrawInsights(CDC* pDC, const CRect& rect, int y, int* out_height)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
     int pad = 12;
     int text_x = rect.left + pad + 10 + theApp.DPI(14);
     int text_w = rect.Width() - (text_x - rect.left) - pad;
@@ -400,7 +399,7 @@ void CStatProfileTabDlg::DrawInsights(CDC* pDC, const CRect& rect, int y, int* o
 // 按年归档回顾（REQ-120）：每行 “YYYY 年你听了 …”；无数据年份不列出
 void CStatProfileTabDlg::DrawYearly(CDC* pDC, const CRect& rect, int y, int* out_height)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
     int pad = 12;
 
     if (m_yearly.empty())
@@ -438,7 +437,7 @@ void CStatProfileTabDlg::DrawYearly(CDC* pDC, const CRect& rect, int y, int* out
 // 整页绘制：头部大数字 → 音乐 DNA → 听歌档案徽章 → AI 洞察 → 深度数字 → 年度回顾
 void CStatProfileTabDlg::DrawProfile(CDC* pDC, const CRect& rect)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
     int pad = 12;
     int card_gap = 8;
     int y = 8 - m_scroll_pos;

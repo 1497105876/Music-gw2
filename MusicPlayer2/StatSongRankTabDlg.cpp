@@ -2,7 +2,7 @@
 #include "MusicPlayer2.h"
 #include "StatSongRankTabDlg.h"
 #include "StatAnalysis.h"
-#include "StatTheme.h"
+#include "StatChart.h"
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -44,7 +44,6 @@ BOOL CStatSongRankTabDlg::OnInitDialog()
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW | WS_VSCROLL);
 
-    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 
@@ -224,7 +223,7 @@ void CStatSongRankTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStru
         m_chart.GetClientRect(&rect);
         if (rect.Width() < 40 || rect.Height() < 40) return;
 
-        pDC->FillSolidRect(rect, CStatTheme::Get().panel_back);
+        pDC->FillSolidRect(rect, StatPalette::Get().panel_back);
         pDC->SetBkMode(TRANSPARENT);
 
         DrawBarChart(pDC, rect);
@@ -237,7 +236,7 @@ void CStatSongRankTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStru
 
 void CStatSongRankTabDlg::DrawBarChart(CDC* pDC, const CRect& rect)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
 
     if (m_rank_data.empty()) return;
 

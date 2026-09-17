@@ -1,7 +1,7 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatOverviewTabDlg.h"
-#include "StatTheme.h"
+#include "StatChart.h"
 #include <algorithm>
 
 IMPLEMENT_DYNAMIC(CStatOverviewTabDlg, CStatTabDlg)
@@ -35,7 +35,6 @@ BOOL CStatOverviewTabDlg::OnInitDialog()
     ::SetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE,
         (::GetWindowLongPtr(m_chart.GetSafeHwnd(), GWL_STYLE) & ~SS_BLACKFRAME) | SS_OWNERDRAW | WS_VSCROLL);
 
-    CStatTheme::ApplyDialog(this);
     return TRUE;
 }
 
@@ -180,7 +179,7 @@ void CStatOverviewTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStru
         m_chart.GetClientRect(&rect);
         if (rect.Width() < 60 || rect.Height() < 60) return;
 
-        pDC->FillSolidRect(rect, CStatTheme::Get().panel_back);
+        pDC->FillSolidRect(rect, StatPalette::Get().panel_back);
         pDC->SetBkMode(TRANSPARENT);
 
         DrawOverview(pDC, rect);
@@ -193,7 +192,7 @@ void CStatOverviewTabDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStru
 
 void CStatOverviewTabDlg::DrawSectionTitle(CDC* pDC, const CRect& rect, int y, const std::wstring& title)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
     int pad = 12;
     CRect bar(rect.left + pad, y + 2, rect.left + pad + 4, y + 18);
     pDC->FillSolidRect(bar, th.accent);
@@ -208,7 +207,7 @@ void CStatOverviewTabDlg::DrawSectionTitle(CDC* pDC, const CRect& rect, int y, c
 
 void CStatOverviewTabDlg::DrawOverview(CDC* pDC, const CRect& rect)
 {
-    const StatThemeColors& th = CStatTheme::Get();
+    const StatPalette::StatPaletteColors& th = StatPalette::Get();
     int pad = 12;
     int y = 8 - m_scroll_pos;
     bool has_data = (m_summary.total_count > 0);

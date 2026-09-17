@@ -708,7 +708,7 @@
     <ClInclude Include="StatCommon.h">
       <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClInclude>
-    <ClInclude Include="StatTheme.h">
+    <ClInclude Include="StatChart.h">
       <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClInclude>
     <ClInclude Include="StatMeta.h">
@@ -1475,7 +1475,7 @@
     <ClCompile Include="StatSongsTabDlg.cpp">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
-    <ClCompile Include="StatTheme.cpp">
+    <ClCompile Include="StatChart.cpp">
       <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClCompile>
     <ClCompile Include="StatMeta.cpp">

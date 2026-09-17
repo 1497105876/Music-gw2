@@ -1,0 +1,118 @@
+classDiagram
+    class CStatic
+    class CDrawCommon {
+        +Create(CDC*, CFont*)
+        +SetFont(CFont*) CFont*
+        +FillRect(CRect, COLORREF)
+        +DrawLine(CPoint, CPoint, COLORREF, int, bool)
+        +DrawRectFrame(CRect, COLORREF, int, BYTE)
+        +DrawEllipse(CRect, COLORREF, BYTE)
+        +DrawRoundRect(CRect, COLORREF, int, BYTE)
+        +DrawWindowText(CRect, LPCTSTR, COLORREF, Alignment)
+        +GetTextExtent(LPCTSTR) CSize
+    }
+    class CStaticEx {
+        +OnPaint()
+    }
+    class CStatChart {
+        <<abstract>>
+        #DrawChart(CDrawCommon, CDC, CRect)
+        #OnPaint()
+        #OnEraseBkgnd(CDC) BOOL
+        #OnSize(UINT, int, int)
+    }
+    class StatPalette {
+        <<namespace>>
+        +DialogBack() COLORREF
+        +TextPrimary() COLORREF
+        +TextSecondary() COLORREF
+        +TextDisabled() COLORREF
+        +Grid() COLORREF
+        +Axis() COLORREF
+        +Highlight() COLORREF
+        +Series(int) COLORREF
+        +Selected() COLORREF
+        +SemGood() COLORREF
+        +SemWarn() COLORREF
+    }
+    class StatFont {
+        <<enumeration>>
+        Tiny = 8
+        Body = 9
+        SubHead = 10
+        Heading = 11
+        Title = 12
+        BigTitle = 13
+        Hero = 14
+    }
+    class COverviewChart {
+        +SetData(...)
+        #DrawChart(...)
+    }
+    class CTrendChart {
+        +SetData(...)
+        #DrawChart(...)
+    }
+    class CGenreChart {
+        +SetData(...)
+        #DrawChart(...)
+    }
+    class CRankBarChart {
+        +SetData(wstring, vector)
+        #DrawChart(...)
+    }
+    class CProfileChart {
+        +SetData(...)
+        #DrawChart(...)
+    }
+    class CBaseDialog
+    class CTabDlg {
+        +SetScrollbarInfo(int, int)
+        +OnVScroll()
+        +OnMouseWheel()
+    }
+    class CStatTabDlg {
+        +SetContext(StatContext)
+        +Refresh()
+    }
+    class CStatOverviewTabDlg
+    class CStatTrendTabDlg
+    class CStatGenreTabDlg
+    class CStatArtistRankTabDlg
+    class CStatAlbumRankTabDlg
+    class CStatSongRankTabDlg
+    class CStatProfileTabDlg
+
+    CStatic <|-- CStaticEx
+    CStatic <|-- CStatChart
+    CStatChart <|-- COverviewChart
+    CStatChart <|-- CTrendChart
+    CStatChart <|-- CGenreChart
+    CStatChart <|-- CRankBarChart
+    CStatChart <|-- CProfileChart
+    CBaseDialog <|-- CTabDlg
+    CTabDlg <|-- CStatTabDlg
+    CStatTabDlg <|-- CStatOverviewTabDlg
+    CStatTabDlg <|-- CStatTrendTabDlg
+    CStatTabDlg <|-- CStatGenreTabDlg
+    CStatTabDlg <|-- CStatArtistRankTabDlg
+    CStatTabDlg <|-- CStatAlbumRankTabDlg
+    CStatTabDlg <|-- CStatSongRankTabDlg
+    CStatTabDlg <|-- CStatProfileTabDlg
+    CStatOverviewTabDlg *-- COverviewChart
+    CStatTrendTabDlg *-- CTrendChart
+    CStatGenreTabDlg *-- CGenreChart
+    CStatArtistRankTabDlg *-- CRankBarChart
+    CStatAlbumRankTabDlg *-- CRankBarChart
+    CStatSongRankTabDlg *-- CRankBarChart
+    CStatProfileTabDlg *-- CProfileChart
+    COverviewChart ..> CDrawCommon
+    CTrendChart ..> CDrawCommon
+    CGenreChart ..> CDrawCommon
+    CRankBarChart ..> CDrawCommon
+    CProfileChart ..> CDrawCommon
+    COverviewChart ..> StatPalette
+    CTrendChart ..> StatPalette
+    CGenreChart ..> StatPalette
+    CRankBarChart ..> StatPalette
+    CProfileChart ..> StatPalette
