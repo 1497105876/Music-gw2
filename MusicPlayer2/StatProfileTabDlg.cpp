@@ -32,7 +32,6 @@ BOOL CStatProfileTabDlg::OnInitDialog()
 {
     CStatTabDlg::OnInitDialog();
 
-    // 与排行页一致：SS_BLACKFRAME 改为运行时自绘（SS_OWNERDRAW），带垂直滚动条
 
     return TRUE;
 }

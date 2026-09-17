@@ -41,7 +41,6 @@ BOOL CStatArtistRankTabDlg::OnInitDialog()
     m_list.InsertColumn(COL_NAME, L"歌手", LVCFMT_LEFT, theApp.DPI(200));    // 歌手名列
     m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, theApp.DPI(78)); // 时长列
 
-    // 把图表静态控件改成自绘模式（SS_OWNERDRAW），系统会发 WM_DRAWITEM 来让我们自己画
     // 同时加上 WS_VSCROLL，数据多了可以滚动
 
     return TRUE;

@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "BaseDialog.h"
 #include "CTabCtrlEx.h"
+#include "MyComboBox.h"
 #include "StatCommon.h"
 #include "StatOverviewTabDlg.h"
 #include "StatArtistRankTabDlg.h"
@@ -26,6 +27,9 @@ public:
 
 protected:
     CTabCtrlEx m_tab;
+    CMyComboBox   m_preset_combo;   // 项目统一下拉框（AppearanceSettingDlg / DataSettingsDlg 等同样使用）
+    CDateTimeCtrl m_date_from;      // 起始日期：MFC 包装，替代裸 SendDlgItemMessage
+    CDateTimeCtrl m_date_to;        // 结束日期
 
     // 8 个子页（批次 2：在 6 页基础上新增 专辑 / 流派）
     CStatOverviewTabDlg m_overview_dlg;
@@ -60,7 +64,7 @@ protected:
 protected:
     virtual CString GetDialogName() const override;
     virtual bool InitializeControls() override;
-    virtual bool IsRememberDialogSizeEnable() const override { return false; }
+    virtual bool IsRememberDialogSizeEnable() const override { return true; }
     virtual void DoDataExchange(CDataExchange* pDX);
 
     DECLARE_MESSAGE_MAP()

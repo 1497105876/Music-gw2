@@ -78,7 +78,7 @@ bool CPlayStatisticsDlg::InitializeControls()
     SetDlgItemTextW(IDCANCEL, L"关闭");
 
     // 主对话框最小尺寸（PRD 520x340）
-    SetMinSize(theApp.DPI(520), theApp.DPI(340));
+    SetMinSize(theApp.DPI(480), theApp.DPI(300));
 
     RepositionTextBasedControls({
         { CtrlTextInfo::L4, IDC_EXPORT_CSV_BTN, CtrlTextInfo::W32 },
@@ -94,6 +94,9 @@ void CPlayStatisticsDlg::DoDataExchange(CDataExchange* pDX)
 {
     CBaseDialog::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_STAT_TAB, m_tab);
+    DDX_Control(pDX, IDC_STAT_RANGE_PRESET, m_preset_combo);
+    DDX_Control(pDX, IDC_STAT_DATE_FROM, m_date_from);
+    DDX_Control(pDX, IDC_STAT_DATE_TO, m_date_to);
 }
 
 BEGIN_MESSAGE_MAP(CPlayStatisticsDlg, CBaseDialog)
@@ -120,7 +123,7 @@ END_MESSAGE_MAP()
 
 void CPlayStatisticsDlg::FillPresetCombo()
 {
-    CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_STAT_RANGE_PRESET));
+    CComboBox* pCombo = &m_preset_combo;
     if (pCombo == nullptr) return;
     pCombo->ResetContent();
     pCombo->AddString(L"近7天");      // Last7
@@ -187,8 +190,8 @@ void CPlayStatisticsDlg::SyncDatePickersFromFilter()
 
     SYSTEMTIME st_from = YmdToSystemTime(from_disp);
     SYSTEMTIME st_to = YmdToSystemTime(to_disp);
-    SendDlgItemMessage(IDC_STAT_DATE_FROM, DTM_SETSYSTEMTIME, GDT_VALID, (LPARAM)&st_from);
-    SendDlgItemMessage(IDC_STAT_DATE_TO, DTM_SETSYSTEMTIME, GDT_VALID, (LPARAM)&st_to);
+    m_date_from.SetTime(&st_from);
+    m_date_to.SetTime(&st_to);
 }
 
 void CPlayStatisticsDlg::SyncGrainButtons()
@@ -206,7 +209,7 @@ void CPlayStatisticsDlg::SyncGrainButtons()
 
 void CPlayStatisticsDlg::SyncPresetComboToFilter()
 {
-    CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_STAT_RANGE_PRESET));
+    CComboBox* pCombo = &m_preset_combo;
     if (pCombo != nullptr)
         pCombo->SetCurSel(static_cast<int>(m_filter.preset));
 }
@@ -216,8 +219,8 @@ void CPlayStatisticsDlg::InitFilterControls()
     FillPresetCombo();
 
     // 两个日期选择框统一为 yyyy-MM-dd 显示
-    SendDlgItemMessage(IDC_STAT_DATE_FROM, DTM_SETFORMAT, 0, (LPARAM)L"yyyy-MM-dd");
-    SendDlgItemMessage(IDC_STAT_DATE_TO, DTM_SETFORMAT, 0, (LPARAM)L"yyyy-MM-dd");
+    m_date_from.SetFormat(L"yyyy-MM-dd");
+    m_date_to.SetFormat(L"yyyy-MM-dd");
 
     // 默认：近 30 天，粒度 天
     m_filter = StatFilter{};
@@ -454,7 +457,7 @@ void CPlayStatisticsDlg::LoadRecords()
 
 void CPlayStatisticsDlg::OnCbnSelchangeRangePreset()
 {
-    CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_STAT_RANGE_PRESET));
+    CComboBox* pCombo = &m_preset_combo;
     if (pCombo == nullptr) return;
     int sel = pCombo->GetCurSel();
     if (sel < 0) return;
@@ -474,7 +477,7 @@ void CPlayStatisticsDlg::OnDtnDatetimechangeDateFrom(NMHDR* pNMHDR, LRESULT* pRe
     *pResult = 0;
 
     SYSTEMTIME st = {};
-    SendDlgItemMessage(IDC_STAT_DATE_FROM, DTM_GETSYSTEMTIME, 0, (LPARAM)&st);
+    m_date_from.GetTime(&st);
     int new_from = SystemTimeToYmd(st);
     if (new_from == 0) return;
 
@@ -483,7 +486,7 @@ void CPlayStatisticsDlg::OnDtnDatetimechangeDateFrom(NMHDR* pNMHDR, LRESULT* pRe
     {
         AfxMessageBox(L"起始日期晚于结束日期，请重新选择。", MB_ICONWARNING);
         SYSTEMTIME old_st = YmdToSystemTime(m_filter.from_ymd != 0 ? m_filter.from_ymd : new_from);
-        SendDlgItemMessage(IDC_STAT_DATE_FROM, DTM_SETSYSTEMTIME, GDT_VALID, (LPARAM)&old_st);
+        m_date_from.SetTime(&old_st);
         return;
     }
 
@@ -502,7 +505,7 @@ void CPlayStatisticsDlg::OnDtnDatetimechangeDateTo(NMHDR* pNMHDR, LRESULT* pResu
     *pResult = 0;
 
     SYSTEMTIME st = {};
-    SendDlgItemMessage(IDC_STAT_DATE_TO, DTM_GETSYSTEMTIME, 0, (LPARAM)&st);
+    m_date_to.GetTime(&st);
     int new_to = SystemTimeToYmd(st);
     if (new_to == 0) return;
 
@@ -511,7 +514,7 @@ void CPlayStatisticsDlg::OnDtnDatetimechangeDateTo(NMHDR* pNMHDR, LRESULT* pResu
     {
         AfxMessageBox(L"结束日期早于起始日期，请重新选择。", MB_ICONWARNING);
         SYSTEMTIME old_st = YmdToSystemTime(m_filter.to_ymd != 0 ? m_filter.to_ymd : new_to);
-        SendDlgItemMessage(IDC_STAT_DATE_TO, DTM_SETSYSTEMTIME, GDT_VALID, (LPARAM)&old_st);
+        m_date_to.SetTime(&old_st);
         return;
     }
 
