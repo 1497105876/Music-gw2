@@ -53,13 +53,11 @@ protected:
     void FillPresetCombo();
     void ApplyPresetToFilter(RangePreset preset);  // 按预设回填 from/to
     void SyncDatePickersFromFilter();              // 把 m_filter 的 from/to 写回两个 DTP
-    void SyncGrainButtons();                       // 单选按钮与 m_filter.grain 同步
     void SyncPresetComboToFilter();                // 下拉框与 m_filter.preset 同步
 
     void LoadRecords();                            // 解析全部 playlog -> m_all_records
     void ApplyFilter();                            // m_all_records -> m_filtered_records + m_context
     void BroadcastContext();                       // 向 8 个子页投递 const StatContext*
-    void UpdateUpdatedLabel();                     // 刷新"数据更新至 HH:MM"
     void RefreshAllViews();                        // LoadRecords + ApplyFilter + Broadcast + label
 
 protected:
@@ -76,10 +74,6 @@ public:
     afx_msg void OnCbnSelchangeRangePreset();
     afx_msg void OnEnKillfocusDateFrom();
     afx_msg void OnEnKillfocusDateTo();
-    afx_msg void OnBnClickedGrainDay();
-    afx_msg void OnBnClickedGrainWeek();
-    afx_msg void OnBnClickedGrainMonth();
-    afx_msg void OnBnClickedGrainYear();
     afx_msg void OnBnClickedStatHelpBtn();
     afx_msg void OnBnClickedExportAggButton();
     afx_msg void OnBnClickedReportButton();

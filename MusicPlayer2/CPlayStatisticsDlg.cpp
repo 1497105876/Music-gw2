@@ -98,10 +98,6 @@ bool CPlayStatisticsDlg::InitializeControls()
     SetDlgItemTextW(IDC_STAT_EXPORT_AGG_BTN, L"导出聚合CSV");
     SetDlgItemTextW(IDC_STAT_REPORT_BTN, L"生成报告");
     SetDlgItemTextW(IDC_STAT_HELP_BTN, L"?");
-    SetDlgItemTextW(IDC_STAT_GRAIN_DAY, L"天");
-    SetDlgItemTextW(IDC_STAT_GRAIN_WEEK, L"周");
-    SetDlgItemTextW(IDC_STAT_GRAIN_MONTH, L"月");
-    SetDlgItemTextW(IDC_STAT_GRAIN_YEAR, L"年");
     SetDlgItemTextW(IDCANCEL, L"关闭");
 
     // 主对话框最小尺寸（PRD 520x340）
@@ -132,10 +128,6 @@ BEGIN_MESSAGE_MAP(CPlayStatisticsDlg, CBaseDialog)
     ON_BN_CLICKED(IDC_STAT_EXPORT_AGG_BTN, &CPlayStatisticsDlg::OnBnClickedExportAggButton)
     ON_BN_CLICKED(IDC_STAT_REPORT_BTN, &CPlayStatisticsDlg::OnBnClickedReportButton)
     ON_BN_CLICKED(IDC_STAT_HELP_BTN, &CPlayStatisticsDlg::OnBnClickedStatHelpBtn)
-    ON_BN_CLICKED(IDC_STAT_GRAIN_DAY, &CPlayStatisticsDlg::OnBnClickedGrainDay)
-    ON_BN_CLICKED(IDC_STAT_GRAIN_WEEK, &CPlayStatisticsDlg::OnBnClickedGrainWeek)
-    ON_BN_CLICKED(IDC_STAT_GRAIN_MONTH, &CPlayStatisticsDlg::OnBnClickedGrainMonth)
-    ON_BN_CLICKED(IDC_STAT_GRAIN_YEAR, &CPlayStatisticsDlg::OnBnClickedGrainYear)
     ON_CBN_SELCHANGE(IDC_STAT_RANGE_PRESET, &CPlayStatisticsDlg::OnCbnSelchangeRangePreset)
     ON_EN_KILLFOCUS(IDC_STAT_DATE_FROM, &CPlayStatisticsDlg::OnEnKillfocusDateFrom)
     ON_EN_KILLFOCUS(IDC_STAT_DATE_TO, &CPlayStatisticsDlg::OnEnKillfocusDateTo)
@@ -219,19 +211,6 @@ void CPlayStatisticsDlg::SyncDatePickersFromFilter()
     m_date_to.SetWindowText(YmdToText(to_disp));
 }
 
-void CPlayStatisticsDlg::SyncGrainButtons()
-{
-    UINT id = IDC_STAT_GRAIN_DAY;
-    switch (m_filter.grain)
-    {
-    case Grain::Day:   id = IDC_STAT_GRAIN_DAY;   break;
-    case Grain::Week:  id = IDC_STAT_GRAIN_WEEK;  break;
-    case Grain::Month: id = IDC_STAT_GRAIN_MONTH; break;
-    case Grain::Year:  id = IDC_STAT_GRAIN_YEAR;  break;
-    }
-    CheckRadioButton(IDC_STAT_GRAIN_DAY, IDC_STAT_GRAIN_YEAR, id);
-}
-
 void CPlayStatisticsDlg::SyncPresetComboToFilter()
 {
     CComboBox* pCombo = &m_preset_combo;
@@ -254,7 +233,6 @@ void CPlayStatisticsDlg::InitFilterControls()
     ApplyPresetToFilter(RangePreset::Last30);
 
     SyncDatePickersFromFilter();
-    SyncGrainButtons();
     SyncPresetComboToFilter();
 }
 
@@ -294,21 +272,11 @@ void CPlayStatisticsDlg::BroadcastContext()
     m_profile_dlg.SetContext(&m_context);
 }
 
-void CPlayStatisticsDlg::UpdateUpdatedLabel()
-{
-    SYSTEMTIME st;
-    GetLocalTime(&st);
-    CString text;
-    text.Format(L"数据更新至 %02d:%02d", st.wHour, st.wMinute);
-    SetDlgItemTextW(IDC_STAT_UPDATED_TEXT, text);
-}
-
 void CPlayStatisticsDlg::RefreshAllViews()
 {
     LoadRecords();
     ApplyFilter();
     BroadcastContext();
-    UpdateUpdatedLabel();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -352,7 +320,6 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     ApplyFilter();
     BroadcastContext();
     m_tab.SetCurTab(0);
-    UpdateUpdatedLabel();
 
     // 近实时：注册通知目标 + 60s 兜底定时器
     CPlayStatistics::GetInstance().SetNotifyTarget(m_hWnd);
@@ -494,39 +461,6 @@ void CPlayStatisticsDlg::OnCbnSelchangeRangePreset()
 
     ApplyFilter();
     BroadcastContext();
-    UpdateUpdatedLabel();
-}
-
-void CPlayStatisticsDlg::OnBnClickedGrainDay()
-{
-    m_filter.grain = Grain::Day;
-    ApplyFilter();
-    BroadcastContext();
-    UpdateUpdatedLabel();
-}
-
-void CPlayStatisticsDlg::OnBnClickedGrainWeek()
-{
-    m_filter.grain = Grain::Week;
-    ApplyFilter();
-    BroadcastContext();
-    UpdateUpdatedLabel();
-}
-
-void CPlayStatisticsDlg::OnBnClickedGrainMonth()
-{
-    m_filter.grain = Grain::Month;
-    ApplyFilter();
-    BroadcastContext();
-    UpdateUpdatedLabel();
-}
-
-void CPlayStatisticsDlg::OnBnClickedGrainYear()
-{
-    m_filter.grain = Grain::Year;
-    ApplyFilter();
-    BroadcastContext();
-    UpdateUpdatedLabel();
 }
 
 void CPlayStatisticsDlg::OnBnClickedStatHelpBtn()
@@ -778,7 +712,6 @@ void CPlayStatisticsDlg::OnEnKillfocusDateFrom()
 
     ApplyFilter();
     BroadcastContext();
-    UpdateUpdatedLabel();
 }
 
 void CPlayStatisticsDlg::OnEnKillfocusDateTo()
@@ -816,5 +749,4 @@ void CPlayStatisticsDlg::OnEnKillfocusDateTo()
 
     ApplyFilter();
     BroadcastContext();
-    UpdateUpdatedLabel();
 }
