@@ -12,6 +12,7 @@
 #include "StatTrendTabDlg.h"
 #include "StatSongsTabDlg.h"
 #include "StatProfileTabDlg.h"
+#include "StatHtmlReport.h"
 #include <vector>
 
 class CPlayStatisticsDlg : public CBaseDialog

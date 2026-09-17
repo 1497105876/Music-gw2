@@ -282,6 +282,7 @@
     <ClInclude Include="StatProfileTabDlg.h" />
     <ClInclude Include="StatCommon.h" />
     <ClInclude Include="StatChart.h" />
+<ClInclude Include="StatHtmlReport.h" />
     <ClInclude Include="StatMeta.h" />
     <ClInclude Include="StatTabDlg.h" />
     <ClInclude Include="StatHelpDlg.h" />
@@ -546,6 +547,7 @@
     <ClCompile Include="StatAiInsight.cpp" />
     <ClCompile Include="StatProfileTabDlg.cpp" />
     <ClCompile Include="StatChart.cpp" />
+<ClCompile Include="StatHtmlReport.cpp" />
     <ClCompile Include="StatMeta.cpp" />
     <ClCompile Include="StatTabDlg.cpp" />
     <ClCompile Include="StatHelpDlg.cpp" />

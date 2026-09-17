@@ -2786,4 +2786,10 @@
     <Xml Include="res\ui\toggle_setting_group.xml" />
     <Xml Include="res\ui\test_dialog.xml" />
   </ItemGroup>
+    <ClInclude Include="StatHtmlReport.h">
+      <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClInclude>
+    <ClCompile Include="StatHtmlReport.cpp">
+      <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClCompile>
 </Project>

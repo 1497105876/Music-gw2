@@ -517,8 +517,12 @@ void CPlayStatisticsDlg::OnBnClickedExportAggButton()
 
 void CPlayStatisticsDlg::OnBnClickedReportButton()
 {
-    // 报告/海报导出在批次 3 实现（REQ-206）
-    AfxMessageBox(L"报告生成将在后续版本提供。", MB_ICONINFORMATION);
+    if (m_filtered_records.empty())
+    {
+        AfxMessageBox(L"\u6ca1\u6709\u64ad\u653e\u8bb0\u5f55\uff0c\u65e0\u6cd5\u751f\u6210\u62a5\u544a\u3002", MB_ICONINFORMATION);
+        return;
+    }
+    CStatHtmlReport::GenerateAndOpen(m_filtered_records, m_context.summary, m_filter);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
