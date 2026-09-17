@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>统计功能 · 实现方式选择（网页 / 应用内 / 不做）</title>
+<style>
+:root {
+  --bg: #fafaf8;
+  --ink: #14161a;
+  --ink-2: #4a4f57;
+  --ink-3: #878d96;
+  --hair: #d9dad5;
+  --hair-soft: #e8e8e4;
+  --accent: #0f6b5c;
+  --accent-soft: #e5efec;
+  --warn: #9a6b1f;
+  --warn-soft: #f6efdf;
+  --bad: #94382e;
+  --bad-soft: #f5e7e4;
+  --web: #0f6b5c;      /* 网页 */
+  --web-soft: #e5efec;
+  --app: #2f5d9e;      /* 应用内 */
+  --app-soft: #e7edf6;
+  --cut: #94382e;      /* 不做 */
+  --cut-soft: #f5e7e4;
+  --mono: "Cascadia Mono", Consolas, "SF Mono", monospace;
+  --sans: "Segoe UI", "Microsoft YaHei", sans-serif;
+  --serif: "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.65; padding: 48px 24px 96px; }
+.page { max-width: 1080px; margin: 0 auto; }
+.kicker { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+h1 { font-family: var(--serif); font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25; margin-bottom: 14px; }
+.lede { font-size: 16px; color: var(--ink-2); max-width: 64ch; margin-bottom: 22px; }
+.meta-row { font-family: var(--mono); font-size: 12px; color: var(--ink-3); padding: 12px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 36px; }
+h2 { font-family: var(--serif); font-size: 23px; font-weight: 600; margin: 52px 0 6px; padding-top: 20px; border-top: 1px solid var(--hair); }
+h2 .no { font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-right: 10px; font-weight: 400; }
+p.sub { color: var(--ink-3); font-size: 13.5px; margin-bottom: 18px; }
+.tag { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 1.5px 8px; border-radius: 3px; letter-spacing: 0.03em; vertical-align: 1px; }
+.t-web { background: var(--web-soft); color: var(--web); }
+.t-app { background: var(--app-soft); color: var(--app); }
+.t-both { background: var(--warn-soft); color: var(--warn); }
+.t-done { background: #eceae4; color: var(--ink-3); }
+.t-cut { background: var(--cut-soft); color: var(--cut); }
+/* 功能卡 */
+.card { border: 1px solid var(--hair); background: #fff; margin: 16px 0; padding: 18px 20px; }
+.card.done { opacity: 0.55; }
+.card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.card h3 { font-size: 15.5px; font-weight: 600; display: inline; }
+.rid { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+.card p.desc { color: var(--ink-2); font-size: 13.5px; margin: 8px 0 10px; }
+/* 缩略示意 */
+.mock { border: 1px solid var(--hair-soft); background: var(--bg); padding: 14px 16px; margin: 10px 0 12px; position: relative; }
+.mock-label { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); letter-spacing: 0.08em; margin-bottom: 8px; }
+/* 选项 */
+.opts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.opts label { font-size: 12.5px; padding: 4px 12px; border: 1px solid var(--hair); border-radius: 3px; cursor: pointer; color: var(--ink-2); user-select: none; }
+.opts input { display: none; }
+.opts input:checked + span { font-weight: 600; }
+.opts label.on-web  { border-color: var(--web); background: var(--web-soft); color: var(--web); }
+.opts label.on-app  { border-color: var(--app); background: var(--app-soft); color: var(--app); }
+.opts label.on-cut  { border-color: var(--cut); background: var(--cut-soft); color: var(--cut); }
+.opts label.on-pend { border-color: var(--ink-3); background: #f0f0ec; color: var(--ink-3); }
+.dep { font-size: 12px; color: var(--ink-3); margin-top: 8px; font-family: var(--mono); }
+/* 汇总条 */
+.sticky { position: sticky; top: 0; z-index: 9; background: var(--bg); border-bottom: 2px solid var(--ink); padding: 14px 0 12px; display: flex; gap: 26px; align-items: center; flex-wrap: wrap; }
+.sticky b { font-family: var(--mono); font-size: 15px; }
+.sticky .cap { font-size: 12px; color: var(--ink-3); font-family: var(--mono); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+button.copy { font-family: var(--mono); font-size: 12px; padding: 6px 14px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); cursor: pointer; }
+button.copy:hover { opacity: 0.85; }
+.cut-list { background: var(--cut-soft); padding: 14px 20px; margin: 14px 0 26px; font-size: 13.5px; }
+.cut-list li { margin: 3px 0 3px 18px; }
+.footnote { font-size: 12.5px; color: var(--ink-3); border-top: 1px solid var(--hair); padding-top: 14px; margin-top: 60px; }
+/* 缩略示意专用 */
+.heat { display: grid; grid-template-columns: repeat(26, 8px); gap: 2px; }
+.heat i { width: 8px; height: 8px; border-radius: 1px; }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 56px; }
+.bars i { flex: 1; background: var(--app); border-radius: 1px 1px 0 0; opacity: 0.85; }
+.donut { width: 74px; height: 74px; border-radius: 50%; background: conic-gradient(#0f6b5c 0 34%, #2f5d9e 34% 58%, #9a6b1f 58% 76%, #878d96 76% 100%); position: relative; }
+.donut::after { content: ""; position: absolute; inset: 20px; background: #fff; border-radius: 50%; }
+.radar-wrap { display: flex; gap: 18px; align-items: center; }
+.legend { font-size: 11.5px; color: var(--ink-2); line-height: 1.9; }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+.report-mock { border: 1px solid var(--hair); background: #fff; }
+.report-mock .rm-head { background: var(--ink); color: var(--bg); font-family: var(--mono); font-size: 10px; padding: 6px 12px; letter-spacing: 0.1em; }
+.report-mock .rm-body { padding: 12px 14px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+.report-mock .rm-cell { background: var(--bg); border: 1px solid var(--hair-soft); padding: 6px 8px; font-size: 10.5px; color: var(--ink-2); }
+.report-mock .rm-cell b { display: block; font-size: 13px; color: var(--ink); }
+.editmock { border: 1px solid var(--hair); background: #fff; font-family: var(--mono); font-size: 11px; color: var(--ink-2); padding: 10px 12px; line-height: 1.8; }
+.sep { border: 0; border-top: 1px dashed var(--hair); margin: 18px 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="kicker">MUSICPLAYER2-GW · 播放统计功能</div>
+  <h1>实现方式选择清单</h1>
+  <p class="lede">每个功能都画了缩略示意。你的任务：给每个功能选一个归属——<b>网页报告</b>（生成 HTML 用浏览器看）、<b>应用内</b>（MFC 对话框里做）、<b>不做</b>，或者先<b>待定</b>。选完点底部按钮复制结果发我。</p>
+  <div class="meta-row">
+    <span>基线 commit：391860f（列表化完成）</span>
+    <span>需求总数：41 条（已剔除 4 条）</span>
+    <span>已完成：约 23 条</span>
+  </div>
+
+  <div class="sticky">
+    <span class="cap">已选</span>
+    <span><span class="sw" style="background:var(--web)"></span>网页 <b id="c-web">0</b></span>
+    <span><span class="sw" style="background:var(--app)"></span>应用内 <b id="c-app">0</b></span>
+    <span><span class="sw" style="background:var(--cut)"></span>不做 <b id="c-cut">0</b></span>
+    <span><span class="sw" style="background:var(--ink-3)"></span>待定 <b id="c-pend">0</b></span>
+    <button class="copy" onclick="copyResult()">复制我的选择</button>
+  </div>
+
+  <h2><span class="no">00</span>参考：已完成（不用选，灰显仅供对照）</h2>
+  <p class="sub">这些已经在应用内实现并推送，列表化重建后就是现在的样子。</p>
+
+  <div class="card done">
+    <div class="card-top"><h3>核心指标 + 全部统计列表</h3><span class="tag t-done">已完成 · 应用内</span></div>
+    <p class="desc">概览页两列列表（统计项｜数值）+ 歌手/专辑/曲目三列排行 + 明细页 + 导出 CSV/JSON/聚合 CSV。数据来自全局过滤器（范围预设 + 起止日期）。</p>
+    <div class="mock">
+      <div class="mock-label">当前概览页 · 列表形态</div>
+      <div class="editmock">
+        统计项　　　　　　　数值<br>
+        ── 基本统计 ──<br>
+        今日播放　　　　　　14 首<br>
+        累计播放时长　　　　3时42分<br>
+        ── 口味 ──<br>
+        最爱歌手　　　　　　Adele（1时02分）
+      </div>
+    </div>
+    <div class="dep">涉及：CListCtrlEx · 语言表（待接入） · StatAnalysis</div>
+  </div>
+
+  <h2><span class="no">01</span>展示型 → 适合放网页报告</h2>
+  <p class="sub">数据由应用算好写进 HTML，浏览器只负责看。JS/SVG 在本地文件里离线可跑。</p>
+
+  <!-- 趋势图 -->
+  <div class="card" id="f-trend">
+    <div class="card-top"><h3>趋势图（当前留白占位）</h3><span class="rid">REQ-102</span><span class="tag t-web">网页</span></div>
+    <p class="desc">按当前范围把播放次数按时段聚合，柱+折线。网页版用 SVG 画，可缩放、无 GDI 手算坐标的问题。</p>
+    <div class="mock">
+      <div class="mock-label">示意 · 柱 + 折线（SVG）</div>
+      <div class="bars">
+        <i style="height:30%"></i><i style="height:55%"></i><i style="height:40%"></i><i style="height:70%"></i><i style="height:88%"></i><i style="height:52%"></i><i style="height:64%"></i><i style="height:35%"></i><i style="height:78%"></i><i style="height:60%"></i>
+      </div>
+      <div class="dep" style="margin-top:6px">X 轴：按 天 / 周 / 月 / 年 聚合（取决于你选的范围）</div>
+    </div>
+    <div class="opts" data-f="趋势图">
+      <label><input type="radio" name="o-trend" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-trend" value="app"><span>应用内</span></label>
+      <label><input type="radio" name="o-trend" value="cut"><span>不做</span></label>
+      <label><input type="radio" name="o-trend" value="pend" checked><span>待定</span></label>
+    </div>
+  </div>
+
+  <!-- 热力图 -->
+  <div class="card" id="f-heat">
+    <div class="card-top"><h3>每日热力图（365 天）</h3><span class="rid">REQ-108</span><span class="tag t-web">网页</span></div>
+    <p class="desc">GitHub 风格：一行一周、一列一天，颜色深浅 = 当天播放时长。悬停显示具体日期和时长。GDI 画又难看又费劲，SVG 一个循环就出来。</p>
+    <div class="mock">
+      <div class="mock-label">示意 · 色块网格（悬停显明细）</div>
+      <div class="heat" id="heatgrid"></div>
+      <div class="dep" style="margin-top:6px">颜色越深 = 当天听得越多 · 悬停显示「2026-09-14 · 1时42分 · 23 首」</div>
+    </div>
+    <div class="opts" data-f="每日热力图">
+      <label><input type="radio" name="o-heat" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-heat" value="app"><span>应用内</span></label>
+      <label><input type="radio" name="o-heat" value="cut"><span>不做</span></label>
+      <label><input type="radio" name="o-heat" value="pend" checked><span>待定</span></label>
+    </div>
+  </div>
+
+  <!-- 雷达图 -->
+  <div class="card" id="f-radar">
+    <div class="card-top"><h3>五维雷达图（你的听歌画像）</h3><span class="rid">REQ-211</span><span class="tag t-web">网页</span></div>
+    <p class="desc">五个维度：探索（只听一次占比）/ 专注（完播率+单曲时长）/ 夜行（深夜占比）/ 专一（Top10 集中度反向）/ 新鲜（本月新歌占比）。社交度已剔除（无数据源）。</p>
+    <div class="mock">
+      <div class="mock-label">示意 · SVG 五边形</div>
+      <div class="radar-wrap">
+        <svg width="150" height="130" viewBox="0 0 150 130">
+          <polygon points="75,10 138,55 114,120 36,120 12,55" fill="none" stroke="#d9dad5" stroke-width="1"/>
+          <polygon points="75,28 118,60 100,106 50,106 32,60" fill="rgba(15,107,92,0.18)" stroke="#0f6b5c" stroke-width="1.5"/>
+          <circle cx="75" cy="28" r="2.5" fill="#0f6b5c"/><circle cx="118" cy="60" r="2.5" fill="#0f6b5c"/><circle cx="100" cy="106" r="2.5" fill="#0f6b5c"/><circle cx="50" cy="106" r="2.5" fill="#0f6b5c"/><circle cx="32" cy="60" r="2.5" fill="#0f6b5c"/>
+        </svg>
+        <div class="legend">
+          <i style="background:var(--accent)"></i>探索 72%<br>
+          <i style="background:var(--app)"></i>专注 45%<br>
+          <i style="background:var(--warn)"></i>夜行 30%<br>
+          <i style="background:var(--ink-3)"></i>专一 60%<br>
+          <i style="background:var(--cut)"></i>新鲜 38%
+        </div>
+      </div>
+    </div>
+    <div class="opts" data-f="五维雷达图">
+      <label><input type="radio" name="o-radar" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-radar" value="app"><span>应用内</span></label>
+      <label><input type="radio" name="o-radar" value="cut"><span>不做</span></label>
+      <label><input type="radio" name="o-radar" value="pend" checked><span>待定</span></label>
+    </div>
+  </div>
+
+  <!-- 年度/月度报告 -->
+  <div class="card" id="f-report">
+    <div class="card-top"><h3>年度 / 月度报告（可打印成 PDF 海报）</h3><span class="rid">REQ-206</span><span class="tag t-web">网页</span></div>
+    <p class="desc">浏览器里「打印 → 另存为 PDF」直接得到可分享的报告，替代原计划的 GDI 绘 PNG（那个又难写又难看）。</p>
+    <div class="mock">
+      <div class="mock-label">示意 · 报告卡片</div>
+      <div class="report-mock">
+        <div class="rm-head">MUSICPLAYER2 · 2026 年度听歌报告</div>
+        <div class="rm-body">
+          <div class="rm-cell"><b>1,247</b>播放次数</div>
+          <div class="rm-cell"><b>82h 14m</b>播放时长</div>
+          <div class="rm-cell"><b>386</b>听过歌手</div>
+          <div class="rm-cell"><b>64%</b>完整收听率</div>
+        </div>
+      </div>
+    </div>
+    <div class="opts" data-f="年度月度报告">
+      <label><input type="radio" name="o-report" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-report" value="app"><span>应用内</span></label>
+      <label><input type="radio" name="o-report" value="cut"><span>不做</span></label>
+      <label><input type="radio" name="o-report" value="pend" checked><span>待定</span></label>
+    </div>
+  </div>
+
+  <!-- 口味漂移 -->
+  <div class="card" id="f-drift">
+    <div class="card-top"><h3>口味漂移叠图（季度主导流派）</h3><span class="rid">REQ-115</span><span class="tag t-web">网页</span></div>
+    <p class="desc">按季度统计各流派占比，多条折线叠加看口味怎么变的。数据层 ComputeGenreShareByQuarter 已有。</p>
+    <div class="opts" data-f="口味漂移叠图">
+      <label><input type="radio" name="o-drift" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-drift" value="app"><span>应用内</span></label>
+      <label><input type="radio" name="o-drift" value="cut"><span>不做</span></label>
+      <label><input type="radio" name="o-drift" value="pend" checked><span>待定</span></label>
+    </div>
+  </div>
+
+  <!-- 异常归因 -->
+  <div class="card" id="f-anomaly">
+    <div class="card-top"><h3>异常归因卡片（这周为什么听这么多）</h3><span class="rid">REQ-207</span><span class="tag t-web">网页</span></div>
+    <p class="desc">环比突变检测（阈值）→ 找出贡献最大的单曲增量 → 生成一句解释。数据层已有，纯展示。</p>
+    <div class="opts" data-f="异常归因卡片">
+      <label><input type="radio" name="o-anom" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-anom" value="app"><span>应用内</span></label>
+      <label><input type="radio" name="o-anom" value="cut"><span>不做</span></label>
+      <label><input type="radio" name="o-anom" value="pend" checked><span>待定</span></label>
+    </div>
+  </div>
+
+  <!-- 口味演进时间线 -->
+  <div class="card" id="f-timeline">
+    <div class="card-top"><h3>口味演进时间线叙述</h3><span class="rid">REQ-212</span><span class="tag t-web">网页</span></div>
+    <p class="desc">按月/年聚合流派变化，模板生成文字叙述：「三月你迷上了爵士，五月转向电子…」。</p>
+    <div class="opts" data-f="口味演进时间线">
+      <label><input type="radio" name="o-tl" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-tl" value="app"><span>应用内</span></label>
+      <label><input type="radio" name="o-tl" value="cut"><span>不做</span></label>
+      <label><input type="radio" name="o-tl" value="pend" checked><span>待定</span></label>
+    </div>
+  </div>
+
+  <!-- 趋势外推 -->
+  <div class="card" id="f-extrap">
+    <div class="card-top"><h3>趋势外推（简化版，低置信度标注）</h3><span class="rid">REQ-214</span><span class="tag t-web">网页</span></div>
+    <p class="desc">流派占比线性外推，文案措辞明确标注低置信度，不夸大。</p>
+    <div class="opts" data-f="趋势外推">
+      <label><input type="radio" name="o-ex" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-ex" value="app"><span>应用内</span></label>
+      <label><input type="radio" name="o-ex" value="cut"><span>不做</span></label>
+      <label><input type="radio" name="o-ex" value="pend" checked><span>待定</span></label>
+    </div>
+  </div>
+
+  <!-- 口径说明 -->
+  <div class="card" id="f-help">
+    <div class="card-top"><h3>统计口径说明（? 按钮移除后的新入口）</h3><span class="rid">REQ-004</span><span class="tag t-web">网页</span></div>
+    <p class="desc">写清楚「播放&lt;15秒不计入」「后台播放计时规则」等口径。原来挂在 ? 按钮，按钮已删——放报告开头正好补上。</p>
+    <div class="opts" data-f="统计口径说明">
+      <label><input type="radio" name="o-help" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-help" value="app"><span>应用内</span></label>
+      <label><input type="radio" name="o-help" value="cut"><span>不做</span></label>
+      <label><input type="radio" name="o-help" value="pend" checked><span>待定</span></label>
+    </div>
+  </div>
+
+  <h2><span class="no">02</span>交互型 → 必须留在应用内</h2>
+  <p class="sub">这些功能要么要操作播放器，要么要写回数据，静态网页做不了。</p>
+
+  <div class="card" id="f-jump">
+    <div class="card-top"><h3>排行页点击跳转媒体库</h3><span class="rid">REQ-201</span><span class="tag t-app">应用内</span></div>
+    <p class="desc">点歌手/专辑/曲目行 → 跳到媒体库对应分类页或直接播放。要调 `CMediaLibDlg` / `CMediaClassifier`，网页做不到。</p>
+    <div class="opts" data-f="点击跳转媒体库">
+      <label><input type="radio" name="o-jump" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-jump" value="app" checked><span>应用内</span></label>
+      <label><input type="radio" name="o-jump" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <div class="card" id="f-drill">
+    <div class="card-top"><h3>图表钻取（点条目下钻）</h3><span class="rid">REQ-202</span><span class="tag t-app">应用内</span></div>
+    <p class="desc">点某歌手 → 展开该歌手的曲目列表。列表化后实现方式变为：点击行展开/过滤。需评估交互设计。</p>
+    <div class="opts" data-f="图表钻取">
+      <label><input type="radio" name="o-drill" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-drill" value="app" checked><span>应用内</span></label>
+      <label><input type="radio" name="o-drill" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <div class="card" id="f-scene">
+    <div class="card-top"><h3>场景歌单自动生成（通勤歌单）</h3><span class="rid">REQ-208</span><span class="tag t-app">应用内</span></div>
+    <p class="desc">按时段聚类播放记录 → 生成 m3u → 加入播放列表。要写文件 + 调播放列表 API。</p>
+    <div class="opts" data-f="场景歌单自动生成">
+      <label><input type="radio" name="o-scene" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-scene" value="app" checked><span>应用内</span></label>
+      <label><input type="radio" name="o-scene" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <div class="card" id="f-log">
+    <div class="card-top"><h3>导出 / 备份行为日志</h3><span class="rid">REQ-209</span><span class="tag t-app">应用内</span></div>
+    <p class="desc">导出/备份动作写一条本地日志（时间+类型+条数）。</p>
+    <div class="opts" data-f="导出行为日志">
+      <label><input type="radio" name="o-log" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-log" value="app" checked><span>应用内</span></label>
+      <label><input type="radio" name="o-log" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <div class="card" id="f-langtag">
+    <div class="card-top"><h3>语言标签采集 → 语言分布</h3><span class="rid">REQ-205</span><span class="tag t-app">应用内</span></div>
+    <p class="desc">标签编辑中支持手动标注语言并写回歌曲元数据。展示部分可后续放进网页报告。</p>
+    <div class="opts" data-f="语言标签采集">
+      <label><input type="radio" name="o-lang" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-lang" value="app" checked><span>应用内</span></label>
+      <label><input type="radio" name="o-lang" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <h2><span class="no">03</span>需要联网 / 调模型 → 应用内，结果可写入网页报告</h2>
+
+  <div class="card" id="f-ai">
+    <div class="card-top"><h3>对话式查询（Ask My Stats）</h3><span class="rid">REQ-210</span><span class="tag t-app">应用内</span></div>
+    <p class="desc">本地意图解析覆盖 80% 固定问法（「上个月听得最多的歌手」）；复杂问法可选接 LLM 兜底。结果可导出到网页报告。</p>
+    <div class="opts" data-f="对话式查询">
+      <label><input type="radio" name="o-ai" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-ai" value="app" checked><span>应用内</span></label>
+      <label><input type="radio" name="o-ai" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <div class="card" id="f-endpoint">
+    <div class="card-top"><h3>自配 OpenAI 兼容端点（含字段白名单）</h3><span class="rid">REQ-215</span><span class="tag t-app">应用内</span></div>
+    <p class="desc">设置里填端点/Key/模型名；发送前白名单过滤（时段、占比、Top 榜），file_path 和歌名明细不出本机。默认只显示「AI 洞察（本地）」，自配模型收进高级设置。</p>
+    <div class="opts" data-f="自配模型端点">
+      <label><input type="radio" name="o-ep" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-ep" value="app" checked><span>应用内</span></label>
+      <label><input type="radio" name="o-ep" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <div class="card" id="f-gen">
+    <div class="card-top"><h3>生成式报告文案（调模型增强）</h3><span class="rid">REQ-213</span><span class="tag t-both">拆两半</span></div>
+    <p class="desc">默认模板；配置了模型后可选增强。生成的文案写进 HTML 报告展示。</p>
+    <div class="opts" data-f="生成式报告文案">
+      <label><input type="radio" name="o-gen" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-gen" value="app" checked><span>应用内</span></label>
+      <label><input type="radio" name="o-gen" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <div class="card" id="f-hist">
+    <div class="card-top"><h3>AI 对话历史本地管理</h3><span class="rid">REQ-216</span><span class="tag t-app">应用内</span></div>
+    <p class="desc">查看/单条删除/全部清空。依赖对话式查询先实现。</p>
+    <div class="opts" data-f="AI对话历史管理">
+      <label><input type="radio" name="o-hist" value="web"><span>网页</span></label>
+      <label><input type="radio" name="o-hist" value="app" checked><span>应用内</span></label>
+      <label><input type="radio" name="o-hist" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <h2><span class="no">04</span>拆两半：采集在应用内 + 展示在网页</h2>
+
+  <div class="card" id="f-fav">
+    <div class="card-top"><h3>红心趋势</h3><span class="rid">REQ-204</span><span class="tag t-both">拆两半</span></div>
+    <p class="desc">采集：在 CPlayer::SetFavourite() 里写 statistics/favourite_log.jsonl（sidecar，不改播放列表结构、零迁移）。展示：网页里画曲线。</p>
+    <div class="opts" data-f="红心趋势">
+      <label><input type="radio" name="o-fav" value="web"><span>网页展示</span></label>
+      <label><input type="radio" name="o-fav" value="app" checked><span>应用内采集</span></label>
+      <label><input type="radio" name="o-fav" value="cut"><span>不做</span></label>
+    </div>
+  </div>
+
+  <h2><span class="no">05</span>已明确移除（不再出现，仅供对照）</h2>
+  <div class="cut-list">
+    <ul>
+      <li><b>粒度切换</b>（天/周/月/年单选）— 趋势图占位后无可见效果，与范围预设语义重叠（聚合能力保留，固定按天，仍用于导出聚合 CSV）</li>
+      <li><b>数据更新至 HH:MM</b> — 项目无状态栏、无时间戳先例，你确认移除（近实时机制本身保留：60s 定时重算 + 播放写入通知）</li>
+      <li><b>统计页跟随深色模式</b> — 全项目无普通对话框跟随深色，单独跟随反而与全局不一致（你确认）</li>
+      <li><b>聚合缓存</b> — 实测 2 万条解析约 10~40ms，不值得做一致性/降级（备用设计在架构文档附录 C）</li>
+      <li><b>口径说明 ? 按钮</b> — 已移除；口径说明内容并入网页报告（01 区已列）</li>
+      <li><b>内置本地模型 / 移动端 / 刷量检测 / "18 岁那年"时间轴 / 社交度维度</b> — 早期已剔除</li>
+    </ul>
+  </div>
+
+  <p class="footnote">基线 commit 391860f（列表化完成）· 本页纯静态、离线可用、无任何外部资源引用 · 你的选择只存在本页内存里，刷新会重置</p>
+</div>
+
+<script>
+// 热力图示意色块（伪随机）
+(function(){
+  var g = document.getElementById('heatgrid');
+  if (!g) return;
+  var colors = ['#e8e8e4','#d5e8dd','#a8d4ba','#6bb88a','#2e8b57'];
+  var seed = 7;
+  for (var i = 0; i < 26*7; i++) {
+    seed = (seed * 16807 + 17) % 2147483647;
+    var v = seed % 100;
+    var idx = v < 40 ? 0 : (v < 62 ? 1 : (v < 78 ? 2 : (v < 92 ? 3 : 4)));
+    var el = document.createElement('i');
+    el.style.background = colors[idx];
+    g.appendChild(el);
+  }
+})();
+
+// 选项联动 + 计数
+var counts = { web:0, app:0, cut:0, pend:0 };
+function recount(){
+  counts = { web:0, app:0, cut:0, pend:0 };
+  document.querySelectorAll('.opts input:checked').forEach(function(r){
+    counts[r.value] = (counts[r.value] || 0) + 1;
+  });
+  document.getElementById('c-web').textContent  = counts.web;
+  document.getElementById('c-app').textContent  = counts.app;
+  document.getElementById('c-cut').textContent  = counts.cut;
+  document.getElementById('c-pend').textContent = counts.pend;
+}
+document.querySelectorAll('.opts input').forEach(function(r){
+  r.addEventListener('change', function(){
+    var box = r.closest('.opts');
+    box.querySelectorAll('label').forEach(function(l){ l.className=''; });
+    r.closest('label').className = 'on-' + r.value;
+    recount();
+  });
+});
+recount();
+
+function copyResult(){
+  var lines = ['【统计功能实现方式选择】', ''];
+  document.querySelectorAll('.opts').forEach(function(box){
+    var name = box.getAttribute('data-f');
+    var sel = box.querySelector('input:checked');
+    var val = sel ? {web:'网页',app:'应用内',cut:'不做',pend:'待定'}[sel.value] : '(未选)';
+    lines.push('  ' + name + '  →  ' + val);
+  });
+  lines.push('');
+  lines.push('网页 ' + counts.web + ' · 应用内 ' + counts.app + ' · 不做 ' + counts.cut + ' · 待定 ' + counts.pend);
+  var text = lines.join('\n');
+  if (navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(text).then(function(){ alert('已复制到剪贴板'); },
+                                              function(){ fallbackCopy(text); });
+  else fallbackCopy(text);
+}
+function fallbackCopy(text){
+  var ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+  alert('已复制到剪贴板');
+}
+</script>
+</body>
+</html>
