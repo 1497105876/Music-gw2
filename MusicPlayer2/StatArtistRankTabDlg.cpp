@@ -24,10 +24,6 @@ void CStatArtistRankTabDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CStatArtistRankTabDlg, CStatTabDlg)
-    ON_WM_DRAWITEM()
-    ON_WM_VSCROLL()
-    ON_WM_MOUSEWHEEL()
-    ON_WM_SIZE()
 END_MESSAGE_MAP()
 
 BOOL CStatArtistRankTabDlg::OnInitDialog()

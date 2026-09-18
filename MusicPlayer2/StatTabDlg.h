@@ -20,6 +20,11 @@ public:
     virtual void Refresh() = 0;
 
 protected:
+    // 本页主控件（列表/编辑框等）：进入页签时把焦点交给它，
+    // 使鼠标滚轮由控件原生处理（等价 CDialog::OnInitDialog 聚焦首控件的行为）。
+    // 无主控件可返回 nullptr。
+    virtual CWnd* GetFocusTarget() const { return nullptr; }
+
     const StatContext* m_stat_ctx{ nullptr };
     bool m_dirty{ true };
 

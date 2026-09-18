@@ -31,4 +31,8 @@ void CStatTabDlg::OnTabEntered()
     if (m_dirty)
         Refresh();
     CTabDlg::OnTabEntered();
+
+    // 焦点交给本页主控件，滚轮由其原生处理
+    if (auto* p = GetFocusTarget())
+        p->SetFocus();
 }

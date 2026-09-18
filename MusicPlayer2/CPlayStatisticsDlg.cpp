@@ -72,8 +72,8 @@ bool CPlayStatisticsDlg::InitializeControls()
     SetDlgItemTextW(IDC_STAT_REPORT_BTN, L"生成报告");
     SetDlgItemTextW(IDCANCEL, L"关闭");
 
-    // 主对话框最小尺寸（默认 560x360）
-    SetMinSize(theApp.DPI(480), theApp.DPI(300));
+    // 主对话框最小尺寸（默认 680x420）
+    SetMinSize(theApp.DPI(600), theApp.DPI(360));
 
     RepositionTextBasedControls({
         { CtrlTextInfo::L4, IDC_EXPORT_CSV_BTN, CtrlTextInfo::W32 },
@@ -305,13 +305,13 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     LoadRecords();
     InitFilterControls();
 
-    // 创建子对话框
-    m_overview_dlg.Create(IDD_STAT_OVERVIEW_DLG, &m_tab);
-    m_artist_rank_dlg.Create(IDD_STAT_ARTIST_RANK_DLG, &m_tab);
-    m_album_rank_dlg.Create(IDD_STAT_ALBUM_RANK_DLG, &m_tab);
-    m_song_rank_dlg.Create(IDD_STAT_SONG_RANK_DLG, &m_tab);
-    m_songs_dlg.Create(IDD_STAT_SONGS_DLG, &m_tab);
-    m_profile_dlg.Create(IDD_STAT_PROFILE_DLG, &m_tab);
+    // 创建子对话框（照 OptionsDlg：Create 不传父窗口，AddWindow 内部会 SetParent 到 tab）
+    m_overview_dlg.Create(IDD_STAT_OVERVIEW_DLG);
+    m_artist_rank_dlg.Create(IDD_STAT_ARTIST_RANK_DLG);
+    m_album_rank_dlg.Create(IDD_STAT_ALBUM_RANK_DLG);
+    m_song_rank_dlg.Create(IDD_STAT_SONG_RANK_DLG);
+    m_songs_dlg.Create(IDD_STAT_SONGS_DLG);
+    m_profile_dlg.Create(IDD_STAT_PROFILE_DLG);
 
     // 保存子对话框（照 OptionsDlg）
     m_tab_vect.clear();
@@ -339,7 +339,7 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     m_tab.AddWindow(&m_songs_dlg, L"明细", IconMgr::IconType::IT_File_Relate);
     m_tab.AddWindow(&m_profile_dlg, L"洞察", IconMgr::IconType::IT_Star);
 
-    m_tab.SetItemSize(CSize(theApp.DPI(56), theApp.DPI(24)));
+    m_tab.SetItemSize(CSize(theApp.DPI(60), theApp.DPI(24)));
     m_tab.AdjustTabWindowSize();
 
     // 为每个子窗口设置滚动信息（照 OptionsDlg）

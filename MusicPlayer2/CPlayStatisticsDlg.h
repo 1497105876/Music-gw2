@@ -34,12 +34,13 @@ protected:
     bool m_updating_filter{ false }; // 程序化写入 DTP 时的重入守卫（抑制 DTN_DATETIMECHANGE 联动）
 
     // 6 个子页（移除趋势页/流派页后：概览/歌手/专辑/曲目/明细/洞察）
-    CStatOverviewTabDlg m_overview_dlg;
-    CStatArtistRankTabDlg m_artist_rank_dlg;
-    CStatAlbumRankTabDlg m_album_rank_dlg;
-    CStatSongRankTabDlg m_song_rank_dlg;
-    CStatSongsTabDlg m_songs_dlg;
-    CStatProfileTabDlg m_profile_dlg;
+    // 照 OptionsDlg：子对话框以主对话框为父构造，Create 后由 CTabCtrlEx::AddWindow SetParent 到 tab
+    CStatOverviewTabDlg m_overview_dlg{ this };
+    CStatArtistRankTabDlg m_artist_rank_dlg{ this };
+    CStatAlbumRankTabDlg m_album_rank_dlg{ this };
+    CStatSongRankTabDlg m_song_rank_dlg{ this };
+    CStatSongsTabDlg m_songs_dlg{ this };
+    CStatProfileTabDlg m_profile_dlg{ this };
 
     std::vector<PlayRecord> m_all_records;       // 全量原始记录（对话框打开期只解析一次）
     std::vector<PlayRecord> m_filtered_records;  // 按时间范围过滤后的记录（m_context.records 指向它）
