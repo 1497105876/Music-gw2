@@ -1,6 +1,7 @@
 ﻿// PlayLogStatisticsDlg.cpp: 「歌曲详细记录」页面实现
 //
-// 主对话框只干三件事：读日志、按时间范围过滤、把算好的快照发给子页。
+// 一个窗口、一个列表：顶部 5 个按钮切换「概览/歌手/专辑/曲目/明细」，切视图时列表删列重建。
+// 主对话框只干三件事：读日志、按时间范围过滤、把算好的快照填进列表。
 // 指标口径全部收口在 CStatAnalysis，界面里不出现第二套算法。
 
 #include "stdafx.h"
@@ -16,6 +17,9 @@ namespace
     const wchar_t* const kRangeText[] = {
         L"近 7 天", L"近 30 天", L"近 90 天", L"今年", L"去年", L"全部", L"自定义"
     };
+
+    // 明细视图最多展示多少条原始记录
+    const int kDetailRowLimit = 20000;
 
     int TodayYmd()
     {
@@ -73,7 +77,39 @@ namespace
             break;
         }
     }
+
+    // 数字 -> 带一位小数的百分比字符串
+    std::wstring PctText(double percent)
+    {
+        wchar_t buf[32];
+        swprintf_s(buf, L"%.1f%%", percent);
+        return buf;
+    }
+
+    std::wstring CountText(int n)
+    {
+        return std::to_wstring(n);
+    }
 }
+
+// ───────────────────────── 范围下拉的薄子类 ─────────────────────────
+
+BEGIN_MESSAGE_MAP(CStatRangeComboBox, CMyComboBox)
+    ON_WM_CTLCOLOR()
+END_MESSAGE_MAP()
+
+HBRUSH CStatRangeComboBox::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    // 只做配色：进到这里的一定是自己的子部件，不会波及页面上其它控件，所以不判断 nCtlColor
+    CMyComboBox::OnCtlColor(pDC, pWnd, nCtlColor);
+    if (m_bk_brush.GetSafeHandle() == NULL)
+        m_bk_brush.CreateSolidBrush(::GetSysColor(COLOR_BTNFACE));
+    pDC->SetBkMode(TRANSPARENT);
+    pDC->SetTextColor(::GetSysColor(COLOR_BTNTEXT));
+    return (HBRUSH)m_bk_brush.GetSafeHandle();
+}
+
+// ───────────────────────── 构造 / 初始化 ─────────────────────────
 
 CPlayLogStatDlg::CPlayLogStatDlg(CWnd* pParent /*= nullptr*/)
     : CBaseDialog(IDD_PLAY_LOG_STATISTICS_DLG, pParent)
@@ -105,21 +141,27 @@ bool CPlayLogStatDlg::InitializeControls()
 void CPlayLogStatDlg::DoDataExchange(CDataExchange* pDX)
 {
     CBaseDialog::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_PLAYLOG_TAB, m_tab);
     DDX_Control(pDX, IDC_PLAYLOG_RANGE_PRESET, m_range_combo);
     DDX_Control(pDX, IDC_PLAYLOG_DATE_FROM, m_date_from);
     DDX_Control(pDX, IDC_PLAYLOG_DATE_TO, m_date_to);
+    DDX_Control(pDX, IDC_PLAYLOG_MAIN_LIST, m_list);
+    DDX_Control(pDX, IDC_PLAYLOG_VIEW_OVERVIEW, m_view_btn[0]);
+    DDX_Control(pDX, IDC_PLAYLOG_VIEW_ARTIST, m_view_btn[1]);
+    DDX_Control(pDX, IDC_PLAYLOG_VIEW_ALBUM, m_view_btn[2]);
+    DDX_Control(pDX, IDC_PLAYLOG_VIEW_SONG, m_view_btn[3]);
+    DDX_Control(pDX, IDC_PLAYLOG_VIEW_DETAIL, m_view_btn[4]);
 }
 
 BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
     ON_WM_DESTROY()
     ON_WM_TIMER()
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_PLAYLOG_BTN_REFRESH, &CPlayLogStatDlg::OnBnClickedRefresh)
-    ON_BN_CLICKED(IDC_PLAYLOG_BTN_HELP, &CPlayLogStatDlg::OnBnClickedHelp)
     ON_BN_CLICKED(IDC_PLAYLOG_BTN_REPORT, &CPlayLogStatDlg::OnBnClickedReport)
     ON_CBN_SELCHANGE(IDC_PLAYLOG_RANGE_PRESET, &CPlayLogStatDlg::OnCbnSelchangeRangePreset)
     ON_NOTIFY(DTN_DATETIMECHANGE, IDC_PLAYLOG_DATE_FROM, &CPlayLogStatDlg::OnDatetimeChange)
     ON_NOTIFY(DTN_DATETIMECHANGE, IDC_PLAYLOG_DATE_TO, &CPlayLogStatDlg::OnDatetimeChange)
+    ON_CONTROL_RANGE(BN_CLICKED, IDC_PLAYLOG_VIEW_OVERVIEW, IDC_PLAYLOG_VIEW_DETAIL, &CPlayLogStatDlg::OnViewSwitch)
     ON_MESSAGE(WM_STAT_RECORD_APPENDED, &CPlayLogStatDlg::OnRecordAppended)
 END_MESSAGE_MAP()
 
@@ -132,28 +174,34 @@ BOOL CPlayLogStatDlg::OnInitDialog()
     // ── 范围预设 ──
     for (const wchar_t* text : kRangeText)
         m_range_combo.AddString(text);
-    SetRangePreset(RangePreset::Last30);
+    // 鼠标滚轮滑过下拉框时不要把预设滚乱
+    m_range_combo.SetMouseWheelEnable(false);
     m_range_combo.SetCurSel(static_cast<int>(RangePreset::Last30));
+    SetRangePreset(RangePreset::Last30);
 
     m_date_from.SetFormat(L"yyyy-MM-dd");
     m_date_to.SetFormat(L"yyyy-MM-dd");
 
-    // ── 子页 ──
-    m_overview_dlg.Create(IDD_PLAYLOG_STAT_OVERVIEW_DLG);
-    m_artist_dlg.Create(IDD_PLAYLOG_STAT_ARTIST_DLG);
-    m_album_dlg.Create(IDD_PLAYLOG_STAT_ALBUM_DLG);
-    m_song_dlg.Create(IDD_PLAYLOG_STAT_SONG_DLG);
-    m_detail_dlg.Create(IDD_PLAYLOG_STAT_DETAIL_DLG);
+    // ── 主列表：扩展样式只在初始化时设一次 ──
+    m_list.SetExtendedStyle(m_list.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_LABELTIP | LVS_EX_DOUBLEBUFFER);
 
-    m_tab.AddWindow(&m_overview_dlg, L"概览", IconMgr::IconType::IT_Statistics);
-    m_tab.AddWindow(&m_artist_dlg, L"歌手", IconMgr::IconType::IT_Music);
-    m_tab.AddWindow(&m_album_dlg, L"专辑", IconMgr::IconType::IT_Playlist);
-    m_tab.AddWindow(&m_song_dlg, L"曲目", IconMgr::IconType::IT_Music);
-    m_tab.AddWindow(&m_detail_dlg, L"明细", IconMgr::IconType::IT_Edit);
+    // ── 视图按钮：默认停在「概览」 ──
+    // CBaseDialog::OnInitDialog 里 CCommon::SetDialogFont 已经给所有子控件统一设过字体，
+    // 所以加粗字体必须在那之后创建并设置，否则会被覆盖。
+    LOGFONT lf{};
+    theApp.m_font_set.dlg.GetFont().GetLogFont(&lf);
+    lf.lfWeight = FW_BOLD;
+    m_view_bold_font.CreateFontIndirect(&lf);
 
-    m_tab.SetItemSize(CSize(theApp.DPI(60), theApp.DPI(24)));
-    m_tab.AdjustTabWindowSize();
-    m_tab.SetCurTab(0);
+    CheckRadioButton(IDC_PLAYLOG_VIEW_OVERVIEW, IDC_PLAYLOG_VIEW_DETAIL, IDC_PLAYLOG_VIEW_OVERVIEW);
+    ShowDlgCtrl(IDC_PLAYLOG_DETAIL_NOTICE, false);
+    for (int i = 0; i < kViewCount; ++i)
+    {
+        m_view_btn[i].SetCheck(i == static_cast<int>(m_cur_view) ? BST_CHECKED : BST_UNCHECKED);
+        m_view_btn[i].SetFont(i == static_cast<int>(m_cur_view) ? &m_view_bold_font : &theApp.m_font_set.dlg.GetFont());
+    }
+
+    InitListColumns();
 
     // ── 数据 ──
     RefreshAll();
@@ -260,17 +308,8 @@ void CPlayLogStatDlg::ApplyFilter()
     m_data.load_ok = true;
     m_data.valid = true;
 
-    // ── 下发给子页；SetData 会把各页标脏，切到哪页哪页才真正重算 ──
-    m_overview_dlg.SetData(&m_data);
-    m_artist_dlg.SetData(&m_data);
-    m_album_dlg.SetData(&m_data);
-    m_song_dlg.SetData(&m_data);
-    m_detail_dlg.SetData(&m_data);
-
-    // 当前可见页立刻刷新（其余页留到切过去时再刷）
-    CTabDlg* cur = dynamic_cast<CTabDlg*>(m_tab.GetCurrentTab());
-    if (cur != nullptr)
-        cur->OnTabEntered();
+    // 只重填当前视图的行，不重建列（避免列宽跳变、避免 2 万行重建两次）
+    FillCurrentView();
 
     UpdateWarningText();
 }
@@ -343,17 +382,381 @@ int CPlayLogStatDlg::YmdFromCtrl(CDateTimeCtrl& ctrl) const
     return YmdOfTime(t);
 }
 
+// ───────────────────────── 视图切换 ─────────────────────────
+
+void CPlayLogStatDlg::SwitchView(PlayLogStatView view)
+{
+    if (view == m_cur_view) return;     // 重复点同一个按钮：直接忽略
+    m_cur_view = view;
+
+    const int idx = static_cast<int>(view);
+    for (int i = 0; i < kViewCount; ++i)
+    {
+        m_view_btn[i].SetCheck(i == idx ? BST_CHECKED : BST_UNCHECKED);
+        m_view_btn[i].SetFont(i == idx ? &m_view_bold_font : &theApp.m_font_set.dlg.GetFont());
+    }
+
+    // 口径说明只在明细视图出现
+    ShowDlgCtrl(IDC_PLAYLOG_DETAIL_NOTICE, view == PlayLogStatView::Detail);
+
+    InitListColumns();      // 删列 + 重建列
+    FillCurrentView();      // 立刻填当前数据
+}
+
+void CPlayLogStatDlg::InitListColumns()
+{
+    // 1) 删掉所有旧列（MFC 没有 DeleteAllColumns，从后往前删）
+    if (CHeaderCtrl* pHeader = m_list.GetHeaderCtrl())
+    {
+        for (int n = pHeader->GetItemCount(); n > 0; --n)
+            m_list.DeleteColumn(n - 1);
+    }
+    m_list.DeleteAllItems();
+
+    // 2) 按当前视图建列：固定列写死 DPI(n)，主列吃掉剩余宽度（做法同 CPlayStatisticsDlg）
+    CRect rect;
+    m_list.GetWindowRect(rect);
+
+    switch (m_cur_view)
+    {
+    case PlayLogStatView::Overview:
+    {
+        int width[2];
+        width[0] = theApp.DPI(150);                                 // 统计项（固定）
+        width[1] = rect.Width() - width[0] - theApp.DPI(20) - 1;    // 数值（主列，吃剩余）
+        if (width[1] < theApp.DPI(120)) width[1] = theApp.DPI(120);
+        m_list.InsertColumn(0, L"统计项", LVCFMT_LEFT, width[0]);
+        m_list.InsertColumn(1, L"数值", LVCFMT_LEFT, width[1]);
+        break;
+    }
+    case PlayLogStatView::Artist:
+    {
+        int width[5];
+        width[0] = theApp.DPI(40);   // 名次（固定）
+        width[2] = theApp.DPI(90);   // 播放时长（固定）
+        width[3] = theApp.DPI(60);   // 次数（固定）
+        width[4] = theApp.DPI(70);   // 曲目数（固定）
+        width[1] = rect.Width() - width[0] - width[2] - width[3] - width[4] - theApp.DPI(20) - 1;   // 歌手（主列）
+        if (width[1] < theApp.DPI(80)) width[1] = theApp.DPI(80);
+        m_list.InsertColumn(0, L"名次", LVCFMT_LEFT, width[0]);
+        m_list.InsertColumn(1, L"歌手", LVCFMT_LEFT, width[1]);
+        m_list.InsertColumn(2, L"播放时长", LVCFMT_LEFT, width[2]);
+        m_list.InsertColumn(3, L"次数", LVCFMT_LEFT, width[3]);
+        m_list.InsertColumn(4, L"曲目数", LVCFMT_LEFT, width[4]);
+        break;
+    }
+    case PlayLogStatView::Album:
+    {
+        int width[4];
+        width[0] = theApp.DPI(40);   // 名次（固定）
+        width[2] = theApp.DPI(90);   // 播放时长（固定）
+        width[3] = theApp.DPI(60);   // 次数（固定）
+        width[1] = rect.Width() - width[0] - width[2] - width[3] - theApp.DPI(20) - 1;   // 专辑（主列）
+        if (width[1] < theApp.DPI(80)) width[1] = theApp.DPI(80);
+        m_list.InsertColumn(0, L"名次", LVCFMT_LEFT, width[0]);
+        m_list.InsertColumn(1, L"专辑", LVCFMT_LEFT, width[1]);
+        m_list.InsertColumn(2, L"播放时长", LVCFMT_LEFT, width[2]);
+        m_list.InsertColumn(3, L"次数", LVCFMT_LEFT, width[3]);
+        break;
+    }
+    case PlayLogStatView::Song:
+    {
+        int width[6];
+        width[0] = theApp.DPI(40);   // 名次（固定）
+        width[3] = theApp.DPI(50);   // 次数（固定）
+        width[4] = theApp.DPI(90);   // 累计时长（固定）
+        width[5] = theApp.DPI(80);   // 最后播放（固定）
+        int rest = rect.Width() - width[0] - width[3] - width[4] - width[5] - theApp.DPI(20) - 1;
+        width[1] = rest * 5 / 8;     // 标题（主列）
+        width[2] = rest * 3 / 8;     // 歌手
+        if (width[1] < theApp.DPI(80)) width[1] = theApp.DPI(80);
+        if (width[2] < theApp.DPI(60)) width[2] = theApp.DPI(60);
+        m_list.InsertColumn(0, L"名次", LVCFMT_LEFT, width[0]);
+        m_list.InsertColumn(1, L"标题", LVCFMT_LEFT, width[1]);
+        m_list.InsertColumn(2, L"歌手", LVCFMT_LEFT, width[2]);
+        m_list.InsertColumn(3, L"次数", LVCFMT_LEFT, width[3]);
+        m_list.InsertColumn(4, L"累计时长", LVCFMT_LEFT, width[4]);
+        m_list.InsertColumn(5, L"最后播放", LVCFMT_LEFT, width[5]);
+        break;
+    }
+    case PlayLogStatView::Detail:
+    {
+        int width[9];
+        width[0] = theApp.DPI(40);    // 序号（固定）
+        width[1] = theApp.DPI(110);   // 播放时间（固定）
+        width[4] = theApp.DPI(110);   // 专辑（固定）
+        width[5] = theApp.DPI(70);    // 本次播放（固定）
+        width[6] = theApp.DPI(70);    // 曲目总长（固定）
+        width[7] = theApp.DPI(45);    // 结果（固定）
+        width[8] = theApp.DPI(50);    // 计入统计（固定）
+        int rest = rect.Width() - width[0] - width[1] - width[4] - width[5] - width[6] - width[7] - width[8] - theApp.DPI(20) - 1;
+        width[2] = rest * 5 / 8;      // 标题（主列）
+        width[3] = rest * 3 / 8;      // 歌手
+        if (width[2] < theApp.DPI(80)) width[2] = theApp.DPI(80);
+        if (width[3] < theApp.DPI(60)) width[3] = theApp.DPI(60);
+        m_list.InsertColumn(0, L"序号", LVCFMT_LEFT, width[0]);
+        m_list.InsertColumn(1, L"播放时间", LVCFMT_LEFT, width[1]);
+        m_list.InsertColumn(2, L"标题", LVCFMT_LEFT, width[2]);
+        m_list.InsertColumn(3, L"歌手", LVCFMT_LEFT, width[3]);
+        m_list.InsertColumn(4, L"专辑", LVCFMT_LEFT, width[4]);
+        m_list.InsertColumn(5, L"本次播放", LVCFMT_LEFT, width[5]);
+        m_list.InsertColumn(6, L"曲目总长", LVCFMT_LEFT, width[6]);
+        m_list.InsertColumn(7, L"结果", LVCFMT_LEFT, width[7]);
+        m_list.InsertColumn(8, L"计入统计", LVCFMT_LEFT, width[8]);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+void CPlayLogStatDlg::FillCurrentView()
+{
+    // 明细最多 2 万行，包一层 SetRedraw 免得定时刷新时明显卡一下
+    m_list.SetRedraw(FALSE);
+    m_list.DeleteAllItems();
+    switch (m_cur_view)
+    {
+    case PlayLogStatView::Overview: FillOverviewView(); break;
+    case PlayLogStatView::Artist:   FillArtistView();   break;
+    case PlayLogStatView::Album:    FillAlbumView();    break;
+    case PlayLogStatView::Song:     FillSongView();     break;
+    case PlayLogStatView::Detail:   FillDetailView();   break;
+    default: break;
+    }
+    m_list.SetRedraw(TRUE);
+    m_list.Invalidate();
+    m_list.UpdateWindow();
+}
+
+void CPlayLogStatDlg::AddOverviewRow(int group, const wchar_t* item, const std::wstring& value)
+{
+    if (group != m_overview_group)
+    {
+        m_overview_group = group;
+        const wchar_t* titles[] = { L"【基本统计】", L"【播放行为】", L"【听歌习惯】", L"【最常听】" };
+        int r = m_list.InsertItem(m_overview_row, titles[group]);
+        if (r >= 0)
+        {
+            m_list.SetItemText(r, 1, L"");
+            m_overview_row++;
+        }
+    }
+    int r = m_list.InsertItem(m_overview_row, item);
+    if (r >= 0)
+    {
+        m_list.SetItemText(r, 1, value.c_str());
+        m_overview_row++;
+    }
+}
+
+void CPlayLogStatDlg::ShowEmptyRow(const wchar_t* text)
+{
+    m_list.DeleteAllItems();
+    int row = m_list.InsertItem(0, text);
+    if (row >= 0 && m_list.GetHeaderCtrl() != nullptr && m_list.GetHeaderCtrl()->GetItemCount() > 1)
+        m_list.SetItemText(row, 1, L"");
+}
+
+// ───────────────────────── 概 览 ─────────────────────────
+
+void CPlayLogStatDlg::FillOverviewView()
+{
+    m_list.DeleteAllItems();
+    m_overview_row = 0;
+    m_overview_group = -1;
+
+    if (!m_data.valid)
+    {
+        ShowEmptyRow(L"暂无数据");
+        return;
+    }
+
+    const StatSummary& s = m_data.summary;
+    const FinishBreakdown& f = m_data.finish;
+    int total = f.total;
+
+    // ── 基本统计 ──
+    AddOverviewRow(0, L"总播放时长", CStatAnalysis::FormatDuration(s.total_duration_sec));
+    AddOverviewRow(0, L"播放次数", CountText(s.total_count));
+    AddOverviewRow(0, L"涉及曲目数", CountText(s.total_songs));
+    AddOverviewRow(0, L"活跃天数", CountText(s.active_days));
+    AddOverviewRow(0, L"日均时长", s.active_days > 0 ? CStatAnalysis::FormatDuration(s.total_duration_sec / s.active_days) : L"—");
+    AddOverviewRow(0, L"日均次数", s.active_days > 0 ? CountText(s.total_count / s.active_days) : L"—");
+    AddOverviewRow(0, L"数据起始日", m_data.first_ymd > 0 ? CStatAnalysis::FormatYmd(m_data.first_ymd) : L"—");
+
+    // ── 播放行为 ──
+    AddOverviewRow(1, L"播完", total > 0 ? CountText(f.completed) + L"（" + PctText(f.completed * 100.0 / total) + L"）" : L"—");
+    AddOverviewRow(1, L"跳过", total > 0 ? CountText(f.skipped) + L"（" + PctText(f.skipped * 100.0 / total) + L"）" : L"—");
+    AddOverviewRow(1, L"停止", total > 0 ? CountText(f.stopped) + L"（" + PctText(f.stopped * 100.0 / total) + L"）" : L"—");
+    AddOverviewRow(1, L"出错", total > 0 ? CountText(f.errored) + L"（" + PctText(f.errored * 100.0 / total) + L"）" : L"—");
+    AddOverviewRow(1, L"平均单次时长", total > 0 ? CStatAnalysis::FormatDuration(s.total_duration_sec / total) : L"—");
+    AddOverviewRow(1, L"平均完成度", f.avg_completion > 0 ? PctText(f.avg_completion) : L"—");
+    AddOverviewRow(1, L"平均跳过位置", f.avg_skip_completion >= 0 ? PctText(f.avg_skip_completion) : L"—");
+
+    // ── 听歌习惯 ──
+    int peak_hour = -1, peak_cnt = 0;
+    for (int h = 0; h < 24; h++)
+    {
+        if (m_data.hour_hist[h] > peak_cnt)
+        {
+            peak_cnt = m_data.hour_hist[h];
+            peak_hour = h;
+        }
+    }
+    AddOverviewRow(2, L"最活跃时段", peak_hour >= 0 ? std::to_wstring(peak_hour) + L":00 - " + std::to_wstring(peak_hour) + L":59" : L"—");
+
+    int night = 0;
+    for (int h = 0; h < 24; h++)
+        if (h >= 23 || h <= 4) night += m_data.hour_hist[h];
+    AddOverviewRow(2, L"深夜占比（23:00-04:59）", total > 0 ? PctText(night * 100.0 / total) : L"—");
+    AddOverviewRow(2, L"周末占比", PctText(static_cast<double>(s.weekend_percent)));
+    AddOverviewRow(2, L"当前连续天数", CountText(s.current_streak));
+    AddOverviewRow(2, L"最长连续天数", CountText(s.longest_streak));
+    AddOverviewRow(2, L"平均播放次数", s.total_songs > 0 ? std::to_wstring(s.total_count) + L" / " + std::to_wstring(s.total_songs) : L"—");
+
+    // ── 最常听 ──
+    AddOverviewRow(3, L"最常听歌手", s.top_artist.empty() ? L"—" : s.top_artist + L"（" + CStatAnalysis::FormatDuration(s.top_artist_sec) + L"）");
+    AddOverviewRow(3, L"最常听专辑", m_data.albums.empty() ? L"—" : m_data.albums.front().album + L"（" + CStatAnalysis::FormatDuration(m_data.albums.front().duration_sec) + L"）");
+    AddOverviewRow(3, L"最常听曲目", s.top_song.empty() ? L"—" : s.top_song + L"（" + CountText(s.top_song_count) + L" 次）");
+
+    std::wstring top_day = L"—";
+    int top_day_sec = 0;
+    for (const auto& b : m_data.day_buckets)
+    {
+        if (b.duration_sec > top_day_sec)
+        {
+            top_day_sec = b.duration_sec;
+            top_day = b.label + L"（" + CStatAnalysis::FormatDuration(b.duration_sec) + L"）";
+        }
+    }
+    AddOverviewRow(3, L"听得最久的一天", top_day);
+}
+
+// ───────────────────────── 歌 手 排 行 ─────────────────────────
+
+void CPlayLogStatDlg::FillArtistView()
+{
+    m_list.DeleteAllItems();
+    if (!m_data.valid || m_data.artists.empty())
+    {
+        ShowEmptyRow(L"所选时间范围内没有记录");
+        return;
+    }
+    int i = 0;
+    for (const auto& it : m_data.artists)
+    {
+        int row = m_list.InsertItem(i, std::to_wstring(i + 1).c_str());
+        if (row < 0) break;
+        m_list.SetItemText(row, 1, it.artist.c_str());
+        m_list.SetItemText(row, 2, CStatAnalysis::FormatDuration(it.duration_sec).c_str());
+        m_list.SetItemText(row, 3, CountText(it.count).c_str());
+        m_list.SetItemText(row, 4, CountText(it.song_count).c_str());
+        i++;
+    }
+}
+
+// ───────────────────────── 专 辑 排 行 ─────────────────────────
+
+void CPlayLogStatDlg::FillAlbumView()
+{
+    m_list.DeleteAllItems();
+    if (!m_data.valid || m_data.albums.empty())
+    {
+        ShowEmptyRow(L"所选时间范围内没有记录");
+        return;
+    }
+    int i = 0;
+    for (const auto& it : m_data.albums)
+    {
+        int row = m_list.InsertItem(i, std::to_wstring(i + 1).c_str());
+        if (row < 0) break;
+        m_list.SetItemText(row, 1, it.album.c_str());
+        m_list.SetItemText(row, 2, CStatAnalysis::FormatDuration(it.duration_sec).c_str());
+        m_list.SetItemText(row, 3, CountText(it.count).c_str());
+        i++;
+    }
+}
+
+// ───────────────────────── 曲 目 排 行 ─────────────────────────
+
+void CPlayLogStatDlg::FillSongView()
+{
+    m_list.DeleteAllItems();
+    if (!m_data.valid || m_data.songs.empty())
+    {
+        ShowEmptyRow(L"所选时间范围内没有记录");
+        return;
+    }
+    int i = 0;
+    for (const auto& it : m_data.songs)
+    {
+        int row = m_list.InsertItem(i, std::to_wstring(i + 1).c_str());
+        if (row < 0) break;
+        std::wstring title = it.title.empty() ? L"未知标题" : it.title;
+        m_list.SetItemText(row, 1, title.c_str());
+        m_list.SetItemText(row, 2, it.artist.empty() ? L"未知歌手" : it.artist.c_str());
+        m_list.SetItemText(row, 3, CountText(it.count).c_str());
+        m_list.SetItemText(row, 4, CStatAnalysis::FormatDuration(it.duration_sec).c_str());
+        m_list.SetItemText(row, 5, it.last_ymd > 0 ? CStatAnalysis::FormatYmd(it.last_ymd).c_str() : L"—");
+        i++;
+    }
+}
+
+// ───────────────────────── 播 放 明 细 ─────────────────────────
+
+void CPlayLogStatDlg::FillDetailView()
+{
+    m_list.DeleteAllItems();
+    if (!m_data.valid || m_data.records == nullptr || m_data.records->empty())
+    {
+        ShowEmptyRow(L"所选时间范围内没有记录");
+        return;
+    }
+
+    const std::vector<PlayRecord>& records = *m_data.records;
+    int i = 0;
+    for (const auto& r : records)
+    {
+        if (i >= kDetailRowLimit) break;
+        int row = m_list.InsertItem(i, std::to_wstring(i + 1).c_str());
+        if (row < 0) break;
+
+        std::wstring time_text = r.played_at;
+        if (time_text.size() >= 10 && time_text[10] == L'T') time_text[10] = L' ';
+        m_list.SetItemText(row, 1, time_text.c_str());
+        m_list.SetItemText(row, 2, r.title.empty() ? L"未知标题" : r.title.c_str());
+        m_list.SetItemText(row, 3, r.artist.empty() ? L"未知歌手" : r.artist.c_str());
+        m_list.SetItemText(row, 4, r.album.empty() ? L"未知专辑" : r.album.c_str());
+        m_list.SetItemText(row, 5, CStatAnalysis::FormatDuration(r.play_duration_sec).c_str());
+        m_list.SetItemText(row, 6, r.song_length_sec > 0 ? CStatAnalysis::FormatDuration(r.song_length_sec / 1000).c_str() : L"—");
+
+        const wchar_t* reason = L"播完";
+        switch (r.finish_reason)
+        {
+        case PlayRecord::FinishReason::SKIPPED:   reason = L"跳过"; break;
+        case PlayRecord::FinishReason::STOPPED:   reason = L"停止"; break;
+        case PlayRecord::FinishReason::PLAY_ERROR: reason = L"出错"; break;
+        default: break;
+        }
+        m_list.SetItemText(row, 7, reason);
+        m_list.SetItemText(row, 8, CStatAnalysis::IsCounted(r) ? L"是" : L"否");
+        i++;
+    }
+
+    if (static_cast<int>(records.size()) > kDetailRowLimit)
+    {
+        int row = m_list.InsertItem(i, L"…");
+        if (row >= 0)
+            m_list.SetItemText(row, 1, L"仅显示最近 20000 条");
+    }
+}
+
 // ───────────────────────── 交互 ─────────────────────────
 
 void CPlayLogStatDlg::OnBnClickedRefresh()
 {
     RefreshAll();
-}
-
-void CPlayLogStatDlg::OnBnClickedHelp()
-{
-    CPlayLogStatHelpDlg dlg(this);
-    dlg.DoModal();
 }
 
 void CPlayLogStatDlg::OnBnClickedReport()
@@ -389,66 +792,39 @@ void CPlayLogStatDlg::OnDatetimeChange(NMHDR* pNMHDR, LRESULT* pResult)
     ApplyFilter();
 }
 
-// ───────────────────────── 口径说明 ─────────────────────────
-
-IMPLEMENT_DYNAMIC(CPlayLogStatHelpDlg, CBaseDialog)
-
-CPlayLogStatHelpDlg::CPlayLogStatHelpDlg(CWnd* pParent /*= nullptr*/)
-    : CBaseDialog(IDD_PLAYLOG_STAT_HELP_DLG, pParent)
+void CPlayLogStatDlg::OnViewSwitch(UINT nID)
 {
+    SwitchView(static_cast<PlayLogStatView>(nID - IDC_PLAYLOG_VIEW_OVERVIEW));
 }
 
-CString CPlayLogStatHelpDlg::GetDialogName() const
+HBRUSH CPlayLogStatDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
-    return CString();   // 说明框不需要记忆大小
-}
+    // 先走基类，别抢 Static/Button 的既有主题处理
+    HBRUSH hbr = CBaseDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 
-void CPlayLogStatHelpDlg::DoDataExchange(CDataExchange* pDX)
-{
-    CBaseDialog::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_PLAYLOG_HELP_EDIT, m_edit);
-}
+    if (m_ctl_bk_brush.GetSafeHandle() == NULL)
+        m_ctl_bk_brush.CreateSolidBrush(::GetSysColor(COLOR_BTNFACE));
 
-BOOL CPlayLogStatHelpDlg::OnInitDialog()
-{
-    CBaseDialog::OnInitDialog();
+    // SysDateTimePick32 和 CBS_DROPDOWNLIST 的 ComboBox 都是复合控件，
+    // WM_CTLCOLOR 里的 pWnd 是它们内部的显示子窗口，所以要往上比父窗口。
+    HWND hwnd = (pWnd != nullptr ? pWnd->GetSafeHwnd() : NULL);
+    HWND parent = (hwnd != nullptr ? ::GetParent(hwnd) : NULL);
 
-    const std::wstring text =
-L"数据来源\r\n"
-L"本页只读取播放日志 playlog（statistics 目录下的 playlog_YYYY-MM.jsonl），\r\n"
-L"每首歌播完写一条，包含开始时间、实际播放时长、曲目总长与结束原因。\r\n"
-L"菜单里的「播放统计」用的是另一份数据（每首歌累计一个总秒数，没有时间点），\r\n"
-L"两处口径不同，数字对不上是正常的。\r\n"
-L"\r\n"
-L"计入统计的门槛\r\n"
-L"实际播放时长达到 15 秒才计入。除「明细」页外，所有数字都过了这一道过滤；\r\n"
-L"明细页展示全部原始记录，末列「计入统计」标了是否达标。\r\n"
-L"\r\n"
-L"时间范围\r\n"
-L"按播放开始时间所在日期（本地时间）取，含首尾两天。\r\n"
-L"「自定义」以外的预设会按当天日期自动重算，打开页面时不会停留在旧范围。\r\n"
-L"\r\n"
-L"几个指标的定义\r\n"
-L"播放次数：计入统计的记录条数，不是听完的遍数。\r\n"
-L"播放时长：每次实际听的秒数之和，不是曲长之和。\r\n"
-L"完成度：本次播放时长 / 曲目总长，超过 100% 按 100% 算。\r\n"
-L"播完/跳过/停止/出错：播放结束时的原因，取自播放器的结束状态。\r\n"
-L"\r\n"
-L"排序口径\r\n"
-L"歌手、专辑按累计播放时长排；曲目按播放次数排，次数相同再比时长。\r\n"
-L"名字为空的归入「未知歌手」「未知专辑」「未知标题」。\r\n"
-L"\r\n"
-L"刷新时机\r\n"
-L"打开页面读一次；每播完一首歌后自动重读（做了防抖，不会切一次歌就读一次盘）；\r\n"
-L"另有 60 秒兜底。也可以点「刷新」手动重读。\r\n"
-L"\r\n"
-L"网页报告\r\n"
-L"按当前时间范围生成，报告里看到的就是页面上这个筛选范围的数据。\r\n"
-L"报告文件放在配置目录下的 statistics\\reports，文件名带时间戳，默认保留最近 10 份。\r\n"
-L"\r\n"
-L"关于损坏记录\r\n"
-L"日志里解析不出来的行会被跳过，只在页面底部提示跳过了几条，不影响其它统计。";
+    const bool in_date = (parent == m_date_from.GetSafeHwnd() || parent == m_date_to.GetSafeHwnd());
+    const bool in_combo = (parent == m_range_combo.GetSafeHwnd() || hwnd == m_range_combo.GetSafeHwnd());
 
-    m_edit.SetWindowTextW(text.c_str());
-    return TRUE;
+    if (in_date || in_combo)
+    {
+        pDC->SetBkMode(TRANSPARENT);
+        pDC->SetTextColor(::GetSysColor(COLOR_BTNTEXT));
+        return (HBRUSH)m_ctl_bk_brush.GetSafeHandle();
+    }
+    // 下拉展开后的列表框（ComboLBox 是顶级窗口，父窗口不是 combo，单独兜一下）
+    if (nCtlColor == CTLCOLOR_LISTBOX)
+    {
+        pDC->SetBkMode(TRANSPARENT);
+        pDC->SetTextColor(::GetSysColor(COLOR_BTNTEXT));
+        return (HBRUSH)m_ctl_bk_brush.GetSafeHandle();
+    }
+    return hbr;
 }

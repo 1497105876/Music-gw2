@@ -681,9 +681,6 @@
     <ClInclude Include="CPlayStatisticsDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
-    <ClInclude Include="PlayLogStatTabDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClInclude>
     <ClInclude Include="PlayLogStatisticsDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
@@ -1422,9 +1419,6 @@
       <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClCompile>
     <ClCompile Include="CPlayStatisticsDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
-    <ClCompile Include="PlayLogStatTabDlg.cpp">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
     <ClCompile Include="PlayLogStatisticsDlg.cpp">
