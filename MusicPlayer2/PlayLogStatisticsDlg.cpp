@@ -344,35 +344,44 @@ void CPlayLogStatDlg::SetRangePreset(RangePreset preset)
     m_data.filter.to_ymd = to_ymd;
     m_data.filter.grain = Grain::Day;
     SyncDateControls();
-    EnableDateControls(preset == RangePreset::Custom);
+    // 日期控件不再禁用：DTS_SHOWNONE 的复选框要始终能点（不勾选 = 不限），
+    // 手改日期会自动落到「自定义」，不需要再把控件灰掉。
 }
 
 void CPlayLogStatDlg::SyncDateControls()
 {
-    int from_ymd = m_data.filter.from_ymd;
-    int to_ymd = m_data.filter.to_ymd;
-    if (from_ymd <= 0) from_ymd = m_data.first_ymd > 0 ? m_data.first_ymd : TodayYmd();
-    if (to_ymd <= 0) to_ymd = m_data.last_ymd > 0 ? m_data.last_ymd : TodayYmd();
-
-    CTime t_from = TimeFromYmd(from_ymd);
-    CTime t_to = TimeFromYmd(to_ymd);
+    // 日期控件带 DTS_SHOWNONE：不勾选 = 不限，这比「控件变灰却还显示个日期」清楚得多。
+    // 所以 from/to 是 0 时直接设成「无」，不再拿数据的起止日期去填空。
     // SetTime 会触发 DTN_DATETIMECHANGE，用守卫避免被误判成用户手动改日期
     m_syncing_date = true;
-    m_date_from.SetTime(&t_from);
-    m_date_to.SetTime(&t_to);
-    m_syncing_date = false;
-}
 
-void CPlayLogStatDlg::EnableDateControls(bool enable)
-{
-    m_date_ctrl_enabled = enable;
-    EnableDlgCtrl(IDC_PLAYLOG_DATE_FROM, enable);
-    EnableDlgCtrl(IDC_PLAYLOG_DATE_TO, enable);
+    if (m_data.filter.from_ymd > 0)
+    {
+        CTime t_from = TimeFromYmd(m_data.filter.from_ymd);
+        m_date_from.SetTime(&t_from);
+    }
+    else
+    {
+        m_date_from.SetTime(static_cast<LPSYSTEMTIME>(nullptr));
+    }
+
+    if (m_data.filter.to_ymd > 0)
+    {
+        CTime t_to = TimeFromYmd(m_data.filter.to_ymd);
+        m_date_to.SetTime(&t_to);
+    }
+    else
+    {
+        m_date_to.SetTime(static_cast<LPSYSTEMTIME>(nullptr));
+    }
+
+    m_syncing_date = false;
 }
 
 int CPlayLogStatDlg::YmdFromCtrl(CDateTimeCtrl& ctrl) const
 {
     CTime t;
+    // 控件没勾选时 GetTime 返回 GDT_NONE，等于「不限」
     if (ctrl.GetTime(t) != GDT_VALID) return 0;
     return YmdOfTime(t);
 }
@@ -894,7 +903,6 @@ void CPlayLogStatDlg::OnDatetimeChange(NMHDR* pNMHDR, LRESULT* pResult)
     m_data.filter.preset = RangePreset::Custom;
     m_data.filter.from_ymd = YmdFromCtrl(m_date_from);
     m_data.filter.to_ymd = YmdFromCtrl(m_date_to);
-    EnableDateControls(true);
     ApplyFilter();
 }
 

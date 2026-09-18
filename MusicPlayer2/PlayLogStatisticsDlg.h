@@ -102,7 +102,6 @@ protected:
 
     int  m_broken_lines{ 0 };
     int  m_failed_files{ 0 };
-    bool m_date_ctrl_enabled{ false };
     bool m_syncing_date{ false };       // 程序同步日期控件期间置位，用于屏蔽 DTN_DATETIMECHANGE
 
     int  m_overview_row{ 0 };           // 概览视图填表游标
@@ -120,7 +119,6 @@ protected:
     void UpdateWarningText();
     void SetRangePreset(RangePreset preset);    // 切换预设并同步日期控件
     void SyncDateControls();
-    void EnableDateControls(bool enable);
     int  YmdFromCtrl(CDateTimeCtrl& ctrl) const;
 
     // ── 视图切换 ──
