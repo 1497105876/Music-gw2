@@ -33,8 +33,8 @@ BOOL CStatOverviewTabDlg::OnInitDialog()
 
     m_list.InsertColumn(0, L"统计项", LVCFMT_LEFT, 0);
     m_list.InsertColumn(1, L"数值", LVCFMT_LEFT, 0);
-    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
-    EnableColumnFit(&m_list, { 160, 340 });
+    // 列宽自适应：统计项列（弹性列）独占剩余宽度，数值列固定 120（缩放时自动重算）
+    EnableColumnFit(&m_list, 0, { 120, 120 });
     return TRUE;
 }
 

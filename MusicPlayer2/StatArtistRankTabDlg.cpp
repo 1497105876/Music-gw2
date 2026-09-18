@@ -39,8 +39,8 @@ BOOL CStatArtistRankTabDlg::OnInitDialog()
     m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, 0);       // 排名列
     m_list.InsertColumn(COL_NAME, L"歌手", LVCFMT_LEFT, 0);    // 歌手名列
     m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, 0); // 时长列
-    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
-    EnableColumnFit(&m_list, { 40, 200, 78 });
+    // 列宽自适应：歌手名列（弹性列）独占剩余宽度，排名/时长列固定（缩放时自动重算）
+    EnableColumnFit(&m_list, 1, { 40, 200, 78 });
 
     return TRUE;
 }

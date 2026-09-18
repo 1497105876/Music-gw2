@@ -38,8 +38,8 @@ BOOL CStatSongRankTabDlg::OnInitDialog()
     m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, 0);
     m_list.InsertColumn(COL_NAME, L"歌曲", LVCFMT_LEFT, 0);
     m_list.InsertColumn(COL_VALUE, L"播放次数", LVCFMT_RIGHT, 0);
-    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
-    EnableColumnFit(&m_list, { 40, 500, 78 });
+    // 列宽自适应：歌曲名列（弹性列）独占剩余宽度，排名/次数列固定（缩放时自动重算）
+    EnableColumnFit(&m_list, 1, { 40, 200, 78 });
 
     return TRUE;
 }

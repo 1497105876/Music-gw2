@@ -48,10 +48,11 @@ BOOL CStatTabDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
     return CTabDlg::OnMouseWheel(nFlags, zDelta, pt);
 }
 
-void CStatTabDlg::EnableColumnFit(CListCtrlEx* list, const std::vector<int>& weights)
+void CStatTabDlg::EnableColumnFit(CListCtrlEx* list, int flex_column, const std::vector<int>& widths)
 {
     m_fit_list = list;
-    m_fit_weights = weights;
+    m_flex_column = flex_column;
+    m_fit_widths = widths;
     FitColumns();
 }
 
@@ -62,40 +63,49 @@ void CStatTabDlg::OnSize(UINT nType, int cx, int cy)
     FitColumns();
 }
 
-// 按权重把可用宽度分配给各列（余量给最后一列），避免固定像素列宽在缩放时溢出/留白
+// 固定列给固定值、弹性列独占剩余宽度（照 CListenTimeStatisticsDlg 做法），
+// 避免整表按比例缩放时列宽溢出/留白。
 void CStatTabDlg::FitColumns()
 {
     if (m_fit_list == nullptr || m_fitting) return;
     if (m_fit_list->GetSafeHwnd() == nullptr) return;
-    if (m_fit_weights.empty()) return;
+    if (m_fit_widths.empty()) return;
 
     CHeaderCtrl* pHeader = m_fit_list->GetHeaderCtrl();
     if (pHeader == nullptr || pHeader->GetSafeHwnd() == nullptr) return;
 
     CRect hr;
     pHeader->GetClientRect(&hr);
-    int avail = hr.Width();
+    const int avail = hr.Width();
     if (avail <= 0) return;
 
-    const int min_w = theApp.DPI(40);
-    int n = static_cast<int>(m_fit_weights.size());
-    long long sum = 0;
-    for (int w : m_fit_weights) sum += (w > 0 ? w : 0);
-    if (sum <= 0) return;
+    const int n = static_cast<int>(m_fit_widths.size());
+    int flex = m_flex_column;
+    if (flex < 0 || flex >= n) flex = n - 1;         // 下标非法时退化为最后一列
 
-    m_fitting = true;
+    // 固定列占用总量（含 DPI 缩放；非正设计宽度按 0 处理）
     int used = 0;
     for (int i = 0; i < n; i++)
     {
-        int cw;
-        if (i == n - 1)
-            cw = avail - used;                                          // 余量给最后一列
-        else
-            cw = static_cast<int>((double)avail * m_fit_weights[i] / (double)sum);
-        if (cw < min_w) cw = min_w;
-        m_fit_list->SetColumnWidth(i, cw);
-        used += cw;
+        if (i == flex) continue;
+        used += theApp.DPI(m_fit_widths[i] > 0 ? m_fit_widths[i] : 0);
     }
+
+    // 弹性列：独占剩余宽度；不足时不低于其设计宽度（视为最小宽，未给则默认 120）
+    const int flex_min = theApp.DPI(m_fit_widths[flex] > 0 ? m_fit_widths[flex] : 120);
+    int flex_w = avail - used - theApp.DPI(8);       // 预留 8 个单位吸收表头边框/滚动条误差
+    if (flex_w < flex_min) flex_w = flex_min;
+
+    // 先设固定列，再设弹性列，保证弹性列拿到全部剩余宽度
+    m_fitting = true;
+    for (int i = 0; i < n; i++)
+    {
+        if (i == flex) continue;
+        int cw = theApp.DPI(m_fit_widths[i] > 0 ? m_fit_widths[i] : 0);
+        if (cw < 0) cw = 0;
+        m_fit_list->SetColumnWidth(i, cw);
+    }
+    m_fit_list->SetColumnWidth(flex, flex_w);
     m_fitting = false;
 }
 

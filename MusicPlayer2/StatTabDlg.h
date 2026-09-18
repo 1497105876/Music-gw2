@@ -21,9 +21,10 @@ public:
     virtual void Refresh() = 0;
 
 protected:
-    // 启用列表列宽自适应：按权重在可用宽度内分配（余量给最后一列）。
+    // 启用列表列宽自适应：固定列按设计宽度、弹性列独占剩余宽度（照 CListenTimeStatisticsDlg 做法）。
+    // flex_column 为弹性列下标；widths 为各列设计宽度（未乘 DPI，单位为 DLU 基准像素，widths[flex] 作该列最小宽度）。
     // 子页 OnInitDialog 中调用一次即可；之后窗口缩放会自动重算。
-    void EnableColumnFit(CListCtrlEx* list, const std::vector<int>& weights);
+    void EnableColumnFit(CListCtrlEx* list, int flex_column, const std::vector<int>& widths);
 
     const StatContext* m_stat_ctx{ nullptr };
     bool m_dirty{ true };
@@ -42,6 +43,7 @@ protected:
 private:
     void FitColumns();
     CListCtrlEx* m_fit_list{ nullptr };
-    std::vector<int> m_fit_weights;
+    int m_flex_column{ 0 };              // 弹性列下标（独占剩余宽度）
+    std::vector<int> m_fit_widths;       // 各列设计宽度（未乘 DPI；弹性列该项为最小宽度）
     bool m_fitting{ false };
 };

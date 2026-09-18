@@ -32,6 +32,7 @@ protected:
     CDateTimeCtrl m_date_to;       // 结束日期：原生日期时间选择器（带下拉日历）
 
     bool m_updating_filter{ false }; // 程序化写入 DTP 时的重入守卫（抑制 DTN_DATETIMECHANGE 联动）
+    bool m_wheel_forwarding{ false };// 滚轮转发重入守卫（打断 WM_MOUSEWHEEL 冒泡自激回环）
 
     // 6 个子页（移除趋势页/流派页后：概览/歌手/专辑/曲目/明细/洞察）
     CStatOverviewTabDlg m_overview_dlg;
@@ -81,4 +82,5 @@ public:
     afx_msg void OnDestroy();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg LRESULT OnStatRecordAppended(WPARAM wParam, LPARAM lParam);
+    afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 };

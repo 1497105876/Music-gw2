@@ -35,8 +35,8 @@ BOOL CStatSongsTabDlg::OnInitDialog()
     m_list.InsertColumn(DCOL_PLAY_DUR, L"播放时长", LVCFMT_RIGHT, 0);
     m_list.InsertColumn(DCOL_SONG_LEN, L"歌曲长度", LVCFMT_RIGHT, 0);
     m_list.InsertColumn(DCOL_RESULT, L"结果", LVCFMT_CENTER, 0);
-    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
-    EnableColumnFit(&m_list, { 50, 140, 200, 120, 120, 70, 70, 60 });
+    // 列宽自适应：标题列（弹性列，下限 180）独占剩余宽度，其余列固定（缩放时自动重算）
+    EnableColumnFit(&m_list, 2, { 40, 110, 180, 100, 100, 55, 55, 45 });
 
     return TRUE;
 }

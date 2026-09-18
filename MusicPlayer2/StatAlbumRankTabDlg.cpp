@@ -36,8 +36,8 @@ BOOL CStatAlbumRankTabDlg::OnInitDialog()
     m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, 0);
     m_list.InsertColumn(COL_ALBUM, L"专辑", LVCFMT_LEFT, 0);
     m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, 0);
-    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
-    EnableColumnFit(&m_list, { 40, 200, 90 });
+    // 列宽自适应：专辑名列（弹性列）独占剩余宽度，排名/时长列固定（缩放时自动重算）
+    EnableColumnFit(&m_list, 1, { 40, 200, 90 });
 
     return TRUE;
 }

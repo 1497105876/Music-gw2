@@ -105,6 +105,7 @@ BEGIN_MESSAGE_MAP(CPlayStatisticsDlg, CBaseDialog)
     ON_WM_DESTROY()
     ON_WM_TIMER()
     ON_MESSAGE(WM_STAT_RECORD_APPENDED, &CPlayStatisticsDlg::OnStatRecordAppended)
+    ON_WM_MOUSEWHEEL()
 END_MESSAGE_MAP()
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -566,6 +567,24 @@ void CPlayStatisticsDlg::OnDestroy()
         m_timer_id = 0;
     }
     CBaseDialog::OnDestroy();
+}
+
+// 滚轮兜底转发：焦点停在主对话框自身或过滤条控件（下拉框/日期控件/窗口边框）时，
+// 它们的窗口过程不处理 WM_MOUSEWHEEL，消息经 DefWindowProc 冒泡到本对话框。
+// 这里转发给当前子页，由子页的 CStatTabDlg::OnMouseWheel 用 WindowFromPoint 定位光标下的控件。
+// 子页仍未处理时消息会再次冒泡回本对话框（DefWindowProc 行为），用 m_wheel_forwarding
+// 重入守卫打断这条自激回环，将二次进入直接交给基类默认处理。
+BOOL CPlayStatisticsDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+{
+    CWnd* pTab = m_tab.GetCurrentTab();
+    if (!m_wheel_forwarding && pTab != nullptr && pTab->GetSafeHwnd() != nullptr)
+    {
+        m_wheel_forwarding = true;
+        pTab->SendMessage(WM_MOUSEWHEEL, MAKEWPARAM(nFlags, zDelta), MAKELPARAM(pt.x, pt.y));
+        m_wheel_forwarding = false;
+        return TRUE;
+    }
+    return CBaseDialog::OnMouseWheel(nFlags, zDelta, pt);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
