@@ -75,17 +75,18 @@ private:
         TIMER_PERIODIC = 1,     // 定时重读日志
         TIMER_DEBOUNCE = 2,     // 收到「写入新记录」通知后的防抖刷新
         TIMER_DETAIL_BATCH = 3, // 明细视图分批次插入
+        TIMER_RANGE_DEBOUNCE = 4,   // 月历里拖选时防抖，别一边拖一边重算
     };
 
 protected:
     // ── 控件 ──
     CStatRangeComboBox m_range_combo;
-    CDateTimeCtrl  m_date_from;
-    CDateTimeCtrl  m_date_to;
+    CMonthCalCtrl  m_cal;                           // 点「选择日期范围」弹出来的月历
+    bool           m_cal_visible{ false };
     CListCtrlEx    m_list;                          // 唯一的主列表，各视图共用
     CTabCtrl       m_view_tab;                      // 顶部原生页签条（只作切换器）
     CImageList     m_tab_img_list;                  // 页签图标，必须活到窗口销毁
-    CBrush         m_ctl_bk_brush;                  // 下拉/日期控件的背景刷
+    CBrush         m_ctl_bk_brush;                  // 下拉控件的背景刷
 
     // ── 数据 ──
     std::vector<PlayRecord> m_all_records;      // 全量记录（按播放时间倒序）
@@ -102,7 +103,6 @@ protected:
 
     int  m_broken_lines{ 0 };
     int  m_failed_files{ 0 };
-    bool m_syncing_date{ false };       // 程序同步日期控件期间置位，用于屏蔽 DTN_DATETIMECHANGE
 
     int  m_overview_row{ 0 };           // 概览视图填表游标
     int  m_overview_group{ -1 };
@@ -117,9 +117,12 @@ protected:
     void ApplyFilter();                 // 过滤 + 聚合 + 重填当前视图
     void RefreshAll();                  // 读盘 + 过滤（外部调用的完整刷新）
     void UpdateWarningText();
-    void SetRangePreset(RangePreset preset);    // 切换预设并同步日期控件
-    void SyncDateControls();
-    int  YmdFromCtrl(CDateTimeCtrl& ctrl) const;
+    void SetRangePreset(RangePreset preset);    // 切换预设
+    void UpdateRangeButtonText();       // 把当前范围写回「选择日期范围」按钮
+
+    // ── 日期范围：点按钮弹出月历，在月历里拖选一段 ──
+    void ShowRangeCalendar(bool show);
+    void ApplyCalendarRange(int from_ymd, int to_ymd);  // 月历选完落回筛选条件
 
     // ── 视图切换 ──
     void InitTabCtrl();                         // 给页签条插入 7 个页签并挂图标
@@ -150,8 +153,10 @@ public:
     afx_msg void OnBnClickedRefresh();
     afx_msg void OnBnClickedReport();
     afx_msg void OnCbnSelchangeRangePreset();
-    afx_msg void OnDatetimeChange(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnBnClickedRangePick();                            // 点「选择日期范围」
+    afx_msg void OnCalendarSelChange(NMHDR* pNMHDR, LRESULT* pResult);  // 月历里拖选
+    afx_msg void OnCalendarKillFocus(NMHDR* pNMHDR, LRESULT* pResult);  // 月历失焦就收起
     afx_msg void OnTabSelChange(NMHDR* pNMHDR, LRESULT* pResult);   // 页签切换
-    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);    // 下拉/日期控件配色
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);    // 下拉控件配色
     afx_msg LRESULT OnRecordAppended(WPARAM wParam, LPARAM lParam);
 };
