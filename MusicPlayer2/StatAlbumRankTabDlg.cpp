@@ -2,7 +2,6 @@
 #include "MusicPlayer2.h"
 #include "StatAlbumRankTabDlg.h"
 #include "StatAnalysis.h"
-#include "StatChart.h"
 #include <vector>
 
 IMPLEMENT_DYNAMIC(CStatAlbumRankTabDlg, CStatTabDlg)
@@ -19,7 +18,7 @@ CStatAlbumRankTabDlg::~CStatAlbumRankTabDlg()
 void CStatAlbumRankTabDlg::DoDataExchange(CDataExchange* pDX)
 {
     CStatTabDlg::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_STAT_ALBUM_RANK_LIST, m_list);
+    DDX_Control(pDX, IDC_STAT_ALBUM_RANK_LIST, m_list);
 }
 
 BEGIN_MESSAGE_MAP(CStatAlbumRankTabDlg, CStatTabDlg)
@@ -34,11 +33,11 @@ BOOL CStatAlbumRankTabDlg::OnInitDialog()
     CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_LABELTIP);
-    // 列宽在填充数据时按 DPI 设定（B3 约定第 6 条），此处只建列
-    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, theApp.DPI(40));
-    m_list.InsertColumn(COL_ALBUM, L"专辑", LVCFMT_LEFT, theApp.DPI(200));
-    m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, theApp.DPI(90));
-
+    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(COL_ALBUM, L"专辑", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, 0);
+    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
+    EnableColumnFit(&m_list, { 40, 200, 90 });
 
     return TRUE;
 }
@@ -55,11 +54,6 @@ void CStatAlbumRankTabDlg::Refresh()
 {
     m_dirty = false;
     BuildRankData();
-
-    // 列宽按 DPI 设定（不依赖 OnInitDialog 的固定宽度）
-    m_list.SetColumnWidth(COL_RANK, theApp.DPI(40));
-    m_list.SetColumnWidth(COL_ALBUM, theApp.DPI(200));
-    m_list.SetColumnWidth(COL_VALUE, theApp.DPI(90));
 
     m_list.DeleteAllItems();
     for (int i = 0; i < (int)m_rank_data.size(); i++)

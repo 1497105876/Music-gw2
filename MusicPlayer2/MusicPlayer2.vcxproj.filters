@@ -693,22 +693,13 @@
     <ClInclude Include="StatAlbumRankTabDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
-    <ClInclude Include="StatGenreTabDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClInclude>
     <ClInclude Include="StatSongRankTabDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClInclude>
-    <ClInclude Include="StatTrendTabDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
     <ClInclude Include="StatSongsTabDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
     <ClInclude Include="StatCommon.h">
-      <Filter>功能逻辑类\PlayStatistics</Filter>
-    </ClInclude>
-    <ClInclude Include="StatChart.h">
       <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClInclude>
     <ClInclude Include="StatMeta.h">
@@ -1463,20 +1454,11 @@
     <ClCompile Include="StatAlbumRankTabDlg.cpp">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
-    <ClCompile Include="StatGenreTabDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
     <ClCompile Include="StatSongRankTabDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
-    <ClCompile Include="StatTrendTabDlg.cpp">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
     <ClCompile Include="StatSongsTabDlg.cpp">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
-    <ClCompile Include="StatChart.cpp">
-      <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClCompile>
     <ClCompile Include="StatMeta.cpp">
       <Filter>功能逻辑类\PlayStatistics</Filter>

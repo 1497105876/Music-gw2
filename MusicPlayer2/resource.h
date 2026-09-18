@@ -1108,24 +1108,20 @@
 #define IDD_STAT_OVERVIEW_DLG            694
 #define IDD_STAT_ARTIST_RANK_DLG         695
 #define IDD_STAT_SONG_RANK_DLG           696
-#define IDD_STAT_TREND_DLG               697
 #define IDD_STAT_SONGS_DLG               698
 #define IDC_STAT_OVERVIEW_LIST2          1416
 #define IDC_STAT_ARTIST_RANK_LIST        1417
 #define IDC_STAT_SONG_RANK_LIST          1418
-#define IDC_STAT_TREND_CHART             1419
 #define IDC_STAT_SONGS_LIST              1420
 #define IDC_STAT_ARTIST_RANK_CHART      1421
 #define IDC_STAT_SONG_RANK_CHART        1422
 #define IDC_STAT_PROFILE_CHART          1423
-#define IDC_STAT_GENRE_LIST            1445
 #define IDC_STAT_PROFILE_TEXT           1446
 #define IDD_STAT_PROFILE_DLG            699
 
 // 播放统计优化新增资源 ID（架构文档 D5）
 #define IDD_STAT_HEATMAP_DLG            700
 #define IDD_STAT_ALBUM_RANK_DLG         701
-#define IDD_STAT_GENRE_DLG              702
 #define IDD_STAT_REPORT_DLG             703
 #define IDD_STAT_HELP_DLG               704
 
@@ -1144,7 +1140,6 @@
 #define IDC_STAT_HEATMAP_SCROLL         1436
 #define IDC_STAT_ALBUM_RANK_CHART       1437
 #define IDC_STAT_ALBUM_RANK_LIST        1438
-#define IDC_STAT_GENRE_CHART            1439
 #define IDC_STAT_REPORT_CHART           1440
 #define IDC_STAT_REPORT_SAVE_BTN        1441
 #define IDC_STAT_REPORT_WATERMARK_CHK   1442

@@ -50,15 +50,6 @@ struct HeatCell
     int duration_sec{ 0 };      // 播放时长（秒）
 };
 
-// 流派占比
-struct GenreShare
-{
-    std::wstring genre;             // 流派名
-    int          count{ 0 };        // 播放次数
-    int          duration_sec{ 0 }; // 播放时长（秒）
-    double       percent{ 0.0 };    // 时长占比（0~100）
-};
-
 // 跳过位置分桶
 struct SkipBucket
 {
@@ -125,7 +116,6 @@ struct YearReview
     int          duration_sec{ 0 };
     std::wstring top_artist;
     std::wstring top_song;
-    std::wstring top_genre;
 };
 
 // 全局统计上下文：唯一数据源，主对话框构造一次，子页只读。

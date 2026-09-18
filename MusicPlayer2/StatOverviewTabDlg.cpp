@@ -1,7 +1,6 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatOverviewTabDlg.h"
-#include "StatChart.h"
 #include <algorithm>
 
 IMPLEMENT_DYNAMIC(CStatOverviewTabDlg, CStatTabDlg)
@@ -32,12 +31,10 @@ BOOL CStatOverviewTabDlg::OnInitDialog()
 {
     CStatTabDlg::OnInitDialog();
 
-
-    CRect rc; m_list.GetWindowRect(rc);
-    int w0 = theApp.DPI(160);
-    int w1 = rc.Width() - w0 - theApp.DPI(20) - 1;
-    m_list.InsertColumn(0, L"统计项", LVCFMT_LEFT, w0);
-    m_list.InsertColumn(1, L"数值", LVCFMT_LEFT, max(w1, theApp.DPI(120)));
+    m_list.InsertColumn(0, L"统计项", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(1, L"数值", LVCFMT_LEFT, 0);
+    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
+    EnableColumnFit(&m_list, { 160, 340 });
     return TRUE;
 }
 
@@ -113,8 +110,6 @@ void CStatOverviewTabDlg::ShowData()
         add(L"最爱歌手", s.top_artist + L"（" + dur(s.top_artist_sec) + L"）");
     if (!s.top_song.empty())
         add(L"最爱歌曲", s.top_song + (s.top_song_artist.empty() ? L"" : L" - " + s.top_song_artist) + L"（" + std::to_wstring(s.top_song_count) + L" 次）");
-    if (!s.top_genre.empty())
-        add(L"最爱流派", s.top_genre + L"（" + std::to_wstring(s.top_genre_count) + L" 次）");
     add(L"本月新歌",      has ? std::to_wstring(s.new_songs_month) + L" 首" : L"—");
     add(L"反复循环",      has ? std::to_wstring(s.repeat_depth) + L" 首" : L"—");
 

@@ -2,7 +2,6 @@
 #include "MusicPlayer2.h"
 #include "StatArtistRankTabDlg.h"
 #include "StatAnalysis.h"
-#include "StatChart.h"
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -21,7 +20,7 @@ CStatArtistRankTabDlg::~CStatArtistRankTabDlg()
 void CStatArtistRankTabDlg::DoDataExchange(CDataExchange* pDX)
 {
     CStatTabDlg::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_STAT_ARTIST_RANK_LIST, m_list);
+    DDX_Control(pDX, IDC_STAT_ARTIST_RANK_LIST, m_list);
 }
 
 BEGIN_MESSAGE_MAP(CStatArtistRankTabDlg, CStatTabDlg)
@@ -37,11 +36,11 @@ BOOL CStatArtistRankTabDlg::OnInitDialog()
 
     // 列表控件：整行选中 + 网格线 + 双缓冲防闪烁
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_LABELTIP);
-    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, theApp.DPI(40));       // 排名列
-    m_list.InsertColumn(COL_NAME, L"歌手", LVCFMT_LEFT, theApp.DPI(200));    // 歌手名列
-    m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, theApp.DPI(78)); // 时长列
-
-    // 同时加上 WS_VSCROLL，数据多了可以滚动
+    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, 0);       // 排名列
+    m_list.InsertColumn(COL_NAME, L"歌手", LVCFMT_LEFT, 0);    // 歌手名列
+    m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, 0); // 时长列
+    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
+    EnableColumnFit(&m_list, { 40, 200, 78 });
 
     return TRUE;
 }

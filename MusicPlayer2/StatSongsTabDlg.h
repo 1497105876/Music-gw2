@@ -26,7 +26,6 @@ protected:
         DCOL_PLAY_DUR,
         DCOL_SONG_LEN,
         DCOL_RESULT,
-        DCOL_SOURCE,
     };
 
     virtual void DoDataExchange(CDataExchange* pDX) override;

@@ -188,7 +188,6 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
     std::map<std::wstring, int> song_count;         // 每首歌播放次数（按路径）
     std::map<std::wstring, int> song_first_ym;      // 每首歌第一次播放的年月
     std::map<std::wstring, int> artist_time;        // 每个歌手累计时长
-    std::map<std::wstring, int> genre_count;        // 每个流派播放次数
     std::map<int, int> hour_count;                  // 各时段播放次数
     std::set<std::wstring> active_dates;            // 有播放的日期（yyyy-MM-dd）
     std::set<std::wstring> all_dates;               // 出现过的日期（不过滤，用于连续天数）
@@ -223,8 +222,6 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
                 song_first_ym[r.file_path] = year * 100 + month;
             if (!r.artist.empty())
                 artist_time[r.artist] += r.play_duration_sec;
-            if (!r.genre.empty())
-                genre_count[r.genre] += 1;
 
             switch (r.finish_reason)
             {
@@ -422,7 +419,7 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
             s.inflation_percent = (int)(top10 * 100 / sum);
     }
 
-    // Top 歌手 / 歌曲 / 流派
+    // Top 歌手 / 歌曲
     for (const auto& [name, dur] : artist_time)
     {
         if (dur > s.top_artist_sec)
@@ -452,15 +449,6 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
             }
         }
     }
-    for (const auto& [g, c] : genre_count)
-    {
-        if (c > s.top_genre_count)
-        {
-            s.top_genre_count = c;
-            s.top_genre = g;
-        }
-    }
-
     // ── 听歌档案徽章 ──
     if (s.total_count >= 10)
     {
@@ -490,14 +478,6 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
             wchar_t buf[16];
             swprintf_s(buf, L"完整收听率 %.0f%%", s.completed_rate);
             b.text = buf;
-            s.badges.push_back(std::move(b));
-        }
-        if (s.top_genre_count > 0 && s.top_genre_count * 100 / s.total_count >= 40)
-        {
-            StatSummary::Badge b;
-            b.key = L"genre";
-            b.title = L"专一取向";
-            b.text = L"偏爱「" + s.top_genre + L"」风格";
             s.badges.push_back(std::move(b));
         }
         if (s.repeat_depth >= 10)
@@ -609,127 +589,6 @@ std::vector<HeatCell> CStatAnalysis::ComputeHeatmapGrid(const std::vector<PlayRe
     result.reserve(grid.size());
     for (auto& [ymd, c] : grid)
         result.push_back(c);
-    return result;
-}
-
-// 流派占比（按时长），max_slices 之外的合并为“其他”
-std::vector<GenreShare> CStatAnalysis::ComputeGenreShare(const std::vector<PlayRecord>& records, int max_slices)
-{
-    std::map<std::wstring, int> dur;
-    std::map<std::wstring, int> cnt;
-    long long total = 0;
-
-    for (const auto& r : records)
-    {
-        if (!IsCounted(r)) continue;
-        if (r.genre.empty()) continue;          // 空流派不参与占比
-        dur[r.genre] += r.play_duration_sec;
-        cnt[r.genre] += 1;
-        total += r.play_duration_sec;
-    }
-
-    std::vector<GenreShare> v;
-    v.reserve(dur.size());
-    for (const auto& [g, d] : dur)
-    {
-        GenreShare s;
-        s.genre = g;
-        s.count = cnt[g];
-        s.duration_sec = d;
-        s.percent = (total > 0) ? (double)d * 100.0 / (double)total : 0.0;
-        v.push_back(std::move(s));
-    }
-    std::sort(v.begin(), v.end(),
-        [](const GenreShare& a, const GenreShare& b) { return a.duration_sec > b.duration_sec; });
-
-    // >max_slices 类时，保留前 max_slices-1 类，其余合并为“其他”
-    if (max_slices > 0 && (int)v.size() > max_slices)
-    {
-        std::vector<GenreShare> out;
-        for (int i = 0; i < max_slices - 1; i++)
-            out.push_back(v[i]);
-
-        GenreShare other;
-        other.genre = L"其他";
-        for (int i = max_slices - 1; i < (int)v.size(); i++)
-        {
-            other.count += v[i].count;
-            other.duration_sec += v[i].duration_sec;
-            other.percent += v[i].percent;
-        }
-        out.push_back(std::move(other));
-        return out;
-    }
-    return v;
-}
-
-// 按季度计算“主导流派”——每个季度返回一个点（dominant genre + 其占比），供漂移叠图使用。
-// out_labels[i] 为季度标签（如 2025Q4）；返回的 vector 与 out_labels 一一对应。
-std::vector<GenreShare> CStatAnalysis::ComputeGenreShareByQuarter(const std::vector<PlayRecord>& records,
-                                                                  int quarters,
-                                                                  std::vector<std::wstring>& out_labels)
-{
-    out_labels.clear();
-    std::vector<GenreShare> result;
-    if (quarters <= 0) return result;
-
-    std::map<int, std::map<std::wstring, int>> q_genre_dur;   // 季度键 -> 流派 -> 时长
-    std::map<int, long long> q_total;                          // 季度键 -> 总时长（含空流派）
-
-    for (const auto& r : records)
-    {
-        if (!IsCounted(r)) continue;
-        int ymd = YmdOf(r.played_at);
-        if (ymd == 0) continue;
-        int year = ymd / 10000;
-        int month = (ymd / 100) % 100;
-        int q = (month - 1) / 3 + 1;                            // 1..4
-        int qk = year * 10 + q;
-        q_total[qk] += r.play_duration_sec;
-        if (!r.genre.empty())
-            q_genre_dur[qk][r.genre] += r.play_duration_sec;
-    }
-
-    // 取最后 quarters 个季度（map 已按季度键升序）
-    std::vector<int> keys;
-    for (const auto& [k, v] : q_total)
-        keys.push_back(k);
-    int start = (int)keys.size() - quarters;
-    if (start < 0) start = 0;
-
-    for (int i = start; i < (int)keys.size(); i++)
-    {
-        int qk = keys[i];
-        int year = qk / 10;
-        int q = qk % 10;
-        wchar_t buf[16];
-        swprintf_s(buf, L"%04dQ%d", year, q);
-        out_labels.push_back(buf);
-
-        GenreShare s;
-        long long total = q_total[qk];
-        auto git = q_genre_dur.find(qk);
-        if (git != q_genre_dur.end() && !git->second.empty())
-        {
-            // 找该季度时长最高的流派
-            int best_dur = -1;
-            for (const auto& [g, d] : git->second)
-            {
-                if (d > best_dur) { best_dur = d; s.genre = g; }
-            }
-            s.duration_sec = best_dur;
-            s.count = (int)git->second.size();                  // 该季度出现过的不同流派数
-            s.percent = (total > 0) ? (double)best_dur * 100.0 / (double)total : 0.0;
-        }
-        else
-        {
-            s.genre = L"";                                      // 该季度无流派数据：留空
-            s.duration_sec = 0;
-            s.count = 0;
-            s.percent = 0.0;
-        }
-        result.push_back(std::move(s));
-    }
     return result;
 }
 
@@ -911,27 +770,6 @@ std::vector<PeriodBucket> CStatAnalysis::ComputeNewSongTrend(const std::vector<P
     return out;
 }
 
-// 余弦相似度（用于两段时间的口味对比），返回 0~1
-double CStatAnalysis::ComputeCosineSimilarity(const std::vector<GenreShare>& a, const std::vector<GenreShare>& b)
-{
-    std::map<std::wstring, double> va, vb;
-    for (const auto& s : a) va[s.genre] += s.percent;
-    for (const auto& s : b) vb[s.genre] += s.percent;
-
-    double dot = 0.0, na = 0.0, nb = 0.0;
-    for (const auto& [k, v] : va)
-    {
-        na += v * v;
-        auto it = vb.find(k);
-        if (it != vb.end()) dot += v * it->second;
-    }
-    for (const auto& [k, v] : vb)
-        nb += v * v;
-
-    if (na <= 0.0 || nb <= 0.0) return 0.0;
-    return dot / (std::sqrt(na) * std::sqrt(nb));
-}
-
 // 遗珠挖掘：反复听（count>=min_count）却从未完整听完（COMPLETED==0）
 std::vector<RetiredGem> CStatAnalysis::ComputeRetiredGems(const std::vector<PlayRecord>& records, int min_count)
 {
@@ -1065,7 +903,6 @@ std::vector<YearReview> CStatAnalysis::ComputeYearlyReviews(const std::vector<Pl
         std::map<std::wstring, int> artist_time;
         std::map<std::wstring, int> song_count;
         std::map<std::wstring, std::wstring> song_title;
-        std::map<std::wstring, int> genre_count;
     };
     std::map<int, Agg> years;
 
@@ -1081,7 +918,6 @@ std::vector<YearReview> CStatAnalysis::ComputeYearlyReviews(const std::vector<Pl
         if (!r.artist.empty()) a.artist_time[r.artist] += r.play_duration_sec;
         a.song_count[r.file_path] += 1;
         if (!r.title.empty()) a.song_title[r.file_path] = r.title;
-        if (!r.genre.empty()) a.genre_count[r.genre] += 1;
     }
 
     std::vector<YearReview> result;
@@ -1102,10 +938,6 @@ std::vector<YearReview> CStatAnalysis::ComputeYearlyReviews(const std::vector<Pl
             if (c > best) { best = c; top_path = path; }
         if (!top_path.empty())
             y.top_song = a.song_title.count(top_path) ? a.song_title[top_path] : top_path;
-
-        best = 0;
-        for (const auto& [g, c] : a.genre_count)
-            if (c > best) { best = c; y.top_genre = g; }
 
         result.push_back(std::move(y));
     }

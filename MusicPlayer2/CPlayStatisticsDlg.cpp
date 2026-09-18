@@ -30,46 +30,19 @@ namespace
         return (out.tm_year + 1900) * 10000 + (out.tm_mon + 1) * 100 + out.tm_mday;
     }
 
-    // 日期键（YYYYMMDD）与显示文本（yyyy-MM-dd）互转；日期用 CEditEx 输入，不再用原生日期选择器
-    CString YmdToText(int ymd)
+    // 日期键（YYYYMMDD）与 SYSTEMTIME 互转（原生日期时间选择器使用）
+    int SystemTimeToYmd(const SYSTEMTIME& st)
     {
-        if (ymd <= 0) return CString();
-        CString s;
-        s.Format(L"%04d-%02d-%02d", ymd / 10000, (ymd / 100) % 100, ymd % 100);
-        return s;
+        return st.wYear * 10000 + st.wMonth * 100 + st.wDay;
     }
 
-    // 解析 yyyy-MM-dd（也容忍 / 与 . 作分隔符、前后空格）；失败返回 -1
-    int TextToYmd(const CString& text_in)
+    SYSTEMTIME YmdToSystemTime(int ymd)
     {
-        CString text{ text_in };
-        text.Trim();
-        if (text.GetLength() < 8) return -1;
-
-        // 统一分隔符为 '-'
-        text.Replace(L'/', L'-');
-        text.Replace(L'.', L'-');
-
-        int year = 0, month = 0, day = 0;
-        if (swscanf_s(text.GetString(), L"%d-%d-%d", &year, &month, &day) != 3) return -1;
-        if (year < 1970 || year > 9999) return -1;
-        if (month < 1 || month > 12) return -1;
-        if (day < 1 || day > 31) return -1;
-
-        // 用 mktime 做真实日期校验（能识别 2 月 30 日这类非法值）
-        struct tm tv = {};
-        tv.tm_year = year - 1900;
-        tv.tm_mon = month - 1;
-        tv.tm_mday = day;
-        tv.tm_hour = 12;
-        time_t t = mktime(&tv);
-        if (t == static_cast<time_t>(-1)) return -1;
-        struct tm out = {};
-        localtime_s(&out, &t);
-        if (out.tm_year + 1900 != year || out.tm_mon + 1 != month || out.tm_mday != day)
-            return -1;
-
-        return year * 10000 + month * 100 + day;
+        SYSTEMTIME st{};
+        st.wYear = ymd / 10000;
+        st.wMonth = (ymd / 100) % 100;
+        st.wDay = ymd % 100;
+        return st;
     }
 }
 
@@ -127,8 +100,8 @@ BEGIN_MESSAGE_MAP(CPlayStatisticsDlg, CBaseDialog)
     ON_BN_CLICKED(IDC_STAT_EXPORT_AGG_BTN, &CPlayStatisticsDlg::OnBnClickedExportAggButton)
     ON_BN_CLICKED(IDC_STAT_REPORT_BTN, &CPlayStatisticsDlg::OnBnClickedReportButton)
     ON_CBN_SELCHANGE(IDC_STAT_RANGE_PRESET, &CPlayStatisticsDlg::OnCbnSelchangeRangePreset)
-    ON_EN_KILLFOCUS(IDC_STAT_DATE_FROM, &CPlayStatisticsDlg::OnEnKillfocusDateFrom)
-    ON_EN_KILLFOCUS(IDC_STAT_DATE_TO, &CPlayStatisticsDlg::OnEnKillfocusDateTo)
+    ON_NOTIFY(DTN_DATETIMECHANGE, IDC_STAT_DATE_FROM, &CPlayStatisticsDlg::OnDateTimeChangeFrom)
+    ON_NOTIFY(DTN_DATETIMECHANGE, IDC_STAT_DATE_TO, &CPlayStatisticsDlg::OnDateTimeChangeTo)
     ON_WM_DESTROY()
     ON_WM_TIMER()
     ON_MESSAGE(WM_STAT_RECORD_APPENDED, &CPlayStatisticsDlg::OnStatRecordAppended)
@@ -202,11 +175,54 @@ void CPlayStatisticsDlg::SyncDatePickersFromFilter()
     GetLocalTime(&st);
     int today = st.wYear * 10000 + st.wMonth * 100 + st.wDay;
 
-    int from_disp = (m_filter.from_ymd != 0) ? m_filter.from_ymd : today;
-    int to_disp = (m_filter.to_ymd != 0) ? m_filter.to_ymd : today;
+    int from_disp = today;
+    int to_disp = today;
+    if (m_filter.preset == RangePreset::All)
+    {
+        // 「全部」：把两个选择器显示为实际数据范围（无记录则回落到今天）
+        int min_ymd = 0, max_ymd = 0;
+        GetDataRange(min_ymd, max_ymd);
+        if (min_ymd != 0) from_disp = min_ymd;
+        if (max_ymd != 0) to_disp = max_ymd;
+    }
+    else
+    {
+        if (m_filter.from_ymd != 0) from_disp = m_filter.from_ymd;
+        if (m_filter.to_ymd != 0) to_disp = m_filter.to_ymd;
+    }
 
-    m_date_from.SetWindowText(YmdToText(from_disp));
-    m_date_to.SetWindowText(YmdToText(to_disp));
+    SetDatePickerYmd(m_date_from, from_disp);
+    SetDatePickerYmd(m_date_to, to_disp);
+}
+
+void CPlayStatisticsDlg::SetDatePickerYmd(CDateTimeCtrl& dtp, int ymd)
+{
+    if (dtp.GetSafeHwnd() == nullptr || ymd <= 0) return;
+    SYSTEMTIME st = YmdToSystemTime(ymd);
+    m_updating_filter = true;               // 抑制写入触发的 DTN_DATETIMECHANGE 联动
+    dtp.SetFormat(L"yyyy-MM-dd");           // 统一显示格式（覆盖资源里的默认格式）
+    dtp.SetTime(&st);
+    m_updating_filter = false;
+}
+
+void CPlayStatisticsDlg::GetDataRange(int& min_ymd, int& max_ymd) const
+{
+    min_ymd = 0;
+    max_ymd = 0;
+    for (const auto& r : m_all_records)
+    {
+        int ymd = CStatAnalysis::YmdOf(r.played_at);
+        if (ymd == 0) continue;
+        if (min_ymd == 0 || ymd < min_ymd) min_ymd = ymd;
+        if (max_ymd == 0 || ymd > max_ymd) max_ymd = ymd;
+    }
+}
+
+void CPlayStatisticsDlg::UpdateDatePickerEnabled()
+{
+    BOOL enable = (m_filter.preset == RangePreset::All) ? FALSE : TRUE;
+    m_date_from.EnableWindow(enable);
+    m_date_to.EnableWindow(enable);
 }
 
 void CPlayStatisticsDlg::SyncPresetComboToFilter()
@@ -220,18 +236,18 @@ void CPlayStatisticsDlg::InitFilterControls()
 {
     FillPresetCombo();
 
-    // 日期用项目自带的 CEditEx 输入（yyyy-MM-dd），全项目没有日期选择器，
-    // 用原生 SysDateTimePick32 会显得突兀；这里只限制长度并在失焦时校验。
-    m_date_from.SetLimitText(10);
-    m_date_to.SetLimitText(10);
+    // 原生日期时间选择器：统一显示格式（下拉日历默认可用）
+    m_date_from.SetFormat(L"yyyy-MM-dd");
+    m_date_to.SetFormat(L"yyyy-MM-dd");
 
-    // 默认：近 30 天，粒度 天
+    // 默认：全部时间，粒度 天
     m_filter = StatFilter{};
     m_filter.grain = Grain::Day;
-    ApplyPresetToFilter(RangePreset::Last30);
+    ApplyPresetToFilter(RangePreset::All);
 
     SyncDatePickersFromFilter();
     SyncPresetComboToFilter();
+    UpdateDatePickerEnabled();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -261,11 +277,9 @@ void CPlayStatisticsDlg::ApplyFilter()
 void CPlayStatisticsDlg::BroadcastContext()
 {
     m_overview_dlg.SetContext(&m_context);
-    m_trend_dlg.SetContext(&m_context);
     m_artist_rank_dlg.SetContext(&m_context);
     m_album_rank_dlg.SetContext(&m_context);
     m_song_rank_dlg.SetContext(&m_context);
-    m_genre_dlg.SetContext(&m_context);
     m_songs_dlg.SetContext(&m_context);
     m_profile_dlg.SetContext(&m_context);
 }
@@ -285,29 +299,24 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
 {
     CBaseDialog::OnInitDialog();
 
-    // 过滤条（默认近 30 天）
-    InitFilterControls();
-
-    // 解析全量记录（打开期只解析一次）
+    // 先解析全量记录（打开期只解析一次），使「全部」预设能把两个日期选择器
+    // 显示为实际数据范围；再初始化过滤条（默认：全部时间）
     LoadRecords();
+    InitFilterControls();
 
     // 创建子对话框
     m_overview_dlg.Create(IDD_STAT_OVERVIEW_DLG, &m_tab);
-    m_trend_dlg.Create(IDD_STAT_TREND_DLG, &m_tab);
     m_artist_rank_dlg.Create(IDD_STAT_ARTIST_RANK_DLG, &m_tab);
     m_album_rank_dlg.Create(IDD_STAT_ALBUM_RANK_DLG, &m_tab);
     m_song_rank_dlg.Create(IDD_STAT_SONG_RANK_DLG, &m_tab);
-    m_genre_dlg.Create(IDD_STAT_GENRE_DLG, &m_tab);
     m_songs_dlg.Create(IDD_STAT_SONGS_DLG, &m_tab);
     m_profile_dlg.Create(IDD_STAT_PROFILE_DLG, &m_tab);
 
-    // 添加到 Tab（本批 8 页：概览/趋势/歌手/专辑/曲目/流派/明细/洞察）
+    // 添加到 Tab（6 页：概览/歌手/专辑/曲目/明细/洞察）
     m_tab.AddWindow(&m_overview_dlg, L"概览", IconMgr::IconType::IT_Info);
-    m_tab.AddWindow(&m_trend_dlg, L"趋势", IconMgr::IconType::IT_Statistics);
     m_tab.AddWindow(&m_artist_rank_dlg, L"歌手", IconMgr::IconType::IT_Artist);
     m_tab.AddWindow(&m_album_rank_dlg, L"专辑", IconMgr::IconType::IT_Album);
     m_tab.AddWindow(&m_song_rank_dlg, L"曲目", IconMgr::IconType::IT_Music);
-    m_tab.AddWindow(&m_genre_dlg, L"流派", IconMgr::IconType::IT_Genre);
     m_tab.AddWindow(&m_songs_dlg, L"明细", IconMgr::IconType::IT_File_Relate);
     m_tab.AddWindow(&m_profile_dlg, L"洞察", IconMgr::IconType::IT_Star);
 
@@ -456,6 +465,7 @@ void CPlayStatisticsDlg::OnCbnSelchangeRangePreset()
     RangePreset preset = static_cast<RangePreset>(sel);
     ApplyPresetToFilter(preset);
     SyncDatePickersFromFilter();
+    UpdateDatePickerEnabled();
 
     ApplyFilter();
     BroadcastContext();
@@ -671,78 +681,58 @@ void CPlayStatisticsDlg::OnBnClickedExportJsonButton()
     AfxMessageBox(L"导出完成", MB_ICONINFORMATION);
 }
 
-void CPlayStatisticsDlg::OnEnKillfocusDateFrom()
+// 原生日期时间选择器：起始日期变化（DTN_DATETIMECHANGE）
+void CPlayStatisticsDlg::OnDateTimeChangeFrom(NMHDR* pNMHDR, LRESULT* pResult)
 {
-    CString text;
-    m_date_from.GetWindowText(text);
+    LPNMDATETIMECHANGE pdt = reinterpret_cast<LPNMDATETIMECHANGE>(pNMHDR);
+    if (pResult != nullptr) *pResult = 0;
+    if (m_updating_filter) return;              // 程序化写入 DTP，忽略联动
+    if (pdt == nullptr) return;
 
-    int new_from = TextToYmd(text);
-    if (new_from < 0)
-    {
-        // 非法输入：恢复为过滤器当前值（或今天），不弹窗打断
-        SYSTEMTIME st;
-        GetLocalTime(&st);
-        int today = st.wYear * 10000 + st.wMonth * 100 + st.wDay;
-        m_date_from.SetWindowText(YmdToText(m_filter.from_ymd != 0 ? m_filter.from_ymd : today));
-        return;
-    }
+    int new_from = SystemTimeToYmd(pdt->st);
 
-    // 越界：起始晚于结束则拒绝并回退
+    // 越界：起始晚于结束 → 警告并用原值回滚该选择器
     if (m_filter.to_ymd != 0 && new_from > m_filter.to_ymd)
     {
-        AfxMessageBox(L"\u8d77\u59cb\u65e5\u671f\u665a\u4e8e\u7ed3\u675f\u65e5\u671f\uff0c\u8bf7\u91cd\u65b0\u8f93\u5165\u3002", MB_ICONWARNING);
-        m_date_from.SetWindowText(YmdToText(m_filter.from_ymd));
+        AfxMessageBox(L"起始日期晚于结束日期，请重新选择。", MB_ICONWARNING);
+        SetDatePickerYmd(m_date_from, m_filter.from_ymd != 0 ? m_filter.from_ymd : new_from);
         return;
     }
 
-    if (new_from == m_filter.from_ymd)
-    {
-        m_date_from.SetWindowText(YmdToText(new_from));   // \u89c4\u8303\u5316\u663e\u793a\uff08\u5982 2026-9-1 -> 2026-09-01\uff09
+    if (new_from == m_filter.from_ymd && m_filter.preset == RangePreset::Custom)
         return;
-    }
 
     m_filter.from_ymd = new_from;
     m_filter.preset = RangePreset::Custom;
-    m_date_from.SetWindowText(YmdToText(new_from));
     SyncPresetComboToFilter();
-
     ApplyFilter();
     BroadcastContext();
 }
 
-void CPlayStatisticsDlg::OnEnKillfocusDateTo()
+// 原生日期时间选择器：结束日期变化（DTN_DATETIMECHANGE）
+void CPlayStatisticsDlg::OnDateTimeChangeTo(NMHDR* pNMHDR, LRESULT* pResult)
 {
-    CString text;
-    m_date_to.GetWindowText(text);
+    LPNMDATETIMECHANGE pdt = reinterpret_cast<LPNMDATETIMECHANGE>(pNMHDR);
+    if (pResult != nullptr) *pResult = 0;
+    if (m_updating_filter) return;              // 程序化写入 DTP，忽略联动
+    if (pdt == nullptr) return;
 
-    int new_to = TextToYmd(text);
-    if (new_to < 0)
-    {
-        SYSTEMTIME st;
-        GetLocalTime(&st);
-        int today = st.wYear * 10000 + st.wMonth * 100 + st.wDay;
-        m_date_to.SetWindowText(YmdToText(m_filter.to_ymd != 0 ? m_filter.to_ymd : today));
-        return;
-    }
+    int new_to = SystemTimeToYmd(pdt->st);
 
+    // 越界：结束早于起始 → 警告并用原值回滚该选择器
     if (m_filter.from_ymd != 0 && new_to < m_filter.from_ymd)
     {
-        AfxMessageBox(L"\u7ed3\u675f\u65e5\u671f\u65e9\u4e8e\u8d77\u59cb\u65e5\u671f\uff0c\u8bf7\u91cd\u65b0\u8f93\u5165\u3002", MB_ICONWARNING);
-        m_date_to.SetWindowText(YmdToText(m_filter.to_ymd));
+        AfxMessageBox(L"结束日期早于起始日期，请重新选择。", MB_ICONWARNING);
+        SetDatePickerYmd(m_date_to, m_filter.to_ymd != 0 ? m_filter.to_ymd : new_to);
         return;
     }
 
-    if (new_to == m_filter.to_ymd)
-    {
-        m_date_to.SetWindowText(YmdToText(new_to));
+    if (new_to == m_filter.to_ymd && m_filter.preset == RangePreset::Custom)
         return;
-    }
 
     m_filter.to_ymd = new_to;
     m_filter.preset = RangePreset::Custom;
-    m_date_to.SetWindowText(YmdToText(new_to));
     SyncPresetComboToFilter();
-
     ApplyFilter();
     BroadcastContext();
 }

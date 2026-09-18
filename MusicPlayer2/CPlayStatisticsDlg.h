@@ -2,17 +2,15 @@
 #include "BaseDialog.h"
 #include "CTabCtrlEx.h"
 #include "MyComboBox.h"
-#include "EditEx.h"
 #include "StatCommon.h"
 #include "StatOverviewTabDlg.h"
 #include "StatArtistRankTabDlg.h"
 #include "StatAlbumRankTabDlg.h"
 #include "StatSongRankTabDlg.h"
-#include "StatGenreTabDlg.h"
-#include "StatTrendTabDlg.h"
 #include "StatSongsTabDlg.h"
 #include "StatProfileTabDlg.h"
 #include "StatHtmlReport.h"
+#include <afxdtctl.h>
 #include <vector>
 
 class CPlayStatisticsDlg : public CBaseDialog
@@ -30,16 +28,16 @@ public:
 protected:
     CTabCtrlEx m_tab;
     CMyComboBox   m_preset_combo;   // 项目统一下拉框（AppearanceSettingDlg / DataSettingsDlg 等同样使用）
-    CEditEx      m_date_from;      // 起始日期：项目自带输入框（yyyy-MM-dd）
-    CEditEx      m_date_to;        // 结束日期（yyyy-MM-dd）
+    CDateTimeCtrl m_date_from;     // 起始日期：原生日期时间选择器（带下拉日历）
+    CDateTimeCtrl m_date_to;       // 结束日期：原生日期时间选择器（带下拉日历）
 
-    // 8 个子页（批次 2：在 6 页基础上新增 专辑 / 流派）
+    bool m_updating_filter{ false }; // 程序化写入 DTP 时的重入守卫（抑制 DTN_DATETIMECHANGE 联动）
+
+    // 6 个子页（移除趋势页/流派页后：概览/歌手/专辑/曲目/明细/洞察）
     CStatOverviewTabDlg m_overview_dlg;
-    CStatTrendTabDlg m_trend_dlg;
     CStatArtistRankTabDlg m_artist_rank_dlg;
     CStatAlbumRankTabDlg m_album_rank_dlg;
     CStatSongRankTabDlg m_song_rank_dlg;
-    CStatGenreTabDlg m_genre_dlg;
     CStatSongsTabDlg m_songs_dlg;
     CStatProfileTabDlg m_profile_dlg;
 
@@ -53,12 +51,15 @@ protected:
     void InitFilterControls();
     void FillPresetCombo();
     void ApplyPresetToFilter(RangePreset preset);  // 按预设回填 from/to
-    void SyncDatePickersFromFilter();              // 把 m_filter 的 from/to 写回两个 DTP
+    void SyncDatePickersFromFilter();              // 把 m_filter 的 from/to（或数据范围）写回两个 DTP
     void SyncPresetComboToFilter();                // 下拉框与 m_filter.preset 同步
+    void UpdateDatePickerEnabled();                // 预设 == 全部 时禁用两个 DTP（显示数据范围）
+    void GetDataRange(int& min_ymd, int& max_ymd) const;  // m_all_records 的实际日期范围（无记录返回 0）
+    void SetDatePickerYmd(CDateTimeCtrl& dtp, int ymd);   // 带重入守卫地写 DTP
 
     void LoadRecords();                            // 解析全部 playlog -> m_all_records
     void ApplyFilter();                            // m_all_records -> m_filtered_records + m_context
-    void BroadcastContext();                       // 向 8 个子页投递 const StatContext*
+    void BroadcastContext();                       // 向 6 个子页投递 const StatContext*
     void RefreshAllViews();                        // LoadRecords + ApplyFilter + Broadcast + label
 
 protected:
@@ -73,8 +74,8 @@ public:
     afx_msg void OnBnClickedExportCsvButton();
     afx_msg void OnBnClickedExportJsonButton();
     afx_msg void OnCbnSelchangeRangePreset();
-    afx_msg void OnEnKillfocusDateFrom();
-    afx_msg void OnEnKillfocusDateTo();
+    afx_msg void OnDateTimeChangeFrom(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnDateTimeChangeTo(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnBnClickedExportAggButton();
     afx_msg void OnBnClickedReportButton();
     afx_msg void OnDestroy();

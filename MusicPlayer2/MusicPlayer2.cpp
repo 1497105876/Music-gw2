@@ -263,7 +263,7 @@ BOOL CMusicPlayerApp::InitInstance()
     InitCtrls.dwSize = sizeof(InitCtrls);
     // 将它设置为包括所有要在应用程序中使用的
     // 公共控件类。
-    InitCtrls.dwICC = ICC_WIN95_CLASSES;
+    InitCtrls.dwICC = ICC_WIN95_CLASSES | ICC_DATE_CLASSES;
     InitCommonControlsEx(&InitCtrls);
 
     CWinApp::InitInstance();

@@ -1,7 +1,6 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatProfileTabDlg.h"
-#include "StatChart.h"
 #include <algorithm>
 
 IMPLEMENT_DYNAMIC(CStatProfileTabDlg, CStatTabDlg)
@@ -22,10 +21,7 @@ void CStatProfileTabDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CStatProfileTabDlg, CStatTabDlg)
-    ON_WM_DRAWITEM()
-    ON_WM_VSCROLL()
     ON_WM_MOUSEWHEEL()
-    ON_WM_SIZE()
 END_MESSAGE_MAP()
 
 BOOL CStatProfileTabDlg::OnInitDialog()
@@ -51,6 +47,14 @@ void CStatProfileTabDlg::Refresh()
     m_yearly.clear();
     if (m_stat_ctx != nullptr && m_stat_ctx->records != nullptr)
         m_yearly = CStatAnalysis::ComputeYearlyReviews(*m_stat_ctx->records);
+
+    // 遗珠挖掘（REQ-113）：反复听 >=3 次却从未完整听完（原「流派」页迁入本页）
+    m_gems.clear();
+    if (m_stat_ctx != nullptr && m_stat_ctx->records != nullptr)
+    {
+        m_gems = CStatAnalysis::ComputeRetiredGems(*m_stat_ctx->records, 3);
+        if (m_gems.size() > 3) m_gems.resize(3);
+    }
 
     // 全部内容拼成纯文本填入只读编辑框（与其它界面同构，无自绘）
     std::wstring text;
@@ -87,6 +91,12 @@ void CStatProfileTabDlg::Refresh()
         text += std::to_wstring(r.year) + L" 年你听了 " + std::to_wstring(r.count) +
                 L" 首，累计 " + CStatAnalysis::FormatDuration(r.duration_sec) + L"\r\n";
 
+    text += L"\r\n【遗珠挖掘】\r\n";
+    if (m_gems.empty())
+        text += L"暂无遗珠\r\n";
+    for (const auto& g : m_gems)
+        text += L"「" + g.title + L"」听了 " + std::to_wstring(g.count) + L" 次却没听完\r\n";
+
     text += L"\r\n【深度数字】\r\n";
     wchar_t numbuf[160];
     swprintf_s(numbuf, L"日均播放 %d 首    完整收听率 %d%%    连续听歌 %d 天    最长连续 %d 天\r\n"
@@ -99,6 +109,24 @@ void CStatProfileTabDlg::Refresh()
 
     m_text.SetWindowTextW(text.c_str());
 
+}
+
+// 只读多行编辑框不响应鼠标滚轮：把滚轮事件转发为编辑框本身的逐行滚动
+BOOL CStatProfileTabDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+{
+    if (m_text.GetSafeHwnd() != nullptr)
+    {
+        int lines = zDelta;
+        if (lines < 0) lines = -lines;
+        lines = lines * 3 / 120;        // 120 == WHEEL_DELTA
+        if (lines < 1) lines = 1;
+
+        UINT sb = (zDelta > 0) ? SB_LINEUP : SB_LINEDOWN;
+        for (int i = 0; i < lines; i++)
+            m_text.SendMessage(WM_VSCROLL, MAKEWPARAM(sb, 0), 0);
+        return TRUE;
+    }
+    return CStatTabDlg::OnMouseWheel(nFlags, zDelta, pt);
 }
 
 // 根据控件宽度估算整页内容高度（与 DrawProfile 的布局保持一致）

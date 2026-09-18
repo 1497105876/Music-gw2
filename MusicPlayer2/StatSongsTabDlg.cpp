@@ -1,7 +1,6 @@
 ﻿#include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "StatSongsTabDlg.h"
-#include "StatChart.h"
 
 IMPLEMENT_DYNAMIC(CStatSongsTabDlg, CStatTabDlg)
 
@@ -28,7 +27,6 @@ BOOL CStatSongsTabDlg::OnInitDialog()
     CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-    // 列宽不在此处设死（B3 约定第 6 条），改在 Refresh() 填充数据时按 DPI 设定
     m_list.InsertColumn(DCOL_INDEX, L"序号", LVCFMT_LEFT, 0);
     m_list.InsertColumn(DCOL_TIME, L"播放时间", LVCFMT_LEFT, 0);
     m_list.InsertColumn(DCOL_TITLE, L"标题", LVCFMT_LEFT, 0);
@@ -37,7 +35,8 @@ BOOL CStatSongsTabDlg::OnInitDialog()
     m_list.InsertColumn(DCOL_PLAY_DUR, L"播放时长", LVCFMT_RIGHT, 0);
     m_list.InsertColumn(DCOL_SONG_LEN, L"歌曲长度", LVCFMT_RIGHT, 0);
     m_list.InsertColumn(DCOL_RESULT, L"结果", LVCFMT_CENTER, 0);
-    m_list.InsertColumn(DCOL_SOURCE, L"来源", LVCFMT_LEFT, 0);
+    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
+    EnableColumnFit(&m_list, { 50, 140, 200, 120, 120, 70, 70, 60 });
 
     return TRUE;
 }
@@ -47,17 +46,6 @@ void CStatSongsTabDlg::Refresh()
 {
     m_dirty = false;
     m_list.DeleteAllItems();
-
-    // 列宽在此按 DPI 设定（不依赖 OnInitDialog 的固定宽度）
-    m_list.SetColumnWidth(DCOL_INDEX, theApp.DPI(50));
-    m_list.SetColumnWidth(DCOL_TIME, theApp.DPI(140));
-    m_list.SetColumnWidth(DCOL_TITLE, theApp.DPI(200));
-    m_list.SetColumnWidth(DCOL_ARTIST, theApp.DPI(120));
-    m_list.SetColumnWidth(DCOL_ALBUM, theApp.DPI(120));
-    m_list.SetColumnWidth(DCOL_PLAY_DUR, theApp.DPI(70));
-    m_list.SetColumnWidth(DCOL_SONG_LEN, theApp.DPI(70));
-    m_list.SetColumnWidth(DCOL_RESULT, theApp.DPI(60));
-    m_list.SetColumnWidth(DCOL_SOURCE, theApp.DPI(80));
 
     if (m_stat_ctx == nullptr || m_stat_ctx->records == nullptr)
         return;
@@ -93,7 +81,6 @@ void CStatSongsTabDlg::Refresh()
         m_list.SetItemText(row, DCOL_PLAY_DUR, format_dur(r.play_duration_sec).c_str());
         m_list.SetItemText(row, DCOL_SONG_LEN, format_dur(r.song_length_sec / 1000).c_str());
         m_list.SetItemText(row, DCOL_RESULT, reason_str(r.finish_reason).c_str());
-        m_list.SetItemText(row, DCOL_SOURCE, r.playlist_source.c_str());
         row++;
     }
 }

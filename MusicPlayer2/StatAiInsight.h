@@ -3,7 +3,6 @@
 #include <vector>
 
 struct StatSummary;
-struct GenreShare;
 
 // 洞察卡片：一条带分类标识的自然语言结论（REQ-118）
 struct Insight
@@ -37,7 +36,4 @@ public:
     // 构建音乐 DNA 报告（REQ-118）：模板 + 数据插槽；本地轻随机化，两次调用结果不完全相同。
     static DnaReport BuildDnaReport(const StatSummary& summary);
 
-    // 口味漂移叙述（REQ-115）：基于季度流派占比生成一段描述；数据不足返回提示语。
-    static std::vector<std::wstring> BuildDriftNarrative(const std::vector<GenreShare>& shares,
-                                                         const std::vector<std::wstring>& quarter_labels);
 };

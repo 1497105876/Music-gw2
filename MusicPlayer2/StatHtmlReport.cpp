@@ -33,18 +33,6 @@ static std::wstring YmdToStr(int ymd)
     return buf;
 }
 
-static CString FormatDurationHtml(int sec)
-{
-    return CStatAnalysis::FormatDuration(sec).c_str();
-}
-
-static void EscapeHtml(CString& s)
-{
-    s.Replace(L"&", L"&amp;");
-    s.Replace(L"<", L"&lt;");
-    s.Replace(L">", L"&gt;");
-}
-
 // ── JSON 数据构建 ──
 static std::wstring BuildJson(const std::vector<PlayRecord>& records,
                          const StatSummary& s,
@@ -74,7 +62,6 @@ static std::wstring BuildJson(const std::vector<PlayRecord>& records,
     j += L"\"top_song\":\"" + JsonStr(s.top_song) + L"\",";
     j += L"\"top_song_artist\":\"" + JsonStr(s.top_song_artist) + L"\",";
     j += L"\"top_song_count\":" + std::to_wstring(s.top_song_count) + L",";
-    j += L"\"top_genre\":\"" + JsonStr(s.top_genre) + L"\",";
 
     // buckets（趋势）
     auto buckets = CStatAnalysis::ComputeBuckets(records, filter.grain);
@@ -97,18 +84,6 @@ static std::wstring BuildJson(const std::vector<PlayRecord>& records,
         j += L"{\"d\":\"" + YmdToStr(heat[i].ymd) + L"\",\"c\":" +
              std::to_wstring(heat[i].count) + L",\"s\":" +
              std::to_wstring(heat[i].duration_sec) + L"}";
-    }
-    j += L"],";
-
-    // 流派
-    auto genres = CStatAnalysis::ComputeGenreShare(records, 8);
-    j += L"\"genre\":[";
-    for (size_t i = 0; i < genres.size(); i++)
-    {
-        if (i) j += L",";
-        j += L"{\"g\":\"" + JsonStr(genres[i].genre) + L"\",\"d\":" +
-             std::to_wstring(genres[i].duration_sec) + L",\"p\":" +
-             std::to_wstring(static_cast<int>(genres[i].percent + 0.5)) + L"}";
     }
     j += L"],";
 
@@ -189,18 +164,7 @@ static std::wstring BuildJson(const std::vector<PlayRecord>& records,
         if (i) j += L",";
         j += L"{\"l\":\"" + JsonStr(news[i].label) + L"\",\"c\":" + std::to_wstring(news[i].count) + L"}";
     }
-    j += L"],";
-
-    // 口味一致性（近90天 vs 之前）
-    double cosine = 0;
-    {
-        auto recent = records;
-        // 简化：取全部流派的两个子集做余弦
-        auto g_all = CStatAnalysis::ComputeGenreShare(records, 8);
-        auto g_recent = CStatAnalysis::ComputeGenreShare(records, 8);
-        cosine = CStatAnalysis::ComputeCosineSimilarity(g_all, g_recent) * 100;
-    }
-    j += L"cosine:" + std::to_wstring(static_cast<int>(cosine + 0.5));
+    j += L"]";
 
     // 副标题（日期区间）
     if (filter.from_ymd > 0 && filter.to_ymd > 0)
@@ -212,172 +176,755 @@ static std::wstring BuildJson(const std::vector<PlayRecord>& records,
     return j;
 }
 
-// ── HTML 模板 ──
-static const wchar_t* HTML_HEAD = LR"html(<!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="utf-8">
-<title>MusicPlayer2 播放统计报告</title>
+// ── HTML 模板（v3：拆分为多段常量，顺序拼接）──
+static const wchar_t* HTML_HEAD_1 = LR"html(<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MusicPlayer2 · 播放统计报告</title>
 <style>
+:root{
+  --bg:#fafaf8; --panel:#ffffff; --ink:#14161a; --ink-2:#4a4f57; --ink-3:#878d96;
+  --hair:#d9dad5; --hair-soft:#e8e8e4; --accent:#0f6b5c; --accent-2:#128a76;
+  --accent-soft:#e5efec; --app:#2f5d9e; --app-soft:#e7edf6;
+  --warn:#9a6b1f; --warn-soft:#f6efdf; --bad:#94382e; --bad-soft:#f5e7e4;
+  --mono:"Cascadia Mono",Consolas,"SF Mono",monospace;
+  --sans:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  --serif:"Source Han Serif SC","Noto Serif SC","SimSun",serif;
+  --radius:12px; --radius-sm:8px;
+  --shadow:0 1px 2px rgba(20,22,26,.04),0 8px 24px -14px rgba(20,22,26,.18);
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;background:#f5f6f4;color:#14161a;line-height:1.65;padding:36px 20px 72px}
-.w{max-width:860px;margin:0 auto}
-h1{font-size:26px;font-weight:600;margin-bottom:4px}
-.sub{color:#878d96;font-size:13px;margin-bottom:28px;font-family:Consolas,monospace}
-h2{font-size:17px;font-weight:600;margin:34px 0 12px;padding-top:16px;border-top:1px solid #d9dad5}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px}
-.kpi{background:#fff;border:1px solid #d9dad5;padding:12px 14px}
-.kpi b{display:block;font-size:20px;font-weight:600}
-.kpi span{font-size:11px;color:#878d96}
-.cb{background:#fff;border:1px solid #d9dad5;padding:14px 16px;margin-bottom:6px}
-.cb h3{font-size:13.5px;margin-bottom:10px}
-table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
-th{text-align:left;font-size:11px;color:#878d96;padding:5px 10px 5px 0;border-bottom:1.5px solid #14161a}
-td{padding:6px 10px 6px 0;border-bottom:1px solid #e8e8e4}
-.badge{display:inline-block;background:#e5efec;color:#0f6b5c;padding:2px 10px;border-radius:3px;font-size:12px;margin:2px 4px 2px 0}
-.heat{display:grid;grid-template-columns:repeat(26,10px);gap:2px}
-.heat i{width:10px;height:10px;border-radius:1px;cursor:pointer}
-.skip-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
-.skip-row>span:first-child{flex:none;width:110px;text-align:right;color:#4a4f57}
-.skip-row>div{flex:1;background:#eceee9;border-radius:3px;height:14px;overflow:hidden}
-.skip-bar{background:#2f5d9e;height:14px;border-radius:3px;min-width:2px}
-.tip{position:fixed;background:#14161a;color:#fff;padding:4px 10px;border-radius:3px;font-size:12px;pointer-events:none;display:none;z-index:9}
-.foot{margin-top:48px;padding-top:14px;border-top:1px solid #d9dad5;font-size:11px;color:#878d96;font-family:Consolas,monospace}
-svg text{font-family:"Segoe UI","Microsoft YaHei",sans-serif;font-size:10px;fill:#878d96}
-</style></head><body><div class="w">
-<h1>播放统计报告</h1><div class="sub" id="sub"></div>
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;padding:0 20px 96px}
+.page{max-width:1080px;margin:0 auto}
+
+/* Hero */
+.hero{position:relative;padding:54px 0 26px;margin-bottom:6px}
+.hero::before{content:"";position:absolute;left:-20px;right:-20px;top:0;height:320px;background:radial-gradient(120% 100% at 10% 0%,rgba(15,107,92,.11),rgba(15,107,92,0) 62%);pointer-events:none;z-index:-1}
+.kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.hero h1{font-family:var(--serif);font-size:40px;font-weight:600;letter-spacing:-.02em;line-height:1.15}
+.hero-sub{font-family:var(--mono);font-size:14px;color:var(--ink-2);margin-top:10px}
+.hero-meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:16px}
+.dot{width:4px;height:4px;border-radius:50%;background:var(--hair)}
+
+/* Sticky nav */
+.nav{position:sticky;top:0;z-index:20;background:rgba(250,250,248,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--hair);margin:14px -20px 0;padding:0 20px}
+.nav-inner{max-width:1080px;margin:0 auto;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.nav-inner::-webkit-scrollbar{display:none}
+.nav-link{flex:none;font-size:13px;color:var(--ink-3);text-decoration:none;padding:13px 12px;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s}
+.nav-link:hover{color:var(--ink)}
+.nav-link.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+
+/* Sections */
+.section{margin-top:46px;scroll-margin-top:64px}
+.sec-head{margin-bottom:16px}
+.sec-head h2{font-family:var(--serif);font-size:24px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+.sec-head .no{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:400;letter-spacing:.08em}
+.sec-desc{color:var(--ink-3);font-size:13px;margin-top:6px;max-width:72ch}
+
+/* Cards */
+.card{background:var(--panel);border:1px solid var(--hair-soft);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
+.card + .card{margin-top:14px}
+.card-title{font-size:12.5px;font-weight:600;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.grid-2 .card{margin-top:0}
+.center{display:flex;justify-content:center}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi{position:relative;background:var(--panel);border:1px solid var(--hair-soft);border-radius:var(--radius);padding:18px 18px 16px;box-shadow:var(--shadow);overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.kpi.k2::before{background:var(--app)} .kpi.k3::before{background:var(--warn)} .kpi.k4::before{background:var(--bad)}
+.kpi .v{font-size:30px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;display:flex;align-items:baseline;gap:5px}
+.kpi .v small{font-size:13px;font-weight:600;color:var(--ink-3)}
+.kpi .l{font-size:12.5px;color:var(--ink-2);margin-top:8px}
+.kpi .h{font-size:11px;color:var(--ink-3);margin-top:3px;font-family:var(--mono)}
+
+/* 补充指标条 */
+.strip{display:grid;grid-template-columns:repeat(4,1fr);margin-top:14px;background:var(--panel);border:1px solid var(--hair-soft);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.strip .s{display:flex;align-items:baseline;gap:9px;padding:14px 18px;border-left:1px solid var(--hair-soft)}
+.strip .s:first-child{border-left:0}
+.strip .s b{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.strip .s span{font-size:12px;color:var(--ink-3)}
+
+/* Charts */
+.card svg{display:block;width:100%;height:auto;overflow:visible}
+
+/* Heatmap */
+.heat-scroll{overflow-x:auto;padding-bottom:6px}
+.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);grid-auto-columns:12px;gap:3px;width:max-content}
+.heat i{width:12px;height:12px;border-radius:3px;background:var(--hair-soft);cursor:pointer;transition:transform .1s,outline-color .1s;outline:1px solid transparent}
+.heat i:hover{transform:scale(1.28);outline:1px solid var(--ink)}
+)html";
+static const wchar_t* HTML_HEAD_1B = LR"html(.heat-legend{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+.heat-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.heat-legend span{margin:0 2px}
+
+/* Highlights */
+.hl{display:flex;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--hair-soft)}
+.hl:last-child{border-bottom:0}
+.hl .rk{font-family:var(--mono);font-size:11px;color:var(--accent);width:26px;flex:none}
+.hl .tt{flex:1;min-width:0}
+.hl .tt b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hl .tt span{font-size:11.5px;color:var(--ink-3)}
+.hl .vv{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink-2);flex:none}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10.5px;font-weight:500;color:var(--ink-3);text-align:left;padding:8px 12px 8px 0;border-bottom:1px solid var(--hair);letter-spacing:.05em;text-transform:uppercase}
+td{padding:9px 12px 9px 0;border-bottom:1px solid var(--hair-soft);color:var(--ink-2)}
+tr:last-child td{border-bottom:0}
+th.num,td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+tbody tr:hover td{background:#fcfcfb}
+.empty{color:var(--ink-3);font-size:13px;padding:16px 0;text-align:center}
+
+/* Bars */
+.bar-row{display:grid;grid-template-columns:92px 1fr 92px;align-items:center;gap:12px;margin:11px 0;font-size:13px}
+.bar-row .lb{color:var(--ink-2);text-align:right;font-family:var(--mono);font-size:12px}
+.bar-track{display:block;background:var(--hair-soft);border-radius:6px;height:16px;overflow:hidden}
+.bar-fill{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent-2));min-width:2px}
+.bar-fill.alt{background:linear-gradient(90deg,var(--app),#5b8fd6)}
+.bar-row .vl{font-family:var(--mono);font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Gauge / comparison */
+.gauge{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.gauge .big{font-size:52px;font-weight:700;letter-spacing:-.03em;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1}
+.gauge .meta{flex:1;min-width:200px}
+.gauge .meta b{font-size:14px;display:block;margin-bottom:2px}
+.gauge .meta span{font-size:12px;color:var(--ink-3)}
+.track{display:block;background:var(--hair-soft);border-radius:8px;height:10px;margin-top:12px;overflow:hidden}
+.track i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+.cmp-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--hair-soft)}
+.cmp-row:last-child{border-bottom:0}
+.cmp-row .k{font-size:12.5px;color:var(--ink-3);flex:none;width:104px}
+.cmp-row .d{display:flex;align-items:center;gap:6px;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;flex:none;white-space:nowrap}
+.cmp-row .sub{white-space:nowrap}
+.up{color:var(--accent)} .down{color:var(--bad)} .flat{color:var(--ink-3)}
+.cmp-row .sub{font-size:11.5px;color:var(--ink-3);font-family:var(--mono)}
+.warn-note{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--ink-2);background:var(--warn-soft);border-radius:var(--radius-sm);padding:13px 15px;line-height:1.55}
+.warn-note .ic{flex:none;margin-top:2px}
+
+/* Tooltip */
+.tip{position:fixed;background:var(--ink);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;font-family:var(--mono);pointer-events:none;opacity:0;transition:opacity .12s;z-index:60;white-space:nowrap;box-shadow:0 8px 20px -8px rgba(0,0,0,.4)}
+.tip.on{opacity:1}
+
+/* Footer */
+.foot{margin-top:56px;padding-top:16px;border-top:1px solid var(--hair);font-size:11.5px;color:var(--ink-3);font-family:var(--mono);line-height:1.9}
+
+/* Responsive */
+@media (max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .grid-2{grid-template-columns:1fr}
+  .hero h1{font-size:32px}
+}
+@media (max-width:600px){
+  body{padding:0 14px 72px}
+  .nav{margin:12px -14px 0;padding:0 14px}
+  .hero{padding:34px 0 20px}
+  .hero h1{font-size:26px}
+  .hero-sub{font-size:12.5px}
+  .kpi-grid{gap:10px}
+  .kpi{padding:14px}
+  .kpi .v{font-size:23px}
+  .sec-head h2{font-size:20px}
+  .bar-row{grid-template-columns:66px 1fr;row-gap:4px}
+  .bar-row .vl{grid-column:2;text-align:right}
+  .cmp-row{flex-wrap:wrap;gap:6px 10px}
+  .strip{grid-template-columns:repeat(2,1fr)}
+  .strip .s:nth-child(3){border-left:0}
+  .gauge .big{font-size:40px}
+}
+
+/* Print */
+@media print{
+  body{padding:0;background:#fff}
+  .nav{display:none}
+  .hero::before{display:none}
+  .card,.kpi{box-shadow:none;break-inside:avoid}
+  .section{margin-top:26px}
+}
+</style>
+)html";
+static const wchar_t* HTML_HEAD_2 = LR"html(</head>
+<body>
+<div class="page">
+
+<header class="hero">
+  <div class="kicker">MusicPlayer2-GW · 播放统计</div>
+  <h1>我的听歌报告</h1>
+  <p class="hero-sub" id="sub"></p>
+  <div class="hero-meta">
+    <span id="gen-time"></span>
+    <span class="dot"></span>
+    <span>全部数据由本机统计，离线生成</span>
+  </div>
+</header>
+
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="nav-link active" href="#sec-overview">关键指标</a>
+    <a class="nav-link" href="#sec-trend">趋势</a>
+    <a class="nav-link" href="#sec-hours">时段</a>
+    <a class="nav-link" href="#sec-heat">热力</a>
+    <a class="nav-link" href="#sec-profile">画像</a>
+    <a class="nav-link" href="#sec-behavior">行为</a>
+    <a class="nav-link" href="#sec-year">年度</a>
+  </div>
+</nav>
+
+<section class="section" id="sec-overview">
+  <div class="sec-head">
+    <h2><span class="no">01</span>关键指标</h2>
+    <p class="sec-desc" id="overview-desc"></p>
+  </div>
+  <div class="kpi-grid" id="kpi"></div>
+  <div class="strip" id="kpi-extra"></div>
+</section>
+
+<section class="section" id="sec-trend">
+  <div class="sec-head">
+    <h2><span class="no">02</span>播放趋势</h2>
+    <p class="sec-desc" id="trend-desc"></p>
+  </div>
+  <div class="card">
+    <div class="card-title">播放次数 · 按聚合区间</div>
+    <svg id="svg-trend" role="img" aria-label="播放趋势"></svg>
+  </div>
+  <div class="grid-2">
+    <div class="card" id="comparison-box"></div>
+    <div class="card">
+      <div class="card-title">新发现趋势</div>
+      <svg id="svg-news" role="img" aria-label="新发现趋势"></svg>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="sec-hours">
+  <div class="sec-head">
+    <h2><span class="no">03</span>24 小时时段分布</h2>
+    <p class="sec-desc" id="hours-desc"></p>
+  </div>
+  <div class="card">
+    <svg id="svg-hours" role="img" aria-label="时段分布"></svg>
+  </div>
+</section>
+
+<section class="section" id="sec-heat">
+  <div class="sec-head">
+    <h2><span class="no">04</span>每日热力图</h2>
+    <p class="sec-desc" id="heat-desc"></p>
+  </div>
+  <div class="card">
+    <div class="heat-scroll"><div class="heat" id="heatmap"></div></div>
+    <div class="heat-legend" id="heat-legend"></div>
+  </div>
+</section>
+
+<section class="section" id="sec-profile">
+  <div class="sec-head">
+    <h2><span class="no">05</span>听歌画像</h2>
+    <p class="sec-desc" id="profile-desc"></p>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">五维画像</div>
+      <div class="center"><svg id="svg-radar" role="img" aria-label="听歌画像雷达图"></svg></div>
+    </div>
+    <div class="card">
+      <div class="card-title">最爱清单</div>
+      <div id="profile-highlights"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">歌单 / 来源贡献</div>
+      <div id="pl-table"></div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section" id="sec-behavior">
+  <div class="sec-head">
+    <h2><span class="no">06</span>播放行为</h2>
+    <p class="sec-desc" id="behavior-desc"></p>
+  </div>
+  <div class="card">
+    <div class="card-title">跳过位置分布</div>
+    <div id="skip-bars"></div>
+  </div>
+  <div class="card" id="streak-miss"></div>
+</section>
+
+<section class="section" id="sec-year">
+  <div class="sec-head">
+    <h2><span class="no">07</span>年度回顾</h2>
+    <p class="sec-desc" id="year-desc"></p>
+  </div>
+  <div class="card">
+    <svg id="svg-year" role="img" aria-label="年度回顾"></svg>
+  </div>
+  <div class="card">
+    <div id="year-table"></div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div>MusicPlayer2-GW · 播放统计报告 · 本页为单文件离线报告，无任何外部资源引用。</div>
+  <div id="foot-note"></div>
+</footer>
+
+</div>
+<div class="tip" id="tip"></div>
 )html";
 
-static const wchar_t* HTML_TAIL = LR"html(</div>
-<div class="tip" id="tip"></div>
-<script>
+static const wchar_t* HTML_TAIL_1 = LR"html(<script>
 "use strict";
+// ══════════════════════════════════════════════════════════════════
+// 数据占位符：见下方脚本首个常量赋值。运行时由 C++ GenerateAndOpen()
+// 把该占位符整体替换成 BuildJson() 的输出——一个键名混用引号/裸键的
+// 对象字面量（含两端花括号）。键名与 BuildJson 保持一致即可原样兼容；
+// 任何字段缺失均由页面脚本兜底，不会出现 undefined / NaN。
+// ══════════════════════════════════════════════════════════════════
 const D=__DATA__;
-const tip=document.getElementById("tip");
-const $=s=>document.querySelector(s);
-const fmt=s=>{const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h>0?h+"时"+m+"分"+(x>0?x+"秒":""):m>0?m+"分"+(x>0?x+"秒":""):x+"秒"};
-function bindTip(sel,fn){document.querySelectorAll(sel).forEach(el=>{el.addEventListener("mousemove",e=>{tip.textContent=fn(el);tip.style.display="block";tip.style.left=(e.clientX+12)+"px";tip.style.top=(e.clientY-28)+"px"});el.addEventListener("mouseleave",()=>{tip.style.display="none"})})}
-$("#sub").textContent=D.sub_title;
-// 热力图
-(function(){const el=$("#heatmap");if(!el)return;
-const colors=["#e8e8e4","#cde8d5","#93cfa8","#4da875","#1a7a4a"];
-D.heat.forEach(d=>{const i=document.createElement("i");
-const v=Math.min(d.s/3600,4);const idx=Math.min(Math.floor(v/1),3);
-i.style.background=colors[idx];i.dataset.tip=d.d+" · "+fmt(d.s)+" · "+d.c+" 次";
-el.appendChild(i)});
-bindTip("#heatmap i",el=>el.dataset.tip)})();
-// 趋势 SVG
-(function(){const el=$("#svg-trend");if(!el)return;
-const W=el.parentElement.clientWidth-32,H=180,ml=30,mr=8,mt=10,mb=22;
-const cw=W-ml-mr,ch=H-mt-mb;el.setAttribute("width",W);el.setAttribute("height",H);
-if(!D.buckets.length)return;
-const max=Math.max(...D.buckets.map(b=>b.c),1);
-const n=D.buckets.length,bw=Math.max(cw/n,2);
-let svg="";
-svg+=`<line x1="${ml}" y1="${mt}" x2="${ml}" y2="${mt+ch}" stroke="#c0c0c0"/>`;
-svg+=`<line x1="${ml}" y1="${mt+ch}" x2="${ml+cw}" y2="${mt+ch}" stroke="#c0c0c0"/>`;
-svg+=`<text x="${ml-20}" y="${mt+4}">${max}</text>`;
-svg+=`<text x="${ml-14}" y="${mt+ch+4}">0</text>`;
-let px=-1,py=-1;
-D.buckets.forEach((b,i)=>{const x=ml+cw*i/n+bw/2;const bh=b.c/max*ch;const y=mt+ch-bh;
-svg+=`<rect x="${x-bw/2}" y="${y}" width="${Math.max(bw-2,1)}" height="${bh}" fill="#2f5d9e" opacity="0.85"/>`;
-if(px>=0)svg+=`<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="#0f6b5c" stroke-width="2"/>`;
-px=x;py=y});
-const step=n>12?Math.ceil(n/10):1;
-D.buckets.forEach((b,i)=>{if(i%step)return;const x=ml+cw*i/n+bw/2;
-svg+=`<text x="${x}" y="${mt+ch+14}" text-anchor="middle">${b.l}</text>`});
-el.innerHTML=svg})();
-// 雷达 SVG
-(function(){const el=$("#svg-radar");if(!el)return;
-const W=220,H=190,cx=W/2,cy=H/2+6,R=70,n=D.radar.length;if(n<3)return;
-const ang=i=>Math.PI*2*i/n-Math.PI/2;
-function pt(i,r){const a=ang(i);return[cx+Math.cos(a)*r,cy+Math.sin(a)*r]}
-let grid="";
-for(let ring=1;ring<=3;ring++){let pts=[];
-for(let i=0;i<n;i++){const[p,q]=pt(i,R*ring/3);pts.push(p.toFixed(1)+","+q.toFixed(1))}
-grid+=`<polygon points="${pts.join(" ")}" fill="none" stroke="#d9dad5"/>`}
-let labels="";
-D.radar.forEach((r,i)=>{const[x,y]=pt(i,R+16);labels+=`<text x="${x}" y="${y+4}" text-anchor="middle" font-size="10">${r.d}</text>`});
-let vals=[];
-D.radar.forEach((r,i)=>{const[x,y]=pt(i,R*r.v/100);vals.push([x,y])});
-let poly=vals.map(v=>v[0].toFixed(1)+","+v[1].toFixed(1)).join(" ");
-let dots=vals.map(v=>`<circle cx="${v[0].toFixed(1)}" cy="${v[1].toFixed(1)}" r="3" fill="#0f6b5c"/>`).join("");
-el.setAttribute("width",W);el.setAttribute("height",H);
-el.innerHTML=grid+`<polygon points="${poly}" fill="rgba(15,107,92,0.15)" stroke="#0f6b5c" stroke-width="1.5"/>`+dots+labels})();
-// 流派环形
-(function(){const el=$("#svg-donut");if(!el||!D.genre.length)return;
-const W=180,H=180,cx=W/2,cy=H/2,R=70,r=42;
-let start=0,segs="";
-D.genre.forEach(g=>{const sweep=g.p/100*360;
-const a0=(start-90)*Math.PI/180,a1=(start+sweep-90)*Math.PI/180;
-const x0=cx+R*Math.cos(a0),y0=cy+R*Math.sin(a0);
-const x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1);
-const xi=cx+r*Math.cos(a1),yi=cy+r*Math.sin(a1);
-const xi2=cx+r*Math.cos(a0),yi2=cy+r*Math.sin(a0);
-const large=sweep>180?1:0;
-segs+=`<path d="M${x0.toFixed(1)},${y0.toFixed(1)} A${R},${R} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)} L${xi.toFixed(1)},${yi.toFixed(1)} A${r},${r} 0 ${large} 0 ${xi2.toFixed(1)},${yi2.toFixed(1)} Z" fill="hsl(${(start*7)%360},55%,45%)" opacity="0.85"/>`;
-start+=sweep});
-el.setAttribute("width",W);el.setAttribute("height",H);el.innerHTML=segs})();
-// 环形图例
-(function(){const el=$("#donut-legend");if(!el||!D.genre.length)return;
-let st=0;
-el.innerHTML=D.genre.map(g=>{const col=`hsl(${(st*7)%360},55%,45%)`;st+=g.p/100*360;
-return `<span style="margin-right:12px"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;background:${col}"></i>${g.g} ${g.p}%</span>`}).join("")})();
-// 跳过条
-(function(){const el=$("#skip-bars");if(!el)return;
-el.innerHTML=D.skip.map(s=>`<div class="skip-row"><span>${s.l}</span><div><div class="skip-bar" style="width:${s.p}%"></div></div><span>${s.c} 次</span></div>`).join("")})();
-// 歌单
-(function(){const el=$("#pl-table");if(!el)return;
-el.innerHTML="<table><tr><th>来源</th><th>时长</th><th>占比</th></tr>"+
-(D.playlist.length?D.playlist.map(p=>`<tr><td>${p.s}</td><td>${fmt(p.d)}</td><td>${p.p}%</td></tr>`).join(""):"<tr><td colspan=3>无数据</td></tr>")+"</table>"})();
-// 年度
-(function(){const el=$("#year-table");if(!el)return;
-el.innerHTML="<table><tr><th>年份</th><th>次数</th><th>时长</th></tr>"+
-(D.yearly.length?D.yearly.map(y=>`<tr><td>${y.y}</td><td>${y.c} 首</td><td>${fmt(y.d)}</td></tr>`).join(""):"<tr><td colspan=3>无记录</td></tr>")+"</table>"})();
-// 24 小时分布
-(function(){const el=$("#svg-hours");if(!el)return;
-const W=el.parentElement.clientWidth-32,H=140,ml=26,mr=6,mt=8,mb=18;
-const cw=W-ml-mr,ch=H-mt-mb;el.setAttribute("width",W);el.setAttribute("height",H);
-const max=Math.max(...D.hours,1);
-const bw=cw/24;
-let svg="";
-for(let h=0;h<24;h++){const bh=D.hours[h]/max*ch;
-const x=ml+h*bw;svg+=`<rect x="${x+1}" y="${mt+ch-bh}" width="${Math.max(bw-2,1)}" height="${Math.max(bh,1)}" fill="#2f5d9e" opacity="0.8"/>`;
-if(h%3===0)svg+=`<text x="${x+bw/2}" y="${mt+ch+12}" text-anchor="middle">${String(h).padStart(2,"0")}</text>`}
-el.innerHTML=svg})();
-// 新发现趋势
-(function(){const el=$("#svg-news");if(!el||!D.news.length)return;
-const W=el.parentElement.clientWidth-32,H=120,ml=30,mr=8,mt=8,mb=20;
-const cw=W-ml-mr,ch=H-mt-mb;el.setAttribute("width",W);el.setAttribute("height",H);
-const max=Math.max(...D.news.map(n=>n.c),1);const n=D.news.length;
-let svg="";let px=-1,py=-1;
-D.news.forEach((nd,i)=>{const x=ml+cw*i/Math.max(n-1,1);const y=mt+ch-nd.c/max*ch;
-if(px>=0)svg+=`<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="#0f6b5c" stroke-width="2"/>`;
-svg+=`<circle cx="${x}" cy="${y}" r="3" fill="#0f6b5c"/>`;
-if(n<=12||i%Math.ceil(n/12)===0)svg+=`<text x="${x}" y="${mt+ch+12}" text-anchor="middle" font-size="9">${nd.l}</text>`;
-px=x;py=y});
-el.innerHTML=svg})();
-// 环比/同比
-(function(){const el=$("#comparison-box");if(!el)return;
-let html="";
-if(D.comparison.has_prev){
-const arrow=D.comparison.delta>=0?"↑":"↓";
-html+=`<div style="font-size:14px;margin:4px 0"><b>环比（vs ${D.comparison.prev_label}）</b>：${arrow} ${Math.abs(D.comparison.delta)} 次（${D.comparison.delta_pct}%）</div>`}
-else html+=`<div style="color:#878d96;font-size:13px">环比：无上期数据</div>`;
-if(D.comparison.has_ly){
-const lyDelta=D.total-D.comparison.ly_count;
-const arrow=lyDelta>=0?"↑":"↓";
-html+=`<div style="font-size:14px;margin:4px 0"><b>同比（vs ${D.comparison.ly_label}）</b>：${arrow} ${Math.abs(lyDelta)} 次</div>`}
-el.innerHTML=html})();
-// 口味一致性
-(function(){const el=$("#cosine-box");if(!el)return;
-el.innerHTML=`<div style="display:flex;align-items:center;gap:16px">
-<div style="font-size:36px;font-weight:700;color:#0f6b5c">${D.cosine}%</div>
-<div style="font-size:13px;color:#4a4f57">口味一致性<br><span style="font-size:11px;color:#878d96">基于流派占比向量的余弦相似度</span></div></div>
-<div style="background:#e8e8e4;border-radius:4px;height:8px;margin-top:8px"><div style="background:#0f6b5c;border-radius:4px;height:8px;width:${D.cosine}%"></div></div>`})();
-// 差点就连续
-(function(){const el=$("#streak-miss");if(!el)return;
-if(D.streak_miss>0)el.innerHTML=`<div style="font-size:14px;color:#9a6b1f">差点就连续 <b>${D.streak_miss+1}</b> 天：上一次连续听了 ${D.streak_miss} 天后中断了</div>`;
-else el.innerHTML=""})();
+
+// ── 通用工具（全部对缺失字段容错，不产生 undefined / NaN）──
+const $ = s => (typeof document !== "undefined" && document.querySelector) ? document.querySelector(s) : null;
+const $$ = s => (typeof document !== "undefined" && document.querySelectorAll) ? Array.prototype.slice.call(document.querySelectorAll(s)) : [];
+function nz(v, d){ return (v === undefined || v === null || (typeof v === "number" && isNaN(v))) ? d : v; }
+function num(v, d){ var n = Number(v); return isNaN(n) ? (d || 0) : n; }
+function esc(s){ return String(s === undefined || s === null ? "" : s).replace(/[&<>"']/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); }
+function pad2(n){ return (n < 10 ? "0" : "") + n; }
+function fmt(sec){
+  sec = Math.max(0, Math.round(num(sec, 0)));
+  var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  if (h > 0) return h + " 时 " + m + " 分";
+  if (m > 0) return m + " 分" + (s > 0 ? " " + s + " 秒" : "");
+  return s + " 秒";
+}
+function fmtInt(n){ return num(n, 0).toLocaleString("en-US"); }
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+function isArr(v){ return Object.prototype.toString.call(v) === "[object Array]"; }
+function setText(sel, t){ var el = $(sel); if (el) el.textContent = t; }
+function svgW(el, pad){ var w = (el && el.parentElement && el.parentElement.clientWidth) || 760; return Math.max(w - (pad || 0), 280); }
+function arrow(dir, color){
+  if (dir > 0) return '<svg viewBox="0 0 10 10" width="11" height="11" aria-hidden="true"><path d="M5 1 L9 9 H1 Z" fill="' + color + '"/></svg>';
+  if (dir < 0) return '<svg viewBox="0 0 10 10" width="11" height="11" aria-hidden="true"><path d="M5 9 L1 1 H9 Z" fill="' + color + '"/></svg>';
+  return '<svg viewBox="0 0 10 10" width="11" height="11" aria-hidden="true"><rect x="1" y="4" width="8" height="2" rx="1" fill="' + color + '"/></svg>';
+}
+var tipEl = (typeof document !== "undefined" && document.getElementById) ? document.getElementById("tip") : null;
+function bindTip(sel, fn){
+  $$(sel).forEach(function(el){
+    el.addEventListener("mousemove", function(e){
+      if (!tipEl) return;
+      tipEl.textContent = fn(el);
+      tipEl.style.left = (e.clientX + 14) + "px";
+      tipEl.style.top = (e.clientY - 34) + "px";
+      tipEl.style.opacity = "1";
+      if (tipEl.classList) tipEl.classList.add("on");
+    });
+    el.addEventListener("mouseleave", function(){ if (tipEl) { tipEl.style.opacity = "0"; if (tipEl.classList) tipEl.classList.remove("on"); } });
+  });
+}
+// ── 图形工具：仅顶部圆角的柱形路径 ──
+function roundTop(x, y, w, h, r){
+  x = +x; y = +y; w = +w; h = +h; r = +r;
+  h = Math.max(h, 0.5); w = Math.max(w, 0.5); r = Math.min(r, h / 2, w / 2);
+  function f(n){ return (+n).toFixed(2); }
+  return "M" + f(x) + "," + f(y + h) + " L" + f(x) + "," + f(y + r) + " Q" + f(x) + "," + f(y) + " " + f(x + r) + "," + f(y) +
+         " L" + f(x + w - r) + "," + f(y) + " Q" + f(x + w) + "," + f(y) + " " + f(x + w) + "," + f(y + r) + " L" + f(x + w) + "," + f(y + h) + " Z";
+}
+function ringArc(cx, cy, R, r, a0, a1){
+  var large = (a1 - a0) > Math.PI ? 1 : 0;
+  var x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0);
+  var x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
+  var x2 = cx + r * Math.cos(a1), y2 = cy + r * Math.sin(a1);
+  var x3 = cx + r * Math.cos(a0), y3 = cy + r * Math.sin(a0);
+  return "M" + x0.toFixed(2) + "," + y0.toFixed(2) + " A" + R + "," + R + " 0 " + large + " 1 " + x1.toFixed(2) + "," + y1.toFixed(2) +
+         " L" + x2.toFixed(2) + "," + y2.toFixed(2) + " A" + r + "," + r + " 0 " + large + " 0 " + x3.toFixed(2) + "," + y3.toFixed(2) + " Z";
+}
+var HEAT_COLORS = ["#eceee9", "#d6e9df", "#a9d5c0", "#5fb18d", "#1a7a4a"];
+
+// ── 01 关键指标 ──
+function renderKpi(){
+  var el = $("#kpi"); if (!el) return;
+  var cards = [
+    { cls: "", v: fmtInt(D.total), u: "次", l: "播放次数", h: "区间内总播放" },
+    { cls: "k2", v: fmt(D.duration), u: "", l: "播放时长", h: "累计收听" },
+    { cls: "", v: fmtInt(D.active_days), u: "天", l: "活跃天数", h: "有播放记录的天数" },
+    { cls: "k4", v: num(D.completed_rate) + "", u: "%", l: "完整收听率", h: "完整听完的比例" },
+    { cls: "k2", v: num(D.avg_completion) + "", u: "%", l: "平均完播", h: "平均播放进度" },
+    { cls: "", v: fmtInt(D.streak), u: "天", l: "当前连续", h: "最长 " + fmtInt(D.longest_streak) + " 天" },
+    { cls: "k3", v: num(D.night_pct) + "", u: "%", l: "深夜占比", h: "夜间时段收听" },
+    { cls: "", v: num(D.explore) + "", u: "%", l: "探索度", h: "新歌/新歌手占比" }
+  ];
+  el.innerHTML = cards.map(function(c){
+    return '<div class="kpi ' + c.cls + '"><div class="v">' + esc(c.v) + (c.u ? '<small>' + esc(c.u) + '</small>' : '') +
+      '</div><div class="l">' + esc(c.l) + '</div><div class="h">' + esc(c.h) + '</div></div>';
+  }).join("");
+  setText("#overview-desc", "统计区间共 " + fmtInt(D.active_days) + " 个活跃日，平均每天约 " +
+    fmt(num(D.duration) / Math.max(1, num(D.active_days))) + "。");
+}
+
+function renderKpiExtra(){
+  var el = $("#kpi-extra"); if (!el) return;
+  var items = [
+    { v: num(D.skip_rate) + "%", l: "跳过率" },
+    { v: num(D.weekend_pct) + "%", l: "周末占比" },
+    { v: fmtInt(D.new_songs), l: "本月新歌" },
+    { v: num(D.repeat) + "x", l: "重复深度" }
+  ];
+  el.innerHTML = items.map(function(x){ return '<div class="s"><b>' + esc(x.v) + '</b><span>' + esc(x.l) + '</span></div>'; }).join("");
+}
+)html";
+static const wchar_t* HTML_TAIL_2 = LR"html(
+// ── 02 播放趋势（圆角柱 + 渐变面积折线）──
+function renderTrend(){
+  var el = $("#svg-trend"); if (!el) return;
+  var B = isArr(D.buckets) ? D.buckets : [];
+  var cap = $("#trend-desc");
+  if (!B.length){
+    el.setAttribute("viewBox", "0 0 720 70");
+    el.innerHTML = '<text x="360" y="40" text-anchor="middle" fill="#878d96" font-size="13">本期无趋势数据</text>';
+    if (cap) cap.textContent = "所选时间范围内没有播放记录。";
+    return;
+  }
+  var W = svgW(el), H = 250, ml = 46, mr = 18, mt = 22, mb = 42;
+  var cw = W - ml - mr, ch = H - mt - mb;
+  el.setAttribute("width", W); el.setAttribute("height", H); el.setAttribute("viewBox", "0 0 " + W + " " + H);
+  var vals = B.map(function(b){ return num(b.c); });
+  var maxV = Math.max.apply(null, vals) || 1;
+  var maxIdx = 0; vals.forEach(function(v, i){ if (v > vals[maxIdx]) maxIdx = i; });
+  var g = "", steps = 4;
+  for (var s = 0; s <= steps; s++){
+    var y = mt + ch * s / steps;
+    g += '<line x1="' + ml + '" y1="' + y.toFixed(1) + '" x2="' + (ml + cw) + '" y2="' + y.toFixed(1) + '" stroke="#eceae4"/>';
+    g += '<text x="' + (ml - 10) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end" fill="#b3b7bd" font-size="10" font-family="Consolas,monospace">' + Math.round(maxV * (1 - s / steps)) + '</text>';
+  }
+  var n = B.length, slot = cw / n, bw = Math.min(slot * 0.56, 34);
+  var bars = "", pts = [];
+  B.forEach(function(b, i){
+    var v = num(b.c), x = ml + slot * i + (slot - bw) / 2, h = v / maxV * ch, y = mt + ch - h;
+    var col = (i === maxIdx) ? "#0f6b5c" : "#2f5d9e";
+    bars += '<path d="' + roundTop(x.toFixed(1), y.toFixed(1), bw.toFixed(1), h.toFixed(1), 5) + '" fill="' + col + '" fill-opacity="' + (i === maxIdx ? 1 : 0.82) + '"/>';
+    pts.push([ml + slot * i + slot / 2, y]);
+  });
+  var lineD = pts.map(function(p, i){ return (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+  var areaD = lineD + " L" + pts[n - 1][0].toFixed(1) + "," + (mt + ch) + " L" + pts[0][0].toFixed(1) + "," + (mt + ch) + " Z";
+  var line = '<defs><linearGradient id="grad-trend" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="#0f6b5c" stop-opacity="0.22"/><stop offset="100%" stop-color="#0f6b5c" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + areaD + '" fill="url(#grad-trend)"/>' +
+    '<path d="' + lineD + '" fill="none" stroke="#0f6b5c" stroke-width="2" stroke-linejoin="round"/>';
+  var dots = pts.map(function(p){ return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="2.6" fill="#fff" stroke="#0f6b5c" stroke-width="1.6"/>'; }).join("");
+  var stepX = n > 10 ? Math.ceil(n / 10) : 1, xl = "";
+  B.forEach(function(b, i){ if (i % stepX && i !== n - 1) return;
+    xl += '<text x="' + (ml + slot * i + slot / 2).toFixed(1) + '" y="' + (mt + ch + 20) + '" text-anchor="middle" fill="#878d96" font-size="10" font-family="Consolas,monospace">' + esc(b.l) + '</text>';
+  });
+  var hit = "";
+  B.forEach(function(b, i){
+    hit += '<rect x="' + (ml + slot * i).toFixed(1) + '" y="' + mt + '" width="' + slot.toFixed(1) + '" height="' + ch + '" fill="transparent" data-tip="' + esc(b.l) + " · " + num(b.c) + " 次 · " + fmt(b.d) + '"/>';
+  });
+  el.innerHTML = g + line + bars + dots + xl + hit;
+  var totalDur = B.reduce(function(a, b){ return a + num(b.d); }, 0);
+  if (cap) cap.textContent = "峰值出现在 " + nz(B[maxIdx].l, "") + "（" + num(B[maxIdx].c) + " 次）；区间累计时长约 " + fmt(totalDur) + "。";
+}
+
+// ── 02b 新发现趋势（折线 + 渐变面积 + 数据点）──
+function renderNews(){
+  var el = $("#svg-news"); if (!el) return;
+  var N = isArr(D.news) ? D.news : [];
+  if (!N.length){ el.setAttribute("viewBox", "0 0 720 60"); el.innerHTML = '<text x="360" y="34" text-anchor="middle" fill="#878d96" font-size="12">本期无新发现数据</text>'; return; }
+  var W = svgW(el), H = 200, ml = 30, mr = 16, mt = 16, mb = 34;
+  var cw = W - ml - mr, ch = H - mt - mb;
+  el.setAttribute("width", W); el.setAttribute("height", H); el.setAttribute("viewBox", "0 0 " + W + " " + H);
+  var vals = N.map(function(x){ return num(x.c); });
+  var maxV = Math.max.apply(null, vals) || 1, n = N.length;
+  var g = "";
+  for (var s = 0; s <= 3; s++){ var y = mt + ch * s / 3; g += '<line x1="' + ml + '" y1="' + y.toFixed(1) + '" x2="' + (ml + cw) + '" y2="' + y.toFixed(1) + '" stroke="#eceae4"/>'; }
+  var pts = N.map(function(d, i){ var x = ml + cw * i / Math.max(n - 1, 1), y = mt + ch - num(d.c) / maxV * ch; return [x, y]; });
+  var lineD = pts.map(function(p, i){ return (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+  var areaD = lineD + " L" + pts[n - 1][0].toFixed(1) + "," + (mt + ch) + " L" + pts[0][0].toFixed(1) + "," + (mt + ch) + " Z";
+  var svg = '<defs><linearGradient id="grad-news" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2f5d9e" stop-opacity="0.2"/><stop offset="100%" stop-color="#2f5d9e" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + areaD + '" fill="url(#grad-news)"/>' +
+    '<path d="' + lineD + '" fill="none" stroke="#2f5d9e" stroke-width="2" stroke-linejoin="round"/>';
+  N.forEach(function(d, i){
+    svg += '<circle cx="' + pts[i][0].toFixed(1) + '" cy="' + pts[i][1].toFixed(1) + '" r="3" fill="#fff" stroke="#2f5d9e" stroke-width="1.8"/>';
+    if (n <= 12 || i % Math.ceil(n / 12) === 0) svg += '<text x="' + pts[i][0].toFixed(1) + '" y="' + (mt + ch + 18) + '" text-anchor="middle" fill="#878d96" font-size="9.5" font-family="Consolas,monospace">' + esc(d.l) + '</text>';
+  });
+  el.innerHTML = g + svg;
+}
+
+// ── 03 24 小时时段分布 ──
+function renderHours(){
+  var el = $("#svg-hours"); if (!el) return;
+  var Hr = isArr(D.hours) ? D.hours : [];
+  var cap = $("#hours-desc");
+  var allZero = !Hr.length || Hr.every(function(v){ return !num(v); });
+  if (allZero){
+    el.setAttribute("viewBox", "0 0 720 70");
+    el.innerHTML = '<text x="360" y="40" text-anchor="middle" fill="#878d96" font-size="13">本期无时段数据</text>';
+    if (cap) cap.textContent = "";
+    return;
+  }
+  var W = svgW(el), H = 210, ml = 34, mr = 12, mt = 16, mb = 30;
+  var cw = W - ml - mr, ch = H - mt - mb;
+  el.setAttribute("width", W); el.setAttribute("height", H); el.setAttribute("viewBox", "0 0 " + W + " " + H);
+  var maxV = Math.max.apply(null, Hr.map(function(v){ return num(v); })) || 1;
+  var maxIdx = 0; Hr.forEach(function(v, i){ if (num(v) > num(Hr[maxIdx])) maxIdx = i; });
+  var slot = cw / 24, bw = Math.min(slot * 0.6, 22);
+  var g = '<rect x="' + (ml + slot * maxIdx).toFixed(1) + '" y="' + mt + '" width="' + slot.toFixed(1) + '" height="' + ch + '" fill="#0f6b5c" fill-opacity="0.06"/>';
+  for (var s = 0; s <= 3; s++){ var y = mt + ch * s / 3; g += '<line x1="' + ml + '" y1="' + y.toFixed(1) + '" x2="' + (ml + cw) + '" y2="' + y.toFixed(1) + '" stroke="#eceae4"/>'; }
+  var bars = "", xl = "", hit = "";
+  for (var h = 0; h < 24; h++){
+    var v = num(Hr[h]), bh = v / maxV * ch;
+    var x = ml + slot * h + (slot - bw) / 2, y = mt + ch - bh;
+    var col = (h === maxIdx) ? "#0f6b5c" : "#2f5d9e";
+    bars += '<path d="' + roundTop(x.toFixed(1), y.toFixed(1), bw.toFixed(1), bh.toFixed(1), 4) + '" fill="' + col + '" fill-opacity="' + (h === maxIdx ? 1 : 0.72) + '"/>';
+    if (h % 3 === 0) xl += '<text x="' + (ml + slot * h + slot / 2).toFixed(1) + '" y="' + (mt + ch + 16) + '" text-anchor="middle" fill="#878d96" font-size="10" font-family="Consolas,monospace">' + pad2(h) + '</text>';
+    hit += '<rect x="' + (ml + slot * h).toFixed(1) + '" y="' + mt + '" width="' + slot.toFixed(1) + '" height="' + ch + '" fill="transparent" data-tip="' + pad2(h) + ":00-" + pad2(h) + ':59 · ' + v + ' 次"/>';
+  }
+  el.innerHTML = g + bars + xl + hit;
+  if (cap) cap.textContent = "你最常在 " + pad2(maxIdx) + ":00-" + pad2(maxIdx) + ":59 听歌（" + num(Hr[maxIdx]) + " 次）。";
+}
+)html";
+static const wchar_t* HTML_TAIL_3 = LR"html(
+// ── 04 每日热力图 ──
+function renderHeat(){
+  var el = $("#heatmap"); if (!el) return;
+  var Ht = isArr(D.heat) ? D.heat : [];
+  var legend = $("#heat-legend"), cap = $("#heat-desc");
+  if (!Ht.length){
+    el.innerHTML = ""; if (legend) legend.innerHTML = "";
+    if (cap) cap.textContent = "本期无每日数据。";
+    return;
+  }
+  var maxS = Math.max.apply(null, Ht.map(function(x){ return num(x.s); })) || 1;
+  el.innerHTML = "";
+  Ht.forEach(function(d){
+    var s = num(d.s);
+    var idx = s <= 0 ? 0 : Math.min(4, Math.floor(s / maxS * 4.999));
+    var i = document.createElement("i");
+    i.style.background = HEAT_COLORS[idx];
+    i.dataset.tip = nz(d.d, "") + " · " + fmt(s) + " · " + num(d.c) + " 首";
+    el.appendChild(i);
+  });
+  if (legend){
+    legend.innerHTML = "<span>少</span>" + HEAT_COLORS.map(function(c){ return '<i style="background:' + c + '"></i>'; }).join("") +
+      "<span>多</span><span style=\"margin-left:auto\">" + esc(Ht[0].d) + " → " + esc(Ht[Ht.length - 1].d) + "</span>";
+  }
+  var active = Ht.filter(function(x){ return num(x.s) > 0; }).length;
+  if (cap) cap.textContent = "共 " + Ht.length + " 天，其中 " + active + " 天有收听记录；色块越深表示当天播放时长越长。";
+}
+
+// ── 05 听歌画像（雷达）──
+function renderRadar(){
+  var el = $("#svg-radar"); if (!el) return;
+  var R2 = isArr(D.radar) ? D.radar : [];
+  var cap = $("#profile-desc");
+  if (R2.length < 3){ el.setAttribute("viewBox", "0 0 360 60"); el.innerHTML = '<text x="180" y="34" text-anchor="middle" fill="#878d96" font-size="13">画像数据不足</text>'; return; }
+  var W = 360, H = 320, cx = W / 2, cy = H / 2, R = 118, n = R2.length;
+  el.setAttribute("width", W); el.setAttribute("height", H); el.setAttribute("viewBox", "0 0 " + W + " " + H);
+  var ang = function(i){ return Math.PI * 2 * i / n - Math.PI / 2; };
+  var pt = function(i, r){ var a = ang(i); return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+  var grid = "";
+  for (var ring = 1; ring <= 4; ring++){
+    var ps = [];
+    for (var i = 0; i < n; i++){ var p = pt(i, R * ring / 4); ps.push(p[0].toFixed(1) + "," + p[1].toFixed(1)); }
+    grid += '<polygon points="' + ps.join(" ") + '" fill="' + (ring === 4 ? "#fbfbf9" : "none") + '" stroke="#e6e6e1"/>';
+  }
+  for (var i2 = 0; i2 < n; i2++){ var e = pt(i2, R); grid += '<line x1="' + cx + '" y1="' + cy + '" x2="' + e[0].toFixed(1) + '" y2="' + e[1].toFixed(1) + '" stroke="#ecece7"/>'; }
+  var vpts = [], dots = "", labels = "", vl = "";
+  R2.forEach(function(r, i){
+    var v = clamp(num(r.v), 0, 100);
+    var p = pt(i, R * v / 100); vpts.push(p[0].toFixed(1) + "," + p[1].toFixed(1));
+    dots += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3.4" fill="#0f6b5c"/>';
+    var lp = pt(i, R + 26);
+    labels += '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 4).toFixed(1) + '" text-anchor="middle" fill="#4a4f57" font-size="12" font-weight="600">' + esc(r.d) + '</text>';
+    vl += '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 19).toFixed(1) + '" text-anchor="middle" fill="#0f6b5c" font-size="10.5" font-family="Consolas,monospace">' + v + '</text>';
+  });
+  el.innerHTML = grid + '<polygon points="' + vpts.join(" ") + '" fill="rgba(15,107,92,0.16)" stroke="#0f6b5c" stroke-width="2" stroke-linejoin="round"/>' + dots + labels + vl;
+  if (cap){
+    var best = R2.slice().sort(function(a, b){ return num(b.v) - num(a.v); })[0];
+    cap.textContent = "五个维度中，你的「" + nz(best.d, "") + "」得分最高（" + num(best.v) + " 分）。";
+  }
+}
+
+function renderHighlights(){
+  var el = $("#profile-highlights"); if (!el) return;
+  var rows = [
+    { rk: "01", t: nz(D.top_artist, "—"), s: "最爱歌手", v: fmt(D.top_artist_dur) },
+    { rk: "02", t: nz(D.top_song, "—"), s: "最爱单曲 · " + nz(D.top_song_artist, "未知"), v: num(D.top_song_count) + " 次" }
+  ];
+  el.innerHTML = rows.map(function(x){
+    return '<div class="hl"><div class="rk">' + x.rk + '</div><div class="tt"><b title="' + esc(x.t) + '">' + esc(x.t) + '</b><span>' + esc(x.s) + '</span></div><div class="vv">' + esc(x.v) + '</div></div>';
+  }).join("");
+}
+)html";
+static const wchar_t* HTML_TAIL_4 = LR"html(
+
+function renderPlaylist(){
+  var el = $("#pl-table"); if (!el) return;
+  var P = isArr(D.playlist) ? D.playlist : [];
+  if (!P.length){ el.innerHTML = '<div class="empty">本期无数据</div>'; return; }
+  el.innerHTML = '<table><thead><tr><th>来源</th><th class="num">播放时长</th><th class="num">占比</th></tr></thead><tbody>' +
+    P.map(function(p){ return '<tr><td>' + esc(p.s) + '</td><td class="num">' + fmt(p.d) + '</td><td class="num">' + num(p.p) + '%</td></tr>'; }).join("") +
+    '</tbody></table>';
+}
+
+// ── 06 播放行为 ──
+function renderSkip(){
+  var el = $("#skip-bars"); if (!el) return;
+  var S = isArr(D.skip) ? D.skip : [];
+  var cap = $("#behavior-desc");
+  if (!S.length){ el.innerHTML = '<div class="empty">本期无跳过数据</div>'; return; }
+  var maxP = Math.max.apply(null, S.map(function(s){ return num(s.p); })) || 1;
+  el.innerHTML = S.map(function(s, i){
+    var p = num(s.p), w = p / maxP * 100;
+    return '<div class="bar-row"><span class="lb">' + esc(s.l) + '</span>' +
+      '<span class="bar-track"><span class="bar-fill' + (i % 2 ? " alt" : "") + '" style="width:' + w.toFixed(1) + '%"></span></span>' +
+      '<span class="vl">' + p + '% · ' + num(s.c) + ' 次</span></div>';
+  }).join("");
+  if (cap){
+    var full = S.filter(function(s){ return /听完|complete/i.test(String(s.l)); })[0];
+    cap.textContent = full ? "约 " + num(full.p) + "% 的播放完整听完，其余按进度区间分布。" : "按播放进度区间统计跳过情况。";
+  }
+}
+
+function renderStreak(){
+  var el = $("#streak-miss"); if (!el) return;
+  var m = num(D.streak_miss);
+  if (m > 0){
+    el.innerHTML = '<div class="warn-note"><span class="ic">' + arrow(1, "#9a6b1f") + '</span><div>差点就连续 <b>' + (m + 1) +
+      '</b> 天：上一次连续收听 ' + m + ' 天后中断，再坚持一天即可刷新纪录。</div></div>';
+  } else {
+    el.innerHTML = '<div class="empty">没有中断记录。</div>';
+  }
+}
+)html";
+static const wchar_t* HTML_TAIL_5 = LR"html(
+// ── 07 年度回顾 ──
+function renderYear(){
+  var el = $("#svg-year"); if (!el) return;
+  var Y = isArr(D.yearly) ? D.yearly.slice() : [];
+  var tbl = $("#year-table"), cap = $("#year-desc");
+  if (!Y.length){
+    el.setAttribute("viewBox", "0 0 720 70");
+    el.innerHTML = '<text x="360" y="40" text-anchor="middle" fill="#878d96" font-size="13">本期无年度数据</text>';
+    if (tbl) tbl.innerHTML = '<div class="empty">本期无数据</div>';
+    return;
+  }
+  Y.sort(function(a, b){ return num(a.y) - num(b.y); });
+  var W = svgW(el), H = 210, ml = 40, mr = 16, mt = 18, mb = 32;
+  var cw = W - ml - mr, ch = H - mt - mb;
+  el.setAttribute("width", W); el.setAttribute("height", H); el.setAttribute("viewBox", "0 0 " + W + " " + H);
+  var maxV = Math.max.apply(null, Y.map(function(y){ return num(y.c); })) || 1;
+  var n = Y.length, slot = cw / n, bw = Math.min(slot * 0.42, 72);
+  var g = "";
+  for (var s = 0; s <= 4; s++){
+    var y = mt + ch * s / 4;
+    g += '<line x1="' + ml + '" y1="' + y.toFixed(1) + '" x2="' + (ml + cw) + '" y2="' + y.toFixed(1) + '" stroke="#eceae4"/>';
+    g += '<text x="' + (ml - 8) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end" fill="#b3b7bd" font-size="10" font-family="Consolas,monospace">' + Math.round(maxV * (1 - s / 4)) + '</text>';
+  }
+  var bars = "", xl = "";
+  Y.forEach(function(yv, i){
+    var v = num(yv.c), bh = v / maxV * ch, x = ml + slot * i + (slot - bw) / 2, yy = mt + ch - bh;
+    var isLast = i === n - 1;
+    bars += '<path d="' + roundTop(x.toFixed(1), yy.toFixed(1), bw.toFixed(1), bh.toFixed(1), 6) + '" fill="' + (isLast ? "#0f6b5c" : "#2f5d9e") + '" fill-opacity="' + (isLast ? 1 : 0.8) + '"/>';
+    bars += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (yy - 6).toFixed(1) + '" text-anchor="middle" fill="#4a4f57" font-size="10.5" font-family="Consolas,monospace">' + v + '</text>';
+    xl += '<text x="' + (ml + slot * i + slot / 2).toFixed(1) + '" y="' + (mt + ch + 18) + '" text-anchor="middle" fill="#878d96" font-size="11" font-family="Consolas,monospace">' + esc(yv.y) + '</text>';
+  });
+  el.innerHTML = g + bars + xl;
+  if (tbl){
+    tbl.innerHTML = '<table><thead><tr><th>年份</th><th class="num">播放次数</th><th class="num">播放时长</th></tr></thead><tbody>' +
+      Y.slice().reverse().map(function(yv){ return '<tr><td>' + esc(yv.y) + '</td><td class="num">' + fmtInt(yv.c) + '</td><td class="num">' + fmt(yv.d) + '</td></tr>'; }).join("") +
+      '</tbody></table>';
+  }
+  var sum = Y.reduce(function(a, b){ return a + num(b.c); }, 0);
+  if (cap) cap.textContent = "共 " + Y.length + " 个年度，累计 " + fmtInt(sum) + " 次播放。";
+}
+
+// ── 02c 环比 / 同比 ──
+function renderComparison(){
+  var el = $("#comparison-box"); if (!el) return;
+  var C = (D.comparison && typeof D.comparison === "object") ? D.comparison : {};
+  var html = '<div class="card-title">环比 / 同比</div>';
+  if (C.has_prev){
+    var d = num(C.delta), dp = num(C.delta_pct);
+    var cls = d > 0 ? "up" : (d < 0 ? "down" : "flat");
+    html += '<div class="cmp-row"><span class="k">环比 ' + esc(nz(C.prev_label, "上期")) + '</span>' +
+      '<span class="d ' + cls + '">' + arrow(d, cls === "up" ? "#0f6b5c" : (cls === "down" ? "#94382e" : "#878d96")) + ' ' + Math.abs(d) + ' 次</span>' +
+      '<span class="sub">' + (dp >= 0 ? "+" : "") + dp + '% · 上期 ' + num(C.prev_count) + ' 次</span></div>';
+  } else {
+    html += '<div class="cmp-row"><span class="k">环比</span><span class="d flat">' + arrow(0, "#878d96") + ' 无</span><span class="sub">无上期数据</span></div>';
+  }
+  if (C.has_ly){
+    var ly = num(C.ly_count), delta = num(D.total) - ly;
+    var cls2 = delta > 0 ? "up" : (delta < 0 ? "down" : "flat");
+    html += '<div class="cmp-row"><span class="k">同比 ' + esc(nz(C.ly_label, "去年同期")) + '</span>' +
+      '<span class="d ' + cls2 + '">' + arrow(delta, cls2 === "up" ? "#0f6b5c" : (cls2 === "down" ? "#94382e" : "#878d96")) + ' ' + Math.abs(delta) + ' 次</span>' +
+      '<span class="sub">去年同期 ' + ly + ' 次</span></div>';
+  } else {
+    html += '<div class="cmp-row"><span class="k">同比</span><span class="d flat">' + arrow(0, "#878d96") + ' 无</span><span class="sub">无同期数据</span></div>';
+  }
+  el.innerHTML = html;
+}
+
+// ── 汇总渲染 ──
+function render(){
+  renderKpi();
+  renderKpiExtra();
+  renderTrend();
+  renderNews();
+  renderHours();
+  renderHeat();
+  renderRadar();
+  renderHighlights();
+  renderPlaylist();
+  renderSkip();
+  renderStreak();
+  renderYear();
+  renderComparison();
+  bindTip("#heatmap i", function(el){ return el.dataset.tip; });
+  bindTip("#svg-trend [data-tip]", function(el){ return el.dataset.tip; });
+  bindTip("#svg-hours [data-tip]", function(el){ return el.dataset.tip; });
+}
+// ── 初始化：副标题 / 生成时间 / 分区导航高亮 / 尺寸自适应重绘 ──
+(function(){
+  setText("#sub", nz(D.sub_title, "全部记录"));
+  setText("#foot-note", "统计口径：单次播放不足 15 秒不计入；后台播放按实际累计时长计时。");
+
+  if (typeof Date !== "undefined"){
+    var now = new Date();
+    setText("#gen-time", "生成于 " + now.getFullYear() + "-" + pad2(now.getMonth() + 1) + "-" + pad2(now.getDate()) +
+      " " + pad2(now.getHours()) + ":" + pad2(now.getMinutes()));
+  }
+
+  // 粘性导航：滚动高亮当前区块（DOM 桩中 IntersectionObserver 不存在时安全跳过）
+  var links = $$(".nav-link");
+  if (typeof IntersectionObserver !== "undefined" && links.length){
+    var map = {};
+    links.forEach(function(a){ map[a.getAttribute("href")] = a; });
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (!en.isIntersecting) return;
+        links.forEach(function(l){ if (l.classList) l.classList.remove("active"); });
+        var a = map["#" + en.target.id];
+        if (a && a.classList) a.classList.add("active");
+      });
+    }, { rootMargin: "-45% 0px -50% 0px", threshold: 0 });
+    $$("section.section").forEach(function(s){ io.observe(s); });
+  }
+
+  render();
+
+  // 尺寸变化时重绘（防抖）
+  var timer = null;
+  var onResize = function(){ if (timer) clearTimeout(timer); timer = setTimeout(render, 160); };
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", onResize);
+})();
 </script>
+</body>
+</html>
 )html";
 
 // ── 主体 ──
@@ -387,34 +934,42 @@ void CStatHtmlReport::GenerateAndOpen(const std::vector<PlayRecord>& records,
 {
     std::wstring json = BuildJson(records, s, filter);
 
-    std::wstring html{ HTML_HEAD };
-    html += L"<h2>核心指标</h2>\n<div class=\"grid\">\n";
-    auto kpi = [&](const CString& label, const CString& val) {
-        html += L"<div class=\"kpi\"><b>" + val + L"</b><span>" + label + L"</span></div>\n";
-    };
-    kpi(L"播放次数", std::to_wstring(s.total_count).c_str());
-    kpi(L"播放时长", CStatAnalysis::FormatDuration(s.total_duration_sec).c_str());
-    kpi(L"活跃天数", (std::to_wstring(s.active_days) + L" 天").c_str());
-    kpi(L"完整收听率", (std::to_wstring(static_cast<int>(s.completed_rate + 0.5)) + L"%").c_str());
-    html += L"</div>\n";
+    // 模板由多段常量拼接而成（规避 MSVC 单字面量 65535 字节上限）：
+    // HTML_HEAD_1..N 拼成 head，HTML_TAIL_1..M 拼成 tail。
+    // 所有区块标记都是静态 HTML，只由页面脚本按容器 id 填充，C++ 不再动态拼 DOM。
+    std::wstring head;
+    head += HTML_HEAD_1;
+    head += HTML_HEAD_1B;
+    head += HTML_HEAD_2;
 
-    html += L"<h2>播放趋势</h2>\n<div class=\"cb\"><svg id=\"svg-trend\"></svg></div>\n";
-    html += L"<h2>每日热力图</h2>\n<div class=\"cb\"><div class=\"heat\" id=\"heatmap\"></div></div>\n";
-    html += L"<h2>听歌画像</h2>\n<div class=\"cb\" style=\"text-align:center\"><svg id=\"svg-radar\"></svg></div>\n";
-    html += L"<h2>流派占比</h2>\n<div style=\"display:flex;gap:20px;align-items:center\">"
-            L"<svg id=\"svg-donut\"></svg><div id=\"donut-legend\" style=\"font-size:13px\"></div></div>\n";
-    html += L"<h2>跳过位置分布</h2>\n<div class=\"cb\"><div id=\"skip-bars\"></div></div>\n";
-    html += L"<h2>歌单 / 来源贡献</h2>\n<div class=\"cb\"><div id=\"pl-table\"></div></div>\n";
-    html += L"<h2>年度回顾</h2>\n<div class=\"cb\"><div id=\"year-table\"></div></div>\n";
-    html += L"<h2>24 小时时段分布</h2>\n<div class=\"cb\"><svg id=\"svg-hours\"></svg></div>\n";
-    html += L"<h2>新发现趋势</h2>\n<div class=\"cb\"><svg id=\"svg-news\"></svg></div>\n";
-    html += L"<h2>环比 / 同比</h2>\n<div class=\"cb\" id=\"comparison-box\"></div>\n";
-    html += L"<h2>口味一致性</h2>\n<div class=\"cb\" id=\"cosine-box\"></div>\n";
+    std::wstring tail;
+    tail += HTML_TAIL_1;
+    tail += HTML_TAIL_2;
+    tail += HTML_TAIL_3;
+    tail += HTML_TAIL_4;
+    tail += HTML_TAIL_5;
 
-    std::wstring tail{ HTML_TAIL };
-    { auto p = tail.find(L"__DATA__"); if (p != std::wstring::npos) tail.replace(p, 8, json); }
+    // 用 BuildJson 的输出整体替换数据占位符（模板中该占位符仅出现一次）。
+    // 这里只在 C++ 侧匹配前缀 "const D="，再把该语句一直替换到结尾分号，
+    // 避免在源码中再次写出占位符字面量：保证整个文件中该标记恰好出现一次。
+    {
+        const std::wstring kPrefix{ L"const D=" };
+        const auto p = tail.find(kPrefix);
+        if (p != std::wstring::npos)
+        {
+            const auto semi = tail.find(L';', p + kPrefix.size());
+            if (semi != std::wstring::npos)
+            {
+                std::wstring replaced{ kPrefix };
+                replaced += json;
+                replaced += L";";
+                tail.replace(p, semi - p + 1, replaced);
+            }
+        }
+    }
+
+    std::wstring html{ head };
     html += tail;
-    html += L"</body></html>\n";
 
     // 写文件到 %TEMP%
     wchar_t temp_dir[MAX_PATH];

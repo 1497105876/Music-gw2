@@ -2,7 +2,6 @@
 #include "MusicPlayer2.h"
 #include "StatSongRankTabDlg.h"
 #include "StatAnalysis.h"
-#include "StatChart.h"
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -21,7 +20,7 @@ CStatSongRankTabDlg::~CStatSongRankTabDlg()
 void CStatSongRankTabDlg::DoDataExchange(CDataExchange* pDX)
 {
     CStatTabDlg::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_STAT_SONG_RANK_LIST, m_list);
+    DDX_Control(pDX, IDC_STAT_SONG_RANK_LIST, m_list);
 }
 
 BEGIN_MESSAGE_MAP(CStatSongRankTabDlg, CStatTabDlg)
@@ -36,10 +35,11 @@ BOOL CStatSongRankTabDlg::OnInitDialog()
     CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_LABELTIP);
-    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, theApp.DPI(40));
-    m_list.InsertColumn(COL_NAME, L"歌曲", LVCFMT_LEFT, theApp.DPI(500));
-    m_list.InsertColumn(COL_VALUE, L"播放次数", LVCFMT_RIGHT, theApp.DPI(78));
-
+    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(COL_NAME, L"歌曲", LVCFMT_LEFT, 0);
+    m_list.InsertColumn(COL_VALUE, L"播放次数", LVCFMT_RIGHT, 0);
+    // 列宽自适应：按权重填满整页宽度（缩放时自动重算）
+    EnableColumnFit(&m_list, { 40, 500, 78 });
 
     return TRUE;
 }

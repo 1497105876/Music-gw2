@@ -8,7 +8,6 @@
 enum class Grain;
 struct PeriodBucket;
 struct HeatCell;
-struct GenreShare;
 struct SkipBucket;
 struct PeriodComparison;
 struct AlbumRankItem;
@@ -61,8 +60,6 @@ struct StatSummary
     std::wstring top_song;          // 最爱歌曲（标题）
     std::wstring top_song_artist;   // 最爱歌曲的歌手
     int top_song_count = 0;         // 最爱歌曲播放次数
-    std::wstring top_genre;         // 最爱流派
-    int top_genre_count = 0;        // 最爱流派播放次数
 
     // 档案徽章（key 用于图标/存档，text 是直接显示的短句）
     struct Badge
@@ -103,15 +100,10 @@ public:
 
     // ── 以下接口在后续批次实现（本批仅声明，供子页/洞察统一签名） ──
     static std::vector<HeatCell>      ComputeHeatmapGrid(const std::vector<PlayRecord>& records);
-    static std::vector<GenreShare>    ComputeGenreShare(const std::vector<PlayRecord>& records, int max_slices = 5);
-    static std::vector<GenreShare>    ComputeGenreShareByQuarter(const std::vector<PlayRecord>& records, int quarters,
-                                                                 std::vector<std::wstring>& out_labels);
     static std::vector<SkipBucket>    ComputeSkipDistribution(const std::vector<PlayRecord>& records);
     static PeriodComparison           ComputePeriodComparison(const std::vector<PlayRecord>& records, const StatFilter& filter);
     static std::vector<AlbumRankItem> ComputeAlbumRank(const std::vector<PlayRecord>& records, int top_n = 20);
     static std::vector<PeriodBucket>  ComputeNewSongTrend(const std::vector<PlayRecord>& records);
-    static double                     ComputeCosineSimilarity(const std::vector<GenreShare>& a,
-                                                              const std::vector<GenreShare>& b);
     static std::vector<RetiredGem>    ComputeRetiredGems(const std::vector<PlayRecord>& records, int min_count = 3);
     static std::vector<PlaylistContribution> ComputePlaylistContribution(const std::vector<PlayRecord>& records);
     static int                        ComputeStreakMiss(const std::vector<PlayRecord>& records);

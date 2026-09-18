@@ -23,6 +23,7 @@ protected:
     // 音乐 DNA 报告（REQ-118）与按年归档回顾（REQ-120）
     DnaReport m_dna;
     std::vector<YearReview> m_yearly;
+    std::vector<RetiredGem> m_gems;   // 遗珠挖掘（REQ-113，由原「流派」页迁入）
 
     // 自绘整页内容
 
@@ -32,6 +33,8 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
 
+    // 只读多行编辑框不响应鼠标滚轮，这里把滚轮事件转发给它
+    afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 
     DECLARE_MESSAGE_MAP()
 
