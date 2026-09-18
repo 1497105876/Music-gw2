@@ -4,6 +4,7 @@
 #include "StatCommon.h"
 #include <shellapi.h>
 #include <fstream>
+#include <algorithm>
 
 // ── 工具 ──
 static std::wstring JsonStr(const std::wstring& s)
@@ -986,4 +987,139 @@ void CStatHtmlReport::GenerateAndOpen(const std::vector<PlayRecord>& records,
     ofs.close();
 
     ShellExecuteW(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOW);
+}
+
+// ── 独立入口 ──
+
+// 从 statistics 目录加载全部播放记录（与播放记录写入端 PlayRecord::ToJson 的字段一一对应）
+std::vector<PlayRecord> CStatHtmlReport::LoadRecords()
+{
+    std::vector<PlayRecord> records;
+
+    std::wstring stats_dir = theApp.m_config_dir + L"statistics\\";
+    std::wstring search_pattern = stats_dir + L"playlog_*.jsonl";
+
+    WIN32_FIND_DATA find_data;
+    HANDLE hFind = FindFirstFile(search_pattern.c_str(), &find_data);
+    if (hFind == INVALID_HANDLE_VALUE) return records;
+
+    do
+    {
+        if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+
+        std::wstring file_path = stats_dir + find_data.cFileName;
+        std::ifstream ifs(file_path, std::ios::binary);
+        if (!ifs.is_open()) continue;
+
+        std::string line;
+        while (std::getline(ifs, line))
+        {
+            if (line.empty()) continue;
+
+            PlayRecord record;
+            auto extract_string = [&line](const std::string& key, std::wstring& out) {
+                std::string search = "\"" + key + "\":\"";
+                size_t pos = line.find(search);
+                if (pos == std::string::npos) return;
+                pos += search.size();
+                size_t end = pos;
+                while (end < line.size())
+                {
+                    if (line[end] == '\\' && end + 1 < line.size()) { end += 2; continue; }
+                    if (line[end] == '"') break;
+                    end++;
+                }
+                std::string utf8_val = line.substr(pos, end - pos);
+                std::string unescaped;
+                for (size_t i = 0; i < utf8_val.size(); i++)
+                {
+                    if (utf8_val[i] == '\\' && i + 1 < utf8_val.size())
+                    {
+                        char next = utf8_val[i + 1];
+                        if (next == '"') unescaped += '"';
+                        else if (next == '\\') unescaped += '\\';
+                        else if (next == 'n') unescaped += '\n';
+                        else if (next == 'r') unescaped += '\r';
+                        else if (next == 't') unescaped += '\t';
+                        else unescaped += utf8_val[i];
+                        i++;
+                    }
+                    else
+                    {
+                        unescaped += utf8_val[i];
+                    }
+                }
+                int len = ::MultiByteToWideChar(CP_UTF8, 0, unescaped.c_str(), -1, nullptr, 0);
+                if (len > 0)
+                {
+                    out.resize(len - 1);
+                    ::MultiByteToWideChar(CP_UTF8, 0, unescaped.c_str(), -1, &out[0], len);
+                }
+                };
+
+            auto extract_int = [&line](const std::string& key, int& out) {
+                std::string search = "\"" + key + "\":";
+                size_t pos = line.find(search);
+                if (pos == std::string::npos) return;
+                pos += search.size();
+                if (pos >= line.size()) return;
+                out = atoi(line.c_str() + pos);
+                };
+
+            auto extract_bool = [&line](const std::string& key, bool& out) {
+                std::string search = "\"" + key + "\":";
+                size_t pos = line.find(search);
+                if (pos == std::string::npos) return;
+                pos += search.size();
+                if (pos >= line.size()) return;
+                out = (line[pos] == 't');
+                };
+
+            extract_string("file_path", record.file_path);
+            extract_string("title", record.title);
+            extract_string("artist", record.artist);
+            extract_string("album", record.album);
+            extract_string("genre", record.genre);
+            extract_string("played_at", record.played_at);
+            extract_int("play_duration_sec", record.play_duration_sec);
+            extract_int("song_length_sec", record.song_length_sec);
+            int reason = 0;
+            extract_int("finish_reason", reason);
+            record.finish_reason = static_cast<PlayRecord::FinishReason>(reason);
+            extract_int("volume", record.volume);
+            extract_bool("was_shuffled", record.was_shuffled);
+            extract_string("playlist_source", record.playlist_source);
+            extract_int("bitrate", record.bitrate);
+            extract_int("sample_rate", record.sample_rate);
+            extract_int("channels", record.channels);
+
+            records.push_back(std::move(record));
+        }
+        ifs.close();
+    } while (FindNextFile(hFind, &find_data));
+
+    FindClose(hFind);
+
+    // 按播放时间倒序（最新在前），与原统计对话框的加载顺序一致
+    std::sort(records.begin(), records.end(), [](const PlayRecord& a, const PlayRecord& b) {
+        return a.played_at > b.played_at;
+        });
+
+    return records;
+}
+
+void CStatHtmlReport::GenerateAndOpenWebReport()
+{
+    std::vector<PlayRecord> records = LoadRecords();
+    if (records.empty())
+    {
+        AfxMessageBox(L"没有播放记录，无法生成报告。", MB_ICONINFORMATION);
+        return;
+    }
+
+    // 独立入口使用全量记录 + 默认过滤器（全部时间）
+    StatFilter filter{};
+    filter.preset = RangePreset::All;
+    StatSummary summary = CStatAnalysis::ComputeSummary(records);
+    GenerateAndOpen(records, summary, filter);
 }

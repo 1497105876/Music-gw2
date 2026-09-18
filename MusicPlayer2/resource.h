@@ -76,7 +76,6 @@
 #define IDI_FULL_SCREEN_D               365
 #define IDI_FULL_SCREEN1                366
 #define IDI_FULL_SCREEN1_D              367
-#define IDD_LISTEN_TIME_STATISTICS_DLG  368
 #define IDD_DONATE_DIALOG               370
 #define IDB_DONATE                      372
 #define IDI_MENU                        375
@@ -951,7 +950,6 @@
 #define ID_SHOW_MENU_BAR                33012
 #define ID_FULL_SCREEN                  33014
 #define ID_CREATE_PLAY_SHORTCUT         33016
-#define ID_LISTEN_STATISTICS            33018
 #define ID_LD_PREVIEW                   33020
 #define ID_ALWAYS_ON_TOP                33023
 #define ID_FLOAT_PLAYLIST               33026
@@ -1087,75 +1085,19 @@
 #define ID_PITCH_DOWN                   33478
 #define ID_PITCH_UP                     33479
 #define ID_PLAY_STATISTICS              33513
-
-#define IDD_PLAY_STATISTICS_DIALOG       693
-#define IDC_STAT_TAB                    1400
-#define IDC_STAT_DETAIL_LIST            1401
-#define IDC_STAT_OVERVIEW_LIST          1402
-#define IDC_EXPORT_CSV_BTN              1403
-#define IDC_EXPORT_JSON_BTN             1404
-#define IDC_STAT_CHART_STATIC           1405
-#define IDC_STAT_TIME_FILTER             1406
-#define IDC_STAT_VIEW_BTN1               1407
-#define IDC_STAT_VIEW_BTN2               1408
-#define IDC_STAT_VIEW_BTN3               1409
-#define IDC_STAT_VIEW_BTN4               1410
-#define IDC_STAT_VIEW_BTN5               1411
-#define IDC_STAT_RANK_LIST               1412
-#define IDC_STAT_RANK_CAT_BTN1           1413
-#define IDC_STAT_RANK_CAT_BTN2           1414
-#define IDC_STAT_RANK_CHART              1415
-#define IDD_STAT_OVERVIEW_DLG            694
-#define IDD_STAT_ARTIST_RANK_DLG         695
-#define IDD_STAT_SONG_RANK_DLG           696
-#define IDD_STAT_SONGS_DLG               698
-#define IDC_STAT_OVERVIEW_LIST2          1416
-#define IDC_STAT_ARTIST_RANK_LIST        1417
-#define IDC_STAT_SONG_RANK_LIST          1418
-#define IDC_STAT_SONGS_LIST              1420
-#define IDC_STAT_ARTIST_RANK_CHART      1421
-#define IDC_STAT_SONG_RANK_CHART        1422
-#define IDC_STAT_PROFILE_CHART          1423
-#define IDC_STAT_PROFILE_TEXT           1446
-#define IDD_STAT_PROFILE_DLG            699
-
-// 播放统计优化新增资源 ID（架构文档 D5）
-#define IDD_STAT_HEATMAP_DLG            700
-#define IDD_STAT_ALBUM_RANK_DLG         701
-#define IDD_STAT_REPORT_DLG             703
-#define IDD_STAT_HELP_DLG               704
-
-#define IDC_STAT_RANGE_PRESET           1424
-#define IDC_STAT_DATE_FROM              1425
-#define IDC_STAT_DATE_TO                1426
-#define IDC_STAT_GRAIN_DAY              1427
-#define IDC_STAT_GRAIN_WEEK             1428
-#define IDC_STAT_GRAIN_MONTH            1429
-#define IDC_STAT_GRAIN_YEAR             1430
-#define IDC_STAT_HELP_BTN               1431
-#define IDC_STAT_UPDATED_TEXT           1432
-#define IDC_STAT_EXPORT_AGG_BTN         1433
-#define IDC_STAT_REPORT_BTN             1434
-#define IDC_STAT_HEATMAP_CHART          1435
-#define IDC_STAT_HEATMAP_SCROLL         1436
-#define IDC_STAT_ALBUM_RANK_CHART       1437
-#define IDC_STAT_ALBUM_RANK_LIST        1438
-#define IDC_STAT_REPORT_CHART           1440
-#define IDC_STAT_REPORT_SAVE_BTN        1441
-#define IDC_STAT_REPORT_WATERMARK_CHK   1442
-#define IDC_STAT_HELP_TEXT              1443
+#define ID_STATISTICS_WEB_REPORT        33514
+#define IDD_PLAY_STATISTICS_DLG         693
 #define ID_ORIGINAL_PITCH               33480
 #define ID_SONGS_MULTI_VERSION_ITEM_START 33481
 #define ID_SONGS_MULTI_VERSION_ITEM_MAX 33511
 #define ID_LIST_ITEM_PREVIEW            33512
-#define IDC_STAT_OVERVIEW_CHART         1444
 
 // Next default values for new objects
-// 
+//
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        705
-#define _APS_NEXT_COMMAND_VALUE         33514
+#define _APS_NEXT_COMMAND_VALUE         33515
 #define _APS_NEXT_CONTROL_VALUE         1447
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

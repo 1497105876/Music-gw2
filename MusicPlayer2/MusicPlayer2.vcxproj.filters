@@ -675,28 +675,10 @@
     <ClInclude Include="MessageDlg.h">
       <Filter>对话框类\MessageDlg</Filter>
     </ClInclude>
-    <ClInclude Include="CListenTimeStatisticsDlg.h">
-      <Filter>对话框类\ListenTimeStatisticsDlg</Filter>
-    </ClInclude>
     <ClInclude Include="PlayStatistics.h">
       <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClInclude>
     <ClInclude Include="CPlayStatisticsDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClInclude>
-    <ClInclude Include="StatOverviewTabDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClInclude>
-    <ClInclude Include="StatArtistRankTabDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClInclude>
-    <ClInclude Include="StatAlbumRankTabDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClInclude>
-    <ClInclude Include="StatSongRankTabDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClInclude>
-    <ClInclude Include="StatSongsTabDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
     <ClInclude Include="StatCommon.h">
@@ -704,12 +686,6 @@
     </ClInclude>
     <ClInclude Include="StatMeta.h">
       <Filter>功能逻辑类\PlayStatistics</Filter>
-    </ClInclude>
-    <ClInclude Include="StatTabDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClInclude>
-    <ClInclude Include="StatHelpDlg.h">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
     <ClInclude Include="CDonateDlg.h">
       <Filter>对话框类\DonateDlg</Filter>
@@ -1436,38 +1412,14 @@
     <ClCompile Include="MessageDlg.cpp">
       <Filter>对话框类\MessageDlg</Filter>
     </ClCompile>
-    <ClCompile Include="CListenTimeStatisticsDlg.cpp">
-      <Filter>对话框类\ListenTimeStatisticsDlg</Filter>
-    </ClCompile>
     <ClCompile Include="PlayStatistics.cpp">
       <Filter>功能逻辑类\PlayStatistics</Filter>
     </ClCompile>
     <ClCompile Include="CPlayStatisticsDlg.cpp">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
-    <ClCompile Include="StatOverviewTabDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
-    <ClCompile Include="StatArtistRankTabDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
-    <ClCompile Include="StatAlbumRankTabDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
-    <ClCompile Include="StatSongRankTabDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
-    <ClCompile Include="StatSongsTabDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
     <ClCompile Include="StatMeta.cpp">
       <Filter>功能逻辑类\PlayStatistics</Filter>
-    </ClCompile>
-    <ClCompile Include="StatTabDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
-    </ClCompile>
-    <ClCompile Include="StatHelpDlg.cpp">
-      <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClCompile>
     <ClCompile Include="CDonateDlg.cpp">
       <Filter>对话框类\DonateDlg</Filter>

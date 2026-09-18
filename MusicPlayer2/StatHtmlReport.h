@@ -12,4 +12,12 @@ public:
     static void GenerateAndOpen(const std::vector<PlayRecord>& records,
                                 const StatSummary& summary,
                                 const StatFilter& filter);
+
+    // 网页报告独立入口：自行加载 statistics 目录下的全部播放记录
+    // （全量、无时间过滤），聚合后生成并打开 HTML 报告。供主菜单直接调用。
+    static void GenerateAndOpenWebReport();
+
+private:
+    // 从 %config%\statistics\playlog_*.jsonl 解析全部播放记录，按时间倒序返回
+    static std::vector<PlayRecord> LoadRecords();
 };
