@@ -13,6 +13,9 @@ public:
 
     virtual void Refresh() override;
 
+    // 进入页签时焦点交给本页列表，滚轮由列表原生处理
+    virtual CWnd* GetFocusTarget() override { return &m_list; }
+
 protected:
     CListCtrlEx m_list;
 

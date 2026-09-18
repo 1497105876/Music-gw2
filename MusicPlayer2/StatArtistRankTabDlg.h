@@ -21,8 +21,11 @@ public:
 
     virtual void Refresh() override;
 
+    // 进入页签时焦点交给本页列表，滚轮由列表原生处理
+    virtual CWnd* GetFocusTarget() override { return &m_list; }
+
 protected:
-    CListCtrlEx m_list;
+    CListCtrlEx m_list;
     std::vector<RankItem> m_rank_data;
 
     int m_scroll_pos{ 0 };      // 当前滚动位置（像素）
@@ -37,7 +40,7 @@ protected:
         COL_VALUE,
     };
 
-    void BuildRankData();
+    void BuildRankData();
 
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;

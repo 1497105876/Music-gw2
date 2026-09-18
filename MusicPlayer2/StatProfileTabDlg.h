@@ -16,6 +16,9 @@ public:
 
     virtual void Refresh() override;
 
+    // 进入页签时焦点交给本页只读编辑框，滚轮由其原生滚动
+    virtual CWnd* GetFocusTarget() override { return &m_text; }
+
 protected:
     CEdit    m_text;
     StatSummary m_summary;
