@@ -21,7 +21,6 @@ void CStatProfileTabDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CStatProfileTabDlg, CStatTabDlg)
-    ON_WM_MOUSEWHEEL()
 END_MESSAGE_MAP()
 
 BOOL CStatProfileTabDlg::OnInitDialog()
@@ -109,24 +108,6 @@ void CStatProfileTabDlg::Refresh()
 
     m_text.SetWindowTextW(text.c_str());
 
-}
-
-// 只读多行编辑框不响应鼠标滚轮：把滚轮事件转发为编辑框本身的逐行滚动
-BOOL CStatProfileTabDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
-{
-    if (m_text.GetSafeHwnd() != nullptr)
-    {
-        int lines = zDelta;
-        if (lines < 0) lines = -lines;
-        lines = lines * 3 / 120;        // 120 == WHEEL_DELTA
-        if (lines < 1) lines = 1;
-
-        UINT sb = (zDelta > 0) ? SB_LINEUP : SB_LINEDOWN;
-        for (int i = 0; i < lines; i++)
-            m_text.SendMessage(WM_VSCROLL, MAKEWPARAM(sb, 0), 0);
-        return TRUE;
-    }
-    return CStatTabDlg::OnMouseWheel(nFlags, zDelta, pt);
 }
 
 // 根据控件宽度估算整页内容高度（与 DrawProfile 的布局保持一致）

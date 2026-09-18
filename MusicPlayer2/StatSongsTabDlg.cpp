@@ -27,16 +27,28 @@ BOOL CStatSongsTabDlg::OnInitDialog()
     CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-    m_list.InsertColumn(DCOL_INDEX, L"序号", LVCFMT_LEFT, 0);
-    m_list.InsertColumn(DCOL_TIME, L"播放时间", LVCFMT_LEFT, 0);
-    m_list.InsertColumn(DCOL_TITLE, L"标题", LVCFMT_LEFT, 0);
-    m_list.InsertColumn(DCOL_ARTIST, L"艺术家", LVCFMT_LEFT, 0);
-    m_list.InsertColumn(DCOL_ALBUM, L"专辑", LVCFMT_LEFT, 0);
-    m_list.InsertColumn(DCOL_PLAY_DUR, L"播放时长", LVCFMT_RIGHT, 0);
-    m_list.InsertColumn(DCOL_SONG_LEN, L"歌曲长度", LVCFMT_RIGHT, 0);
-    m_list.InsertColumn(DCOL_RESULT, L"结果", LVCFMT_CENTER, 0);
-    // 列宽自适应：标题列（弹性列，下限 180）独占剩余宽度，其余列固定（缩放时自动重算）
-    EnableColumnFit(&m_list, 2, { 40, 110, 180, 100, 100, 55, 55, 45 });
+    // 列宽一次性按设计宽度算好（照 CListenTimeStatisticsDlg::OnInitDialog）：
+    // 序号/时间/艺术家/专辑/时长/结果列固定，标题列吃剩余宽度，不随窗口缩放重算
+    CRect rect;
+    m_list.GetWindowRect(rect);
+    int width[8];
+    width[DCOL_INDEX] = theApp.DPI(40);
+    width[DCOL_TIME] = theApp.DPI(110);
+    width[DCOL_TITLE] = rect.Width() - theApp.DPI(40) - theApp.DPI(110) - theApp.DPI(100)
+        - theApp.DPI(100) - theApp.DPI(55) - theApp.DPI(55) - theApp.DPI(45) - theApp.DPI(20) - 1;
+    width[DCOL_ARTIST] = theApp.DPI(100);
+    width[DCOL_ALBUM] = theApp.DPI(100);
+    width[DCOL_PLAY_DUR] = theApp.DPI(55);
+    width[DCOL_SONG_LEN] = theApp.DPI(55);
+    width[DCOL_RESULT] = theApp.DPI(45);
+    m_list.InsertColumn(DCOL_INDEX, L"序号", LVCFMT_LEFT, width[DCOL_INDEX]);
+    m_list.InsertColumn(DCOL_TIME, L"播放时间", LVCFMT_LEFT, width[DCOL_TIME]);
+    m_list.InsertColumn(DCOL_TITLE, L"标题", LVCFMT_LEFT, width[DCOL_TITLE]);
+    m_list.InsertColumn(DCOL_ARTIST, L"艺术家", LVCFMT_LEFT, width[DCOL_ARTIST]);
+    m_list.InsertColumn(DCOL_ALBUM, L"专辑", LVCFMT_LEFT, width[DCOL_ALBUM]);
+    m_list.InsertColumn(DCOL_PLAY_DUR, L"播放时长", LVCFMT_RIGHT, width[DCOL_PLAY_DUR]);
+    m_list.InsertColumn(DCOL_SONG_LEN, L"歌曲长度", LVCFMT_RIGHT, width[DCOL_SONG_LEN]);
+    m_list.InsertColumn(DCOL_RESULT, L"结果", LVCFMT_CENTER, width[DCOL_RESULT]);
 
     return TRUE;
 }

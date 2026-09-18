@@ -72,7 +72,7 @@ bool CPlayStatisticsDlg::InitializeControls()
     SetDlgItemTextW(IDC_STAT_REPORT_BTN, L"生成报告");
     SetDlgItemTextW(IDCANCEL, L"关闭");
 
-    // 主对话框最小尺寸（PRD 520x340）
+    // 主对话框最小尺寸（默认 560x360）
     SetMinSize(theApp.DPI(480), theApp.DPI(300));
 
     RepositionTextBasedControls({
@@ -104,8 +104,8 @@ BEGIN_MESSAGE_MAP(CPlayStatisticsDlg, CBaseDialog)
     ON_NOTIFY(DTN_DATETIMECHANGE, IDC_STAT_DATE_TO, &CPlayStatisticsDlg::OnDateTimeChangeTo)
     ON_WM_DESTROY()
     ON_WM_TIMER()
+    ON_WM_SIZE()
     ON_MESSAGE(WM_STAT_RECORD_APPENDED, &CPlayStatisticsDlg::OnStatRecordAppended)
-    ON_WM_MOUSEWHEEL()
 END_MESSAGE_MAP()
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -313,6 +313,24 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
     m_songs_dlg.Create(IDD_STAT_SONGS_DLG, &m_tab);
     m_profile_dlg.Create(IDD_STAT_PROFILE_DLG, &m_tab);
 
+    // 保存子对话框（照 OptionsDlg）
+    m_tab_vect.clear();
+    m_tab_height.clear();
+    m_tab_vect.push_back(&m_overview_dlg);
+    m_tab_vect.push_back(&m_artist_rank_dlg);
+    m_tab_vect.push_back(&m_album_rank_dlg);
+    m_tab_vect.push_back(&m_song_rank_dlg);
+    m_tab_vect.push_back(&m_songs_dlg);
+    m_tab_vect.push_back(&m_profile_dlg);
+
+    // 获取子对话框的初始高度（必须在 AddWindow/MoveWindow 拉伸之前取）
+    for (const auto* pDlg : m_tab_vect)
+    {
+        CRect rect;
+        pDlg->GetWindowRect(rect);
+        m_tab_height.push_back(rect.Height());
+    }
+
     // 添加到 Tab（6 页：概览/歌手/专辑/曲目/明细/洞察）
     m_tab.AddWindow(&m_overview_dlg, L"概览", IconMgr::IconType::IT_Info);
     m_tab.AddWindow(&m_artist_rank_dlg, L"歌手", IconMgr::IconType::IT_Artist);
@@ -323,6 +341,12 @@ BOOL CPlayStatisticsDlg::OnInitDialog()
 
     m_tab.SetItemSize(CSize(theApp.DPI(56), theApp.DPI(24)));
     m_tab.AdjustTabWindowSize();
+
+    // 为每个子窗口设置滚动信息（照 OptionsDlg）
+    for (size_t i = 0; i < m_tab_vect.size(); i++)
+    {
+        m_tab_vect[i]->SetScrollbarInfo(m_tab.m_tab_rect.Height(), m_tab_height[i]);
+    }
 
     // 首次过滤 + 广播 + 可见页刷新
     ApplyFilter();
@@ -569,22 +593,18 @@ void CPlayStatisticsDlg::OnDestroy()
     CBaseDialog::OnDestroy();
 }
 
-// 滚轮兜底转发：焦点停在主对话框自身或过滤条控件（下拉框/日期控件/窗口边框）时，
-// 它们的窗口过程不处理 WM_MOUSEWHEEL，消息经 DefWindowProc 冒泡到本对话框。
-// 这里转发给当前子页，由子页的 CStatTabDlg::OnMouseWheel 用 WindowFromPoint 定位光标下的控件。
-// 子页仍未处理时消息会再次冒泡回本对话框（DefWindowProc 行为），用 m_wheel_forwarding
-// 重入守卫打断这条自激回环，将二次进入直接交给基类默认处理。
-BOOL CPlayStatisticsDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+// 主对话框尺寸变化时，为每个子窗口更新滚动信息（照 OptionsDlg::OnSize）
+void CPlayStatisticsDlg::OnSize(UINT nType, int cx, int cy)
 {
-    CWnd* pTab = m_tab.GetCurrentTab();
-    if (!m_wheel_forwarding && pTab != nullptr && pTab->GetSafeHwnd() != nullptr)
+    CBaseDialog::OnSize(nType, cx, cy);
+    if (nType != SIZE_MINIMIZED)
     {
-        m_wheel_forwarding = true;
-        pTab->SendMessage(WM_MOUSEWHEEL, MAKEWPARAM(nFlags, zDelta), MAKELPARAM(pt.x, pt.y));
-        m_wheel_forwarding = false;
-        return TRUE;
+        //为每个子窗口更新滚动信息
+        for (size_t i = 0; i < m_tab_vect.size(); i++)
+        {
+            m_tab_vect[i]->SetScrollbarInfo(m_tab.m_tab_rect.Height(), m_tab_height[i]);
+        }
     }
-    return CBaseDialog::OnMouseWheel(nFlags, zDelta, pt);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

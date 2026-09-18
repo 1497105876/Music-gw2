@@ -33,11 +33,16 @@ BOOL CStatAlbumRankTabDlg::OnInitDialog()
     CStatTabDlg::OnInitDialog();
 
     m_list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_LABELTIP);
-    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, 0);
-    m_list.InsertColumn(COL_ALBUM, L"专辑", LVCFMT_LEFT, 0);
-    m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, 0);
-    // 列宽自适应：专辑名列（弹性列）独占剩余宽度，排名/时长列固定（缩放时自动重算）
-    EnableColumnFit(&m_list, 1, { 40, 200, 90 });
+    // 列宽一次性按设计宽度算好（照 CListenTimeStatisticsDlg::OnInitDialog）：
+    // 排名/时长列固定，专辑名列吃剩余宽度，不随窗口缩放重算
+    CRect rect;
+    m_list.GetWindowRect(rect);
+    int width_rank = theApp.DPI(40);
+    int width_value = theApp.DPI(90);
+    int width_name = rect.Width() - width_rank - width_value - theApp.DPI(20) - 1;
+    m_list.InsertColumn(COL_RANK, L"#", LVCFMT_LEFT, width_rank);
+    m_list.InsertColumn(COL_ALBUM, L"专辑", LVCFMT_LEFT, width_name);
+    m_list.InsertColumn(COL_VALUE, L"播放时长", LVCFMT_RIGHT, width_value);
 
     return TRUE;
 }

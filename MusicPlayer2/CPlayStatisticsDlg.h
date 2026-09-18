@@ -32,7 +32,6 @@ protected:
     CDateTimeCtrl m_date_to;       // 结束日期：原生日期时间选择器（带下拉日历）
 
     bool m_updating_filter{ false }; // 程序化写入 DTP 时的重入守卫（抑制 DTN_DATETIMECHANGE 联动）
-    bool m_wheel_forwarding{ false };// 滚轮转发重入守卫（打断 WM_MOUSEWHEEL 冒泡自激回环）
 
     // 6 个子页（移除趋势页/流派页后：概览/歌手/专辑/曲目/明细/洞察）
     CStatOverviewTabDlg m_overview_dlg;
@@ -47,6 +46,10 @@ protected:
     StatContext m_context;                       // 过滤后视图（唯一数据源，广播给子页）
     StatFilter  m_filter;                        // 当前全局过滤器
     UINT_PTR    m_timer_id{ 0 };                 // 60s 兜底刷新定时器
+
+    // 整页滚动（照 OptionsDlg）：子页窗口 + 各子页设计高度（滚动的内容高度）
+    std::vector<CTabDlg*> m_tab_vect;
+    std::vector<int> m_tab_height;
 
     // ── 过滤条初始化与联动 ──
     void InitFilterControls();
@@ -81,6 +84,6 @@ public:
     afx_msg void OnBnClickedReportButton();
     afx_msg void OnDestroy();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
+    afx_msg void OnSize(UINT nType, int cx, int cy);
     afx_msg LRESULT OnStatRecordAppended(WPARAM wParam, LPARAM lParam);
-    afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 };

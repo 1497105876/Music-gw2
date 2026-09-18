@@ -33,9 +33,6 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
 
-    // 只读多行编辑框不响应鼠标滚轮，这里把滚轮事件转发给它
-    afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
-
     DECLARE_MESSAGE_MAP()
 
 private:
