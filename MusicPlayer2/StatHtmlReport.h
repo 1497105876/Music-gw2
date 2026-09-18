@@ -13,11 +13,10 @@ public:
                                 const StatSummary& summary,
                                 const StatFilter& filter);
 
-    // 网页报告独立入口：自行加载 statistics 目录下的全部播放记录
-    // （全量、无时间过滤），聚合后生成并打开 HTML 报告。供主菜单直接调用。
-    static void GenerateAndOpenWebReport();
+    // 从 %config%\statistics\playlog_*.jsonl 解析全部播放记录，按时间倒序返回。
+    // broken_lines / failed_files 可选输出：被跳过的损坏行数、读取失败的文件数。
+    static std::vector<PlayRecord> LoadRecords(int* broken_lines = nullptr, int* failed_files = nullptr);
 
-private:
-    // 从 %config%\statistics\playlog_*.jsonl 解析全部播放记录，按时间倒序返回
-    static std::vector<PlayRecord> LoadRecords();
+    // 保留的报告份数（带时间戳命名，超出后清理最旧的）。设置页接入前先用常量。
+    static const int kKeepReportCount = 10;
 };

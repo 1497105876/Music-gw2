@@ -271,6 +271,8 @@
     <ClInclude Include="CPlayStatisticsDlg.h" />
     <ClInclude Include="StatAnalysis.h" />
     <ClInclude Include="StatCommon.h" />
+    <ClInclude Include="PlayLogStatTabDlg.h" />
+    <ClInclude Include="PlayLogStatisticsDlg.h" />
 <ClInclude Include="StatHtmlReport.h" />
     <ClInclude Include="StatMeta.h" />
     <ClInclude Include="ClosseMainWindowInqueryDlg.h" />
@@ -523,6 +525,8 @@
     <ClCompile Include="PlayStatistics.cpp" />
     <ClCompile Include="CPlayStatisticsDlg.cpp" />
     <ClCompile Include="StatAnalysis.cpp" />
+    <ClCompile Include="PlayLogStatTabDlg.cpp" />
+    <ClCompile Include="PlayLogStatisticsDlg.cpp" />
 <ClCompile Include="StatHtmlReport.cpp" />
     <ClCompile Include="StatMeta.cpp" />
     <ClCompile Include="ClosseMainWindowInqueryDlg.cpp" />

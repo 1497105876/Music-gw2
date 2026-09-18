@@ -10,7 +10,10 @@ struct PeriodBucket;
 struct HeatCell;
 struct SkipBucket;
 struct PeriodComparison;
+struct FinishBreakdown;
 struct AlbumRankItem;
+struct ArtistRankItem;
+struct SongRankItem;
 struct RetiredGem;
 struct PlaylistContribution;
 struct RadarScore;
@@ -103,6 +106,13 @@ public:
     static std::vector<SkipBucket>    ComputeSkipDistribution(const std::vector<PlayRecord>& records);
     static PeriodComparison           ComputePeriodComparison(const std::vector<PlayRecord>& records, const StatFilter& filter);
     static std::vector<AlbumRankItem> ComputeAlbumRank(const std::vector<PlayRecord>& records, int top_n = 20);
+    // 结束状态分解与平均完成度（概览页用）
+    static FinishBreakdown ComputeFinishBreakdown(const std::vector<PlayRecord>& records);
+
+    // 歌手排行：按累计时长降序
+    static std::vector<ArtistRankItem> ComputeArtistRank(const std::vector<PlayRecord>& records, int top_n = 200);
+    // 曲目排行：按播放次数降序
+    static std::vector<SongRankItem> ComputeSongRank(const std::vector<PlayRecord>& records, int top_n = 200);
     static std::vector<PeriodBucket>  ComputeNewSongTrend(const std::vector<PlayRecord>& records);
     static std::vector<RetiredGem>    ComputeRetiredGems(const std::vector<PlayRecord>& records, int min_count = 3);
     static std::vector<PlaylistContribution> ComputePlaylistContribution(const std::vector<PlayRecord>& records);

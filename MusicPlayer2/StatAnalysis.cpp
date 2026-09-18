@@ -738,6 +738,114 @@ std::vector<AlbumRankItem> CStatAnalysis::ComputeAlbumRank(const std::vector<Pla
     return v;
 }
 
+// 结束状态分解：四态计数 + 平均完成度（曲目总长 <= 0 的记录排除）
+FinishBreakdown CStatAnalysis::ComputeFinishBreakdown(const std::vector<PlayRecord>& records)
+{
+    FinishBreakdown b;
+    double sum_completion = 0.0;
+    int completion_cnt = 0;
+    double sum_skip = 0.0;
+    int skip_cnt = 0;
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        b.total++;
+        switch (r.finish_reason)
+        {
+        case PlayRecord::FinishReason::COMPLETED: b.completed++; break;
+        case PlayRecord::FinishReason::SKIPPED:   b.skipped++;   break;
+        case PlayRecord::FinishReason::STOPPED:   b.stopped++;   break;
+        default:                                  b.errored++;   break;
+        }
+        double length_sec = static_cast<double>(r.song_length_sec) / 1000.0;
+        if (length_sec > 0.5)
+        {
+            double c = static_cast<double>(r.play_duration_sec) / length_sec;
+            if (c > 1.0) c = 1.0;
+            sum_completion += c;
+            completion_cnt++;
+            if (r.finish_reason == PlayRecord::FinishReason::SKIPPED)
+            {
+                sum_skip += c;
+                skip_cnt++;
+            }
+        }
+    }
+    if (completion_cnt > 0) b.avg_completion = sum_completion / completion_cnt * 100.0;
+    b.avg_skip_completion = (skip_cnt > 0) ? (sum_skip / skip_cnt * 100.0) : -1.0;
+    return b;
+}
+
+// 歌手排行：按累计播放时长降序（同值按名称字典序，保证顺序稳定）
+std::vector<ArtistRankItem> CStatAnalysis::ComputeArtistRank(const std::vector<PlayRecord>& records, int top_n)
+{
+    std::map<std::wstring, ArtistRankItem> agg;
+    std::map<std::wstring, std::set<std::wstring>> songs;
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        std::wstring artist = r.artist.empty() ? std::wstring(L"未知歌手") : r.artist;
+        ArtistRankItem& it = agg[artist];
+        it.artist = artist;
+        it.count++;
+        it.duration_sec += r.play_duration_sec;
+        songs[artist].insert(r.file_path);
+    }
+
+    std::vector<ArtistRankItem> v;
+    v.reserve(agg.size());
+    for (auto& [k, it] : agg)
+    {
+        it.song_count = static_cast<int>(songs[k].size());
+        v.push_back(it);
+    }
+    std::sort(v.begin(), v.end(), [](const ArtistRankItem& a, const ArtistRankItem& b)
+        {
+            if (a.duration_sec != b.duration_sec) return a.duration_sec > b.duration_sec;
+            return a.artist < b.artist;
+        });
+
+    if (top_n > 0 && (int)v.size() > top_n)
+        v.resize(top_n);
+    return v;
+}
+
+// 曲目排行：按播放次数降序（同次数按累计时长降序，再按路径保证稳定）
+std::vector<SongRankItem> CStatAnalysis::ComputeSongRank(const std::vector<PlayRecord>& records, int top_n)
+{
+    std::map<std::wstring, SongRankItem> agg;
+    for (const auto& r : records)
+    {
+        if (!IsCounted(r)) continue;
+        SongRankItem& it = agg[r.file_path];
+        if (it.file_path.empty())
+        {
+            it.file_path = r.file_path;
+            it.title = r.title;
+            it.artist = r.artist;
+        }
+        it.count++;
+        it.duration_sec += r.play_duration_sec;
+        int ymd = YmdOf(r.played_at);
+        if (ymd > it.last_ymd) it.last_ymd = ymd;
+    }
+
+    std::vector<SongRankItem> v;
+    v.reserve(agg.size());
+    for (auto& [k, it] : agg)
+        v.push_back(it);
+    std::sort(v.begin(), v.end(), [](const SongRankItem& a, const SongRankItem& b)
+        {
+            if (a.count != b.count) return a.count > b.count;
+            if (a.duration_sec != b.duration_sec) return a.duration_sec > b.duration_sec;
+            return a.file_path < b.file_path;
+        });
+
+    if (top_n > 0 && (int)v.size() > top_n)
+        v.resize(top_n);
+    return v;
+}
+
 // 新发现趋势：每月“第一次听”的歌曲数（按月份升序）
 std::vector<PeriodBucket> CStatAnalysis::ComputeNewSongTrend(const std::vector<PlayRecord>& records)
 {

@@ -9,7 +9,7 @@
 #include "AboutDlg.h"
 #include "CTest.h"
 #include "CPlayStatisticsDlg.h"
-#include "StatHtmlReport.h"
+#include "PlayLogStatisticsDlg.h"
 #include "CFloatPlaylistDlg.h"
 #include "Playlist.h"
 #include "InputDlg.h"
@@ -262,7 +262,7 @@ BEGIN_MESSAGE_MAP(CMusicPlayerDlg, CMainDialogBase)
     ON_COMMAND(ID_FULL_SCREEN, &CMusicPlayerDlg::OnFullScreen)
     ON_COMMAND(ID_CREATE_PLAY_SHORTCUT, &CMusicPlayerDlg::OnCreatePlayShortcut)
     ON_COMMAND(ID_PLAY_STATISTICS, &CMusicPlayerDlg::OnPlayStatistics)
-    ON_COMMAND(ID_STATISTICS_WEB_REPORT, &CMusicPlayerDlg::OnStatisticsWebReport)
+    ON_COMMAND(ID_PLAY_LOG_STATISTICS, &CMusicPlayerDlg::OnPlayLogStatistics)
     ON_COMMAND(ID_DARK_MODE, &CMusicPlayerDlg::OnDarkMode)
     ON_MESSAGE(WM_MAIN_MENU_POPEDUP, &CMusicPlayerDlg::OnMainMenuPopup)
     ON_COMMAND(ID_ALWAYS_ON_TOP, &CMusicPlayerDlg::OnAlwaysOnTop)
@@ -5299,10 +5299,11 @@ void CMusicPlayerDlg::OnPlayStatistics()
 }
 
 
-void CMusicPlayerDlg::OnStatisticsWebReport()
+void CMusicPlayerDlg::OnPlayLogStatistics()
 {
-    // 生成并打开网页统计报告（独立入口，加载全部播放记录）
-    CStatHtmlReport::GenerateAndOpenWebReport();
+    // 歌曲详细记录（基于 playlog 明细日志的统计页面）
+    CPlayLogStatDlg dlg;
+    dlg.DoModal();
 }
 
 

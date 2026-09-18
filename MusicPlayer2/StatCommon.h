@@ -80,6 +80,38 @@ struct AlbumRankItem
     int          count{ 0 };        // 播放次数
 };
 
+// 结束状态分解（概览页“播放行为”组用）
+struct FinishBreakdown
+{
+    int    total{ 0 };          // 有效记录总数
+    int    completed{ 0 };
+    int    skipped{ 0 };
+    int    stopped{ 0 };
+    int    errored{ 0 };
+    double avg_completion{ 0.0 };       // 平均完成度（0~100），曲目总长无效的记录排除
+    double avg_skip_completion{ 0.0 };  // 仅“跳过”记录的平均完成度；无跳过记录时为 -1 表示“—”
+};
+
+// 歌手排行项
+struct ArtistRankItem
+{
+    std::wstring artist;            // 歌手名（空归入“未知歌手”）
+    int          duration_sec{ 0 }; // 累计时长（秒）
+    int          count{ 0 };        // 播放次数
+    int          song_count{ 0 };   // 涉及曲目数
+};
+
+// 曲目排行项
+struct SongRankItem
+{
+    std::wstring file_path;
+    std::wstring title;             // 标题（空时由界面回退为文件名）
+    std::wstring artist;
+    int          count{ 0 };        // 播放次数
+    int          duration_sec{ 0 }; // 累计时长（秒）
+    int          last_ymd{ 0 };     // 最后播放日期 YYYYMMDD
+};
+
 // 遗珠（反复听却从未完播）
 struct RetiredGem
 {

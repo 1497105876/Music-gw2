@@ -255,6 +255,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15p
 
 /* Heatmap */
 .heat-scroll{overflow-x:auto;padding-bottom:6px}
+/* 趋势图：天数多时可左右滑动 */
+.trend-scroll{overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
+.card .trend-scroll svg{width:auto;height:auto;overflow:visible}
 .heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);grid-auto-columns:12px;gap:3px;width:max-content}
 .heat i{width:12px;height:12px;border-radius:3px;background:var(--hair-soft);cursor:pointer;transition:transform .1s,outline-color .1s;outline:1px solid transparent}
 .heat i:hover{transform:scale(1.28);outline:1px solid var(--ink)}
@@ -390,8 +393,8 @@ static const wchar_t* HTML_HEAD_2 = LR"html(</head>
     <p class="sec-desc" id="trend-desc"></p>
   </div>
   <div class="card">
-    <div class="card-title">播放次数 · 按聚合区间</div>
-    <svg id="svg-trend" role="img" aria-label="播放趋势"></svg>
+    <div class="card-title">播放次数 · 按聚合区间（左新 → 右旧）</div>
+    <div class="trend-scroll" id="trend-scroll"><svg id="svg-trend" role="img" aria-label="播放趋势"></svg></div>
   </div>
   <div class="grid-2">
     <div class="card" id="comparison-box"></div>
@@ -582,7 +585,8 @@ static const wchar_t* HTML_TAIL_2 = LR"html(
 // ── 02 播放趋势（圆角柱 + 渐变面积折线）──
 function renderTrend(){
   var el = $("#svg-trend"); if (!el) return;
-  var B = isArr(D.buckets) ? D.buckets : [];
+  // 从左到右由新到旧：桶本身是按时间升序的，这里整体反过来
+  var B = isArr(D.buckets) ? D.buckets.slice().reverse() : [];
   var cap = $("#trend-desc");
   if (!B.length){
     el.setAttribute("viewBox", "0 0 720 70");
@@ -590,9 +594,14 @@ function renderTrend(){
     if (cap) cap.textContent = "所选时间范围内没有播放记录。";
     return;
   }
-  var W = svgW(el), H = 250, ml = 46, mr = 18, mt = 22, mb = 42;
+  var H = 250, ml = 46, mr = 18, mt = 22, mb = 42;
+  // 桶多时给每个桶留出最小宽度，整张图横向撑开，由外层容器左右滑动
+  var avail = svgW(el);
+  var minSlot = 44;
+  var W = Math.max(avail, Math.round(ml + mr + B.length * minSlot));
   var cw = W - ml - mr, ch = H - mt - mb;
   el.setAttribute("width", W); el.setAttribute("height", H); el.setAttribute("viewBox", "0 0 " + W + " " + H);
+  el.style.width = W + "px"; el.style.height = H + "px";
   var vals = B.map(function(b){ return num(b.c); });
   var maxV = Math.max.apply(null, vals) || 1;
   var maxIdx = 0; vals.forEach(function(v, i){ if (v > vals[maxIdx]) maxIdx = i; });
@@ -626,8 +635,12 @@ function renderTrend(){
     hit += '<rect x="' + (ml + slot * i).toFixed(1) + '" y="' + mt + '" width="' + slot.toFixed(1) + '" height="' + ch + '" fill="transparent" data-tip="' + esc(b.l) + " · " + num(b.c) + " 次 · " + fmt(b.d) + '"/>';
   });
   el.innerHTML = g + line + bars + dots + xl + hit;
+  // 默认停在最左侧（最新的那一段）
+  var wrap = $("#trend-scroll");
+  if (wrap){ wrap.scrollLeft = 0; }
   var totalDur = B.reduce(function(a, b){ return a + num(b.d); }, 0);
-  if (cap) cap.textContent = "峰值出现在 " + nz(B[maxIdx].l, "") + "（" + num(B[maxIdx].c) + " 次）；区间累计时长约 " + fmt(totalDur) + "。";
+  if (cap) cap.textContent = "峰值出现在 " + nz(B[maxIdx].l, "") + "（" + num(B[maxIdx].c) + " 次）；区间累计时长约 " + fmt(totalDur) + "。"
+    + (W > avail ? "　图表可左右滑动，最左为最新。" : "");
 }
 
 // ── 02b 新发现趋势（折线 + 渐变面积 + 数据点）──
@@ -972,11 +985,18 @@ void CStatHtmlReport::GenerateAndOpen(const std::vector<PlayRecord>& records,
     std::wstring html{ head };
     html += tail;
 
-    // 写文件到 %TEMP%
-    wchar_t temp_dir[MAX_PATH];
-    GetTempPathW(MAX_PATH, temp_dir);
-    std::wstring path{ temp_dir };
-    path += L"MusicPlayer2-统计报告.html";
+    // 报告落在配置目录 statistics\reports 下，文件名带时间戳，只保留最近 kKeepReportCount 份
+    std::wstring report_dir = theApp.m_config_dir + L"statistics\\reports\\";
+    CCommon::CreateDir(theApp.m_config_dir + L"statistics\\");
+    CCommon::CreateDir(report_dir);
+
+    CTime now = CTime::GetCurrentTime();
+    wchar_t stamp[64];
+    swprintf_s(stamp, L"%04d%02d%02d_%02d%02d%02d",
+        now.GetYear(), now.GetMonth(), now.GetDay(),
+        now.GetHour(), now.GetMinute(), now.GetSecond());
+
+    std::wstring path = report_dir + L"播放统计报告_" + stamp + L".html";
 
     // UTF-8 BOM
     std::ofstream ofs(path.c_str(), std::ios::binary);
@@ -986,13 +1006,36 @@ void CStatHtmlReport::GenerateAndOpen(const std::vector<PlayRecord>& records,
     ofs << utf8.GetString();
     ofs.close();
 
+    // 清理旧报告：按文件名排序（时间戳天然字典序），超出份数的删掉
+    {
+        std::vector<std::wstring> files;
+        WIN32_FIND_DATA find_data{};
+        HANDLE hFind = FindFirstFile((report_dir + L"播放统计报告_*.html").c_str(), &find_data);
+        if (hFind != INVALID_HANDLE_VALUE)
+        {
+            do
+            {
+                if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+                files.push_back(find_data.cFileName);
+            } while (FindNextFile(hFind, &find_data));
+            FindClose(hFind);
+        }
+        if (static_cast<int>(files.size()) > kKeepReportCount)
+        {
+            std::sort(files.begin(), files.end());
+            int to_delete = static_cast<int>(files.size()) - kKeepReportCount;
+            for (int i = 0; i < to_delete; i++)
+                DeleteFileW((report_dir + files[i]).c_str());
+        }
+    }
+
     ShellExecuteW(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOW);
 }
 
 // ── 独立入口 ──
 
 // 从 statistics 目录加载全部播放记录（与播放记录写入端 PlayRecord::ToJson 的字段一一对应）
-std::vector<PlayRecord> CStatHtmlReport::LoadRecords()
+std::vector<PlayRecord> CStatHtmlReport::LoadRecords(int* broken_lines, int* failed_files)
 {
     std::vector<PlayRecord> records;
 
@@ -1009,7 +1052,11 @@ std::vector<PlayRecord> CStatHtmlReport::LoadRecords()
 
         std::wstring file_path = stats_dir + find_data.cFileName;
         std::ifstream ifs(file_path, std::ios::binary);
-        if (!ifs.is_open()) continue;
+        if (!ifs.is_open())
+        {
+            if (failed_files) (*failed_files)++;
+            continue;
+        }
 
         std::string line;
         while (std::getline(ifs, line))
@@ -1093,6 +1140,22 @@ std::vector<PlayRecord> CStatHtmlReport::LoadRecords()
             extract_int("sample_rate", record.sample_rate);
             extract_int("channels", record.channels);
 
+            // 完整性校验：时间字段缺失或明显越界、时长为负或超过 48 小时的行一律跳过并计数。
+            // 单条脏数据不得中断整个加载流程。
+            // 另外要求 played_at / play_duration_sec 两个关键字段确实出现过（extract_* 找不到会保持默认值 0，
+            // 光看值会把「字段缺失」误判成「时长为 0 的合法记录」）。
+            bool ok = (line.find("\"played_at\":\"") != std::string::npos)
+                && (line.find("\"play_duration_sec\":") != std::string::npos)
+                && (record.played_at.size() >= 19)
+                && (record.play_duration_sec >= 0)
+                && (record.play_duration_sec <= 48 * 3600)
+                && (record.song_length_sec >= 0);
+            if (!ok)
+            {
+                if (broken_lines) (*broken_lines)++;
+                continue;
+            }
+
             records.push_back(std::move(record));
         }
         ifs.close();
@@ -1108,18 +1171,3 @@ std::vector<PlayRecord> CStatHtmlReport::LoadRecords()
     return records;
 }
 
-void CStatHtmlReport::GenerateAndOpenWebReport()
-{
-    std::vector<PlayRecord> records = LoadRecords();
-    if (records.empty())
-    {
-        AfxMessageBox(L"没有播放记录，无法生成报告。", MB_ICONINFORMATION);
-        return;
-    }
-
-    // 独立入口使用全量记录 + 默认过滤器（全部时间）
-    StatFilter filter{};
-    filter.preset = RangePreset::All;
-    StatSummary summary = CStatAnalysis::ComputeSummary(records);
-    GenerateAndOpen(records, summary, filter);
-}

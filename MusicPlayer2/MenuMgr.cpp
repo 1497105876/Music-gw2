@@ -535,7 +535,7 @@ void MenuMgr::CreateMenu(MenuBase& menu)
         menu.AppendSubMenu(MainToolDelCurPlayingMenu, IconMgr::IconType::IT_Cancel);
         menu.AppendSeparator();
         menu.AppendItem(EX_ID(ID_PLAY_STATISTICS), IconMgr::IconType::IT_Statistics);
-        menu.AppendItem(EX_ID(ID_STATISTICS_WEB_REPORT), IconMgr::IconType::IT_Statistics);
+        menu.AppendItem(EX_ID(ID_PLAY_LOG_STATISTICS), IconMgr::IconType::IT_Statistics);
         menu.AppendItem(EX_ID(ID_TOOL_FILE_RELATE), IconMgr::IconType::IT_File_Relate);
         menu.AppendItem(EX_ID(ID_OPTION_SETTINGS), IconMgr::IconType::IT_Setting);
         break;

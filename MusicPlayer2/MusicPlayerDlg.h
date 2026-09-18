@@ -444,7 +444,7 @@ public:
     afx_msg void OnFullScreen();
     afx_msg void OnCreatePlayShortcut();
     afx_msg void OnPlayStatistics();
-    afx_msg void OnStatisticsWebReport();
+    afx_msg void OnPlayLogStatistics();
     afx_msg void OnDarkMode();
 protected:
     afx_msg LRESULT OnMainMenuPopup(WPARAM wParam, LPARAM lParam);
