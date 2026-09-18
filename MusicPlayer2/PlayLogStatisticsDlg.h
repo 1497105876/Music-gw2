@@ -6,12 +6,24 @@
 #include "StatAnalysis.h"
 #include "StatHtmlReport.h"
 
-// 「歌曲详细记录」页面：一个窗口、一个列表，顶部 5 个按钮切换视图。
+// 「歌曲详细记录」页面：一个窗口、一个列表，顶部用原生页签条切换视图。
 // 职责：加载 playlog 原始日志 → 按时间范围过滤（唯一过滤点）→ 调聚合层算好快照 → 填进主列表。
+//
+// 页签条是原生 SysTabControl32，只用来切换，不往里塞子窗口；
+// 主列表是对话框自己的直接子控件，所以不存在「窗口里套窗口」。
 
-// 视图索引，与 IDC_PLAYLOG_VIEW_OVERVIEW..IDC_PLAYLOG_VIEW_DETAIL 一一对应（ID 连续，ON_CONTROL_RANGE 用）
-enum class PlayLogStatView { Overview = 0, Artist, Album, Song, Detail };
-static constexpr int kViewCount = 5;
+// 视图索引，与页签插入顺序一一对应
+enum class PlayLogStatView { Overview = 0, Artist, Album, Song, Detail, Insight, AiChat };
+static constexpr int kViewCount = 7;
+
+// 页签文字（顺序与上面枚举一致）
+const wchar_t* const kViewTabText[kViewCount] = {
+    L"概览", L"歌手", L"专辑", L"曲目", L"明细", L"洞察", L"AI 对话"
+};
+
+// 明细视图：数据量可能很大，分批次插进去，避免一次性刷几万行把界面卡住
+static constexpr int kDetailMaxRows = 2000;      // 明细最多展示多少条
+static constexpr int kDetailBatchSize = 200;     // 每批插多少条
 
 // 数据快照：过滤后的记录 + 聚合结果，只在本对话框内部流转
 struct PlayLogStatData
@@ -62,6 +74,7 @@ private:
     {
         TIMER_PERIODIC = 1,     // 定时重读日志
         TIMER_DEBOUNCE = 2,     // 收到「写入新记录」通知后的防抖刷新
+        TIMER_DETAIL_BATCH = 3, // 明细视图分批次插入
     };
 
 protected:
@@ -69,9 +82,9 @@ protected:
     CStatRangeComboBox m_range_combo;
     CDateTimeCtrl  m_date_from;
     CDateTimeCtrl  m_date_to;
-    CListCtrlEx    m_list;                          // 唯一的主列表，5 个视图共用
-    CButton        m_view_btn[kViewCount];          // 顶部的 5 个视图切换按钮
-    CFont          m_view_bold_font;                // 当前选中按钮的加粗字体
+    CListCtrlEx    m_list;                          // 唯一的主列表，各视图共用
+    CTabCtrl       m_view_tab;                      // 顶部原生页签条（只作切换器）
+    CImageList     m_tab_img_list;                  // 页签图标，必须活到窗口销毁
     CBrush         m_ctl_bk_brush;                  // 下拉/日期控件的背景刷
 
     // ── 数据 ──
@@ -80,6 +93,12 @@ protected:
     PlayLogStatData m_data;                     // 聚合结果快照
 
     PlayLogStatView m_cur_view{ PlayLogStatView::Overview };
+
+    // 明细分批次加载：m_detail_rows 里的指针指向 m_filtered 的元素，
+    // 所以 m_filtered 一动就必须先 StopDetailBatch()，否则指针全废。
+    std::vector<const PlayRecord*> m_detail_rows;
+    int  m_detail_next{ 0 };                    // 下一批从哪条开始
+    bool m_detail_truncated{ false };           // 是否因为超过 kDetailMaxRows 被截断
 
     int  m_broken_lines{ 0 };
     int  m_failed_files{ 0 };
@@ -105,7 +124,8 @@ protected:
     int  YmdFromCtrl(CDateTimeCtrl& ctrl) const;
 
     // ── 视图切换 ──
-    void SwitchView(PlayLogStatView view);      // 设按钮态 + 重建列 + 重填
+    void InitTabCtrl();                         // 给页签条插入 7 个页签并挂图标
+    void SwitchView(PlayLogStatView view);      // 重建列 + 重填
     void InitListColumns();                     // 只在切换视图和初始化时调用：删列重建
     void FillCurrentView();                     // 只重填当前视图的行，不动列
     void FillOverviewView();
@@ -113,8 +133,15 @@ protected:
     void FillAlbumView();
     void FillSongView();
     void FillDetailView();
+    void FillPlaceholderView(const wchar_t* text);  // 洞察 / AI 对话的占位
     void AddOverviewRow(int group, const wchar_t* item, const std::wstring& value);
     void ShowEmptyRow(const wchar_t* text);
+
+    // ── 明细分批次加载 ──
+    void StartDetailBatch();                    // 算好待展示的行，插第一批，剩下的交给定时器
+    bool AppendDetailBatch();                   // 插一批，返回是否还没插完
+    void StopDetailBatch();                     // 停定时器并清空（m_filtered 变动前必须调）
+    void InsertDetailRow(const PlayRecord& r, int index);   // 插单条明细行
 
     DECLARE_MESSAGE_MAP()
 
@@ -126,7 +153,7 @@ public:
     afx_msg void OnBnClickedReport();
     afx_msg void OnCbnSelchangeRangePreset();
     afx_msg void OnDatetimeChange(NMHDR* pNMHDR, LRESULT* pResult);
-    afx_msg void OnViewSwitch(UINT nID);                                // 5 个视图按钮共用
+    afx_msg void OnTabSelChange(NMHDR* pNMHDR, LRESULT* pResult);   // 页签切换
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);    // 下拉/日期控件配色
     afx_msg LRESULT OnRecordAppended(WPARAM wParam, LPARAM lParam);
 };

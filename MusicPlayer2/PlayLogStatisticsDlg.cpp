@@ -18,8 +18,7 @@ namespace
         L"近 7 天", L"近 30 天", L"近 90 天", L"今年", L"去年", L"全部", L"自定义"
     };
 
-    // 明细视图最多展示多少条原始记录
-    const int kDetailRowLimit = 20000;
+    // 明细视图的上限和批量大小在头文件里（kDetailMaxRows / kDetailBatchSize）
 
     int TodayYmd()
     {
@@ -145,11 +144,7 @@ void CPlayLogStatDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_PLAYLOG_DATE_FROM, m_date_from);
     DDX_Control(pDX, IDC_PLAYLOG_DATE_TO, m_date_to);
     DDX_Control(pDX, IDC_PLAYLOG_MAIN_LIST, m_list);
-    DDX_Control(pDX, IDC_PLAYLOG_VIEW_OVERVIEW, m_view_btn[0]);
-    DDX_Control(pDX, IDC_PLAYLOG_VIEW_ARTIST, m_view_btn[1]);
-    DDX_Control(pDX, IDC_PLAYLOG_VIEW_ALBUM, m_view_btn[2]);
-    DDX_Control(pDX, IDC_PLAYLOG_VIEW_SONG, m_view_btn[3]);
-    DDX_Control(pDX, IDC_PLAYLOG_VIEW_DETAIL, m_view_btn[4]);
+    DDX_Control(pDX, IDC_PLAYLOG_VIEW_TAB, m_view_tab);
 }
 
 BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
@@ -161,7 +156,7 @@ BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
     ON_CBN_SELCHANGE(IDC_PLAYLOG_RANGE_PRESET, &CPlayLogStatDlg::OnCbnSelchangeRangePreset)
     ON_NOTIFY(DTN_DATETIMECHANGE, IDC_PLAYLOG_DATE_FROM, &CPlayLogStatDlg::OnDatetimeChange)
     ON_NOTIFY(DTN_DATETIMECHANGE, IDC_PLAYLOG_DATE_TO, &CPlayLogStatDlg::OnDatetimeChange)
-    ON_CONTROL_RANGE(BN_CLICKED, IDC_PLAYLOG_VIEW_OVERVIEW, IDC_PLAYLOG_VIEW_DETAIL, &CPlayLogStatDlg::OnViewSwitch)
+    ON_NOTIFY(TCN_SELCHANGE, IDC_PLAYLOG_VIEW_TAB, &CPlayLogStatDlg::OnTabSelChange)
     ON_MESSAGE(WM_STAT_RECORD_APPENDED, &CPlayLogStatDlg::OnRecordAppended)
 END_MESSAGE_MAP()
 
@@ -176,8 +171,9 @@ BOOL CPlayLogStatDlg::OnInitDialog()
         m_range_combo.AddString(text);
     // 鼠标滚轮滑过下拉框时不要把预设滚乱
     m_range_combo.SetMouseWheelEnable(false);
-    m_range_combo.SetCurSel(static_cast<int>(RangePreset::Last30));
-    SetRangePreset(RangePreset::Last30);
+    // 默认看全部，进来不用先猜自己想看哪一段
+    m_range_combo.SetCurSel(static_cast<int>(RangePreset::All));
+    SetRangePreset(RangePreset::All);
 
     m_date_from.SetFormat(L"yyyy-MM-dd");
     m_date_to.SetFormat(L"yyyy-MM-dd");
@@ -185,21 +181,9 @@ BOOL CPlayLogStatDlg::OnInitDialog()
     // ── 主列表：扩展样式只在初始化时设一次 ──
     m_list.SetExtendedStyle(m_list.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_LABELTIP | LVS_EX_DOUBLEBUFFER);
 
-    // ── 视图按钮：默认停在「概览」 ──
-    // CBaseDialog::OnInitDialog 里 CCommon::SetDialogFont 已经给所有子控件统一设过字体，
-    // 所以加粗字体必须在那之后创建并设置，否则会被覆盖。
-    LOGFONT lf{};
-    theApp.m_font_set.dlg.GetFont().GetLogFont(&lf);
-    lf.lfWeight = FW_BOLD;
-    m_view_bold_font.CreateFontIndirect(&lf);
-
-    CheckRadioButton(IDC_PLAYLOG_VIEW_OVERVIEW, IDC_PLAYLOG_VIEW_DETAIL, IDC_PLAYLOG_VIEW_OVERVIEW);
+    // ── 顶部原生页签条 ──
+    InitTabCtrl();
     ShowDlgCtrl(IDC_PLAYLOG_DETAIL_NOTICE, false);
-    for (int i = 0; i < kViewCount; ++i)
-    {
-        m_view_btn[i].SetCheck(i == static_cast<int>(m_cur_view) ? BST_CHECKED : BST_UNCHECKED);
-        m_view_btn[i].SetFont(i == static_cast<int>(m_cur_view) ? &m_view_bold_font : &theApp.m_font_set.dlg.GetFont());
-    }
 
     InitListColumns();
 
@@ -218,6 +202,7 @@ BOOL CPlayLogStatDlg::OnInitDialog()
 
 void CPlayLogStatDlg::OnDestroy()
 {
+    StopDetailBatch();      // 先掐掉批次，再清 NotifyTarget
     CPlayStatistics::GetInstance().SetNotifyTarget(nullptr);
     KillTimer(TIMER_PERIODIC);
     KillTimer(TIMER_DEBOUNCE);
@@ -235,6 +220,13 @@ void CPlayLogStatDlg::OnTimer(UINT_PTR nIDEvent)
     {
         RefreshAll();
     }
+    else if (nIDEvent == TIMER_DETAIL_BATCH)
+    {
+        // 明细一批一批插，插完自己停
+        if (!AppendDetailBatch())
+            KillTimer(TIMER_DETAIL_BATCH);
+        return;
+    }
     CBaseDialog::OnTimer(nIDEvent);
 }
 
@@ -250,6 +242,9 @@ LRESULT CPlayLogStatDlg::OnRecordAppended(WPARAM, LPARAM)
 
 void CPlayLogStatDlg::LoadRecords()
 {
+    // m_filtered 马上要被重新填充，明细批次里存的指针会全部失效，先停掉
+    StopDetailBatch();
+
     m_broken_lines = 0;
     m_failed_files = 0;
     m_all_records = CStatHtmlReport::LoadRecords(&m_broken_lines, &m_failed_files);
@@ -384,19 +379,44 @@ int CPlayLogStatDlg::YmdFromCtrl(CDateTimeCtrl& ctrl) const
 
 // ───────────────────────── 视图切换 ─────────────────────────
 
-void CPlayLogStatDlg::SwitchView(PlayLogStatView view)
+void CPlayLogStatDlg::InitTabCtrl()
 {
-    if (view == m_cur_view) return;     // 重复点同一个按钮：直接忽略
-    m_cur_view = view;
+    // 页签图标，顺序跟 PlayLogStatView 枚举一致
+    const IconMgr::IconType icons[kViewCount] = {
+        IconMgr::IconType::IT_Statistics,   // 概览
+        IconMgr::IconType::IT_Artist,       // 歌手
+        IconMgr::IconType::IT_Album,        // 专辑
+        IconMgr::IconType::IT_Music,        // 曲目
+        IconMgr::IconType::IT_History,      // 明细
+        IconMgr::IconType::IT_Info,         // 洞察
+        IconMgr::IconType::IT_Online,       // AI 对话
+    };
 
-    const int idx = static_cast<int>(view);
+    for (int i = 0; i < kViewCount; ++i)
+        m_view_tab.InsertItem(i, kViewTabText[i], i);
+
+    // 做法同 CTabCtrlEx::AdjustTabWindowSize，只是这里我们把 ImageList 放在成员里，
+    // 让它活到窗口销毁，避免局部对象析构后页签图标变空白。
+    CSize icon_size = IconMgr::GetIconSize(IconMgr::IconSize::IS_DPI_16);
+    m_tab_img_list.Create(icon_size.cx, icon_size.cy, ILC_COLOR32 | ILC_MASK, kViewCount, 1);
     for (int i = 0; i < kViewCount; ++i)
     {
-        m_view_btn[i].SetCheck(i == idx ? BST_CHECKED : BST_UNCHECKED);
-        m_view_btn[i].SetFont(i == idx ? &m_view_bold_font : &theApp.m_font_set.dlg.GetFont());
+        HICON hIcon = theApp.m_icon_mgr.GetHICON(icons[i], IconMgr::IconStyle::IS_OutlinedDark, IconMgr::IconSize::IS_DPI_16);
+        m_tab_img_list.Add(hIcon);
     }
+    m_view_tab.SetImageList(&m_tab_img_list);
 
-    // 口径说明只在明细视图出现
+    m_view_tab.SetCurSel(static_cast<int>(m_cur_view));
+}
+
+void CPlayLogStatDlg::SwitchView(PlayLogStatView view)
+{
+    if (view == m_cur_view) return;     // 重复点同一个页签：直接忽略
+    m_cur_view = view;
+
+    // 切走了就别再往旧视图里插行
+    StopDetailBatch();
+
     ShowDlgCtrl(IDC_PLAYLOG_DETAIL_NOTICE, view == PlayLogStatView::Detail);
 
     InitListColumns();      // 删列 + 重建列
@@ -505,6 +525,15 @@ void CPlayLogStatDlg::InitListColumns()
         m_list.InsertColumn(8, L"计入统计", LVCFMT_LEFT, width[8]);
         break;
     }
+    case PlayLogStatView::Insight:
+    case PlayLogStatView::AiChat:
+    {
+        // 占位页：只有一列说明文字，宽度吃满
+        int w = rect.Width() - theApp.DPI(20) - 1;
+        if (w < theApp.DPI(120)) w = theApp.DPI(120);
+        m_list.InsertColumn(0, L"说明", LVCFMT_LEFT, w);
+        break;
+    }
     default:
         break;
     }
@@ -512,7 +541,14 @@ void CPlayLogStatDlg::InitListColumns()
 
 void CPlayLogStatDlg::FillCurrentView()
 {
-    // 明细最多 2 万行，包一层 SetRedraw 免得定时刷新时明显卡一下
+    // 明细是分批插的，它自己管重绘；这里再包一层 SetRedraw 会和批次里的打架
+    if (m_cur_view == PlayLogStatView::Detail)
+    {
+        m_list.DeleteAllItems();
+        FillDetailView();
+        return;
+    }
+
     m_list.SetRedraw(FALSE);
     m_list.DeleteAllItems();
     switch (m_cur_view)
@@ -521,7 +557,8 @@ void CPlayLogStatDlg::FillCurrentView()
     case PlayLogStatView::Artist:   FillArtistView();   break;
     case PlayLogStatView::Album:    FillAlbumView();    break;
     case PlayLogStatView::Song:     FillSongView();     break;
-    case PlayLogStatView::Detail:   FillDetailView();   break;
+    case PlayLogStatView::Insight:  FillPlaceholderView(L"「洞察」还在做，先留个位置"); break;
+    case PlayLogStatView::AiChat:   FillPlaceholderView(L"「AI 对话」还在做，先留个位置"); break;
     default: break;
     }
     m_list.SetRedraw(TRUE);
@@ -705,54 +742,123 @@ void CPlayLogStatDlg::FillSongView()
 
 // ───────────────────────── 播 放 明 细 ─────────────────────────
 
+// 明细的数据量可能很大，一次全塞进列表会明显卡一下。
+// 这里先挑出要展示的行，再一批一批插：第一批同步插完让用户马上看到东西，
+// 剩下的交给 TIMER_DETAIL_BATCH 慢慢补。
 void CPlayLogStatDlg::FillDetailView()
 {
+    m_detail_rows.clear();
+    m_detail_next = 0;
+    m_detail_truncated = false;
     m_list.DeleteAllItems();
+
     if (!m_data.valid || m_data.records == nullptr || m_data.records->empty())
     {
         ShowEmptyRow(L"所选时间范围内没有记录");
         return;
     }
 
-    const std::vector<PlayRecord>& records = *m_data.records;
-    int i = 0;
-    for (const auto& r : records)
+    // 时长为 0 的不展示：那种基本是刚点开就切走，没有任何可看的信息
+    for (const auto& r : *m_data.records)
     {
-        if (i >= kDetailRowLimit) break;
-        int row = m_list.InsertItem(i, std::to_wstring(i + 1).c_str());
-        if (row < 0) break;
-
-        std::wstring time_text = r.played_at;
-        if (time_text.size() >= 10 && time_text[10] == L'T') time_text[10] = L' ';
-        m_list.SetItemText(row, 1, time_text.c_str());
-        m_list.SetItemText(row, 2, r.title.empty() ? L"未知标题" : r.title.c_str());
-        m_list.SetItemText(row, 3, r.artist.empty() ? L"未知歌手" : r.artist.c_str());
-        m_list.SetItemText(row, 4, r.album.empty() ? L"未知专辑" : r.album.c_str());
-        m_list.SetItemText(row, 5, CStatAnalysis::FormatDuration(r.play_duration_sec).c_str());
-        m_list.SetItemText(row, 6, r.song_length_sec > 0 ? CStatAnalysis::FormatDuration(r.song_length_sec / 1000).c_str() : L"—");
-
-        const wchar_t* reason = L"播完";
-        switch (r.finish_reason)
+        if (r.play_duration_sec <= 0) continue;
+        if (static_cast<int>(m_detail_rows.size()) >= kDetailMaxRows)
         {
-        case PlayRecord::FinishReason::SKIPPED:   reason = L"跳过"; break;
-        case PlayRecord::FinishReason::STOPPED:   reason = L"停止"; break;
-        case PlayRecord::FinishReason::PLAY_ERROR: reason = L"出错"; break;
-        default: break;
+            m_detail_truncated = true;
+            break;
         }
-        m_list.SetItemText(row, 7, reason);
-        m_list.SetItemText(row, 8, CStatAnalysis::IsCounted(r) ? L"是" : L"否");
-        i++;
+        m_detail_rows.push_back(&r);
     }
 
-    if (static_cast<int>(records.size()) > kDetailRowLimit)
+    if (m_detail_rows.empty())
     {
-        int row = m_list.InsertItem(i, L"…");
-        if (row >= 0)
-            m_list.SetItemText(row, 1, L"仅显示最近 20000 条");
+        ShowEmptyRow(L"所选时间范围内没有有效播放记录");
+        return;
     }
+
+    StartDetailBatch();
+}
+
+void CPlayLogStatDlg::StartDetailBatch()
+{
+    // 返回 true 说明还剩下没插完，挂个定时器继续
+    if (AppendDetailBatch())
+        SetTimer(TIMER_DETAIL_BATCH, 30, nullptr);
+}
+
+bool CPlayLogStatDlg::AppendDetailBatch()
+{
+    const int total = static_cast<int>(m_detail_rows.size());
+    const int end = (std::min)(m_detail_next + kDetailBatchSize, total);
+
+    m_list.SetRedraw(FALSE);
+    for (; m_detail_next < end; ++m_detail_next)
+        InsertDetailRow(*m_detail_rows[m_detail_next], m_detail_next);
+    m_list.SetRedraw(TRUE);
+
+    if (m_detail_next < total)
+        return true;        // 还没插完，等下一批
+
+    // 全部插完了：如果是因为撞到上限才停的，末尾补一行说明
+    if (m_detail_truncated)
+    {
+        const std::wstring tip = L"仅显示最近 " + std::to_wstring(kDetailMaxRows) + L" 条";
+        int row = m_list.InsertItem(m_detail_next, L"…");
+        if (row >= 0)
+            m_list.SetItemText(row, 1, tip.c_str());
+    }
+    return false;
+}
+
+void CPlayLogStatDlg::StopDetailBatch()
+{
+    KillTimer(TIMER_DETAIL_BATCH);
+    m_detail_rows.clear();
+    m_detail_next = 0;
+    m_detail_truncated = false;
+}
+
+void CPlayLogStatDlg::InsertDetailRow(const PlayRecord& r, int index)
+{
+    int row = m_list.InsertItem(index, std::to_wstring(index + 1).c_str());
+    if (row < 0) return;
+
+    std::wstring time_text = r.played_at;
+    if (time_text.size() >= 10 && time_text[10] == L'T') time_text[10] = L' ';
+    m_list.SetItemText(row, 1, time_text.c_str());
+    m_list.SetItemText(row, 2, r.title.empty() ? L"未知标题" : r.title.c_str());
+    m_list.SetItemText(row, 3, r.artist.empty() ? L"未知歌手" : r.artist.c_str());
+    m_list.SetItemText(row, 4, r.album.empty() ? L"未知专辑" : r.album.c_str());
+    m_list.SetItemText(row, 5, CStatAnalysis::FormatDuration(r.play_duration_sec).c_str());
+    m_list.SetItemText(row, 6, r.song_length_sec > 0 ? CStatAnalysis::FormatDuration(r.song_length_sec / 1000).c_str() : L"—");
+
+    const wchar_t* reason = L"播完";
+    switch (r.finish_reason)
+    {
+    case PlayRecord::FinishReason::SKIPPED:    reason = L"跳过"; break;
+    case PlayRecord::FinishReason::STOPPED:    reason = L"停止"; break;
+    case PlayRecord::FinishReason::PLAY_ERROR: reason = L"出错"; break;
+    default: break;
+    }
+    m_list.SetItemText(row, 7, reason);
+    m_list.SetItemText(row, 8, CStatAnalysis::IsCounted(r) ? L"是" : L"否");
+}
+
+void CPlayLogStatDlg::FillPlaceholderView(const wchar_t* text)
+{
+    m_list.DeleteAllItems();
+    ShowEmptyRow(text);
 }
 
 // ───────────────────────── 交互 ─────────────────────────
+
+void CPlayLogStatDlg::OnTabSelChange(NMHDR* pNMHDR, LRESULT* pResult)
+{
+    if (pResult != nullptr) *pResult = 0;
+    int sel = m_view_tab.GetCurSel();
+    if (sel < 0 || sel >= kViewCount) return;
+    SwitchView(static_cast<PlayLogStatView>(sel));
+}
 
 void CPlayLogStatDlg::OnBnClickedRefresh()
 {
@@ -790,11 +896,6 @@ void CPlayLogStatDlg::OnDatetimeChange(NMHDR* pNMHDR, LRESULT* pResult)
     m_data.filter.to_ymd = YmdFromCtrl(m_date_to);
     EnableDateControls(true);
     ApplyFilter();
-}
-
-void CPlayLogStatDlg::OnViewSwitch(UINT nID)
-{
-    SwitchView(static_cast<PlayLogStatView>(nID - IDC_PLAYLOG_VIEW_OVERVIEW));
 }
 
 HBRUSH CPlayLogStatDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
