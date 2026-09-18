@@ -161,7 +161,7 @@ void CPlayLogStatDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_PLAYLOG_RANGE_PRESET, m_range_combo);
     DDX_Control(pDX, IDC_PLAYLOG_MAIN_LIST, m_list);
     DDX_Control(pDX, IDC_PLAYLOG_VIEW_TAB, m_view_tab);
-    // 月历是点按钮时动态创建的，不在这里绑
+    DDX_Control(pDX, IDC_PLAYLOG_CALENDAR, m_cal);
 }
 
 BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
@@ -172,7 +172,6 @@ BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
     ON_BN_CLICKED(IDC_PLAYLOG_BTN_REPORT, &CPlayLogStatDlg::OnBnClickedReport)
     ON_BN_CLICKED(IDC_PLAYLOG_BTN_RANGE_PICK, &CPlayLogStatDlg::OnBnClickedRangePick)
     ON_NOTIFY(MCN_SELCHANGE, IDC_PLAYLOG_CALENDAR, &CPlayLogStatDlg::OnCalendarSelChange)
-    ON_NOTIFY(NM_KILLFOCUS, IDC_PLAYLOG_CALENDAR, &CPlayLogStatDlg::OnCalendarKillFocus)
     ON_CBN_SELCHANGE(IDC_PLAYLOG_RANGE_PRESET, &CPlayLogStatDlg::OnCbnSelchangeRangePreset)
     ON_NOTIFY(TCN_SELCHANGE, IDC_PLAYLOG_VIEW_TAB, &CPlayLogStatDlg::OnTabSelChange)
     ON_MESSAGE(WM_STAT_RECORD_APPENDED, &CPlayLogStatDlg::OnRecordAppended)
@@ -199,6 +198,17 @@ BOOL CPlayLogStatDlg::OnInitDialog()
     // ── 顶部原生页签条 ──
     InitTabCtrl();
     ShowDlgCtrl(IDC_PLAYLOG_DETAIL_NOTICE, false);
+
+    // 月历默认收起，并按它自己的最佳尺寸摆一下，免得留一圈空白
+    m_cal.ShowWindow(SW_HIDE);
+    CRect rc_min;
+    if (m_cal.GetMinReqRect(rc_min))
+    {
+        CRect rc_cal;
+        m_cal.GetWindowRect(rc_cal);
+        ScreenToClient(rc_cal);
+        m_cal.MoveWindow(rc_cal.left, rc_cal.top, rc_min.Width(), rc_min.Height());
+    }
 
     InitListColumns();
 
@@ -395,43 +405,27 @@ void CPlayLogStatDlg::OnBnClickedRangePick()
 
 void CPlayLogStatDlg::ShowRangeCalendar(bool show)
 {
+    // 月历是 rc 模板建的，句柄由对话框创建；这里是防御，模板万一没建成就别硬点
+    if (m_cal.GetSafeHwnd() == NULL) return;
+
     if (!show)
     {
-        if (m_cal.GetSafeHwnd() != NULL)
-            m_cal.ShowWindow(SW_HIDE);
+        m_cal.ShowWindow(SW_HIDE);
         m_cal_visible = false;
         return;
     }
 
-    if (m_cal.GetSafeHwnd() == NULL)
-    {
-        // 月历做成弹出窗口（不是嵌在页面里的子对话框），位置贴在按钮下方
-        CRect rc_btn;
-        GetDlgItem(IDC_PLAYLOG_BTN_RANGE_PICK)->GetWindowRect(rc_btn);
-        const int w = theApp.DPI(260);
-        const int h = theApp.DPI(190);
-        CRect rc(rc_btn.left, rc_btn.bottom + theApp.DPI(2), rc_btn.left + w, rc_btn.bottom + theApp.DPI(2) + h);
-
-        // MCS_MULTISELECT：可以在日历里拖出一段；MCS_NOTODAY：底部不显示「今天」
-        if (!m_cal.Create(WS_POPUP | WS_BORDER | WS_TABSTOP | MCS_MULTISELECT | MCS_NOTODAY, rc, this, IDC_PLAYLOG_CALENDAR))
-            return;
-        m_cal.SetColor(MCSC_TITLEBK, ::GetSysColor(COLOR_BTNFACE));
-    }
-
     // 把当前筛选范围选上，打开就能看到自己正在看哪一段
     SYSTEMTIME st_from{}, st_to{};
-    bool has_from = SysTimeFromYmd(m_data.filter.from_ymd, st_from);
-    bool has_to = SysTimeFromYmd(m_data.filter.to_ymd, st_to);
+    const bool has_from = SysTimeFromYmd(m_data.filter.from_ymd, st_from);
+    const bool has_to = SysTimeFromYmd(m_data.filter.to_ymd, st_to);
     if (has_from && has_to)
     {
         m_cal.SetSelRange(&st_from, &st_to);
     }
-    else if (has_from)
-    {
-        m_cal.SetCurSel(&st_from);
-    }
     else
     {
+        // 没有范围时定位到今天（MCS_MULTISELECT 下 SetCurSel 只负责定位，不产生选区）
         SYSTEMTIME st_today{};
         ::GetLocalTime(&st_today);
         m_cal.SetCurSel(&st_today);
@@ -469,10 +463,25 @@ void CPlayLogStatDlg::ApplyCalendarRange(int from_ymd, int to_ymd)
     SetTimer(TIMER_RANGE_DEBOUNCE, 400, nullptr);
 }
 
-void CPlayLogStatDlg::OnCalendarKillFocus(NMHDR* pNMHDR, LRESULT* pResult)
+// 月历开着的时候，点到月历和「选择日期范围」按钮以外的地方就收起。
+// 放在 PreTranslateMessage 里按坐标判断，而不是靠 NM_KILLFOCUS ——
+// 失焦通知跟按钮的 toggle 会打架（点按钮收起的瞬间月历失焦，又被弹回来）。
+BOOL CPlayLogStatDlg::PreTranslateMessage(MSG* pMsg)
 {
-    if (pResult != nullptr) *pResult = 0;
-    ShowRangeCalendar(false);
+    if (m_cal_visible && pMsg->message == WM_LBUTTONDOWN)
+    {
+        CRect rc_cal;
+        m_cal.GetWindowRect(rc_cal);
+        CRect rc_btn;
+        CWnd* p_btn = GetDlgItem(IDC_PLAYLOG_BTN_RANGE_PICK);
+        if (p_btn != nullptr)
+            p_btn->GetWindowRect(rc_btn);
+
+        const CPoint pt(pMsg->pt);
+        if (!rc_cal.PtInRect(pt) && !rc_btn.PtInRect(pt))
+            ShowRangeCalendar(false);
+    }
+    return CBaseDialog::PreTranslateMessage(pMsg);
 }
 
 // ───────────────────────── 视图切换 ─────────────────────────

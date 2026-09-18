@@ -148,6 +148,7 @@ protected:
 
 public:
     virtual BOOL OnInitDialog() override;
+    virtual BOOL PreTranslateMessage(MSG* pMsg) override;   // 月历开着时点到外面就收起
     afx_msg void OnDestroy();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg void OnBnClickedRefresh();
@@ -155,7 +156,6 @@ public:
     afx_msg void OnCbnSelchangeRangePreset();
     afx_msg void OnBnClickedRangePick();                            // 点「选择日期范围」
     afx_msg void OnCalendarSelChange(NMHDR* pNMHDR, LRESULT* pResult);  // 月历里拖选
-    afx_msg void OnCalendarKillFocus(NMHDR* pNMHDR, LRESULT* pResult);  // 月历失焦就收起
     afx_msg void OnTabSelChange(NMHDR* pNMHDR, LRESULT* pResult);   // 页签切换
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);    // 下拉控件配色
     afx_msg LRESULT OnRecordAppended(WPARAM wParam, LPARAM lParam);
