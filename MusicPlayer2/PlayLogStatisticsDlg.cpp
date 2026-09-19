@@ -42,24 +42,6 @@ namespace
         return CTime(ymd / 10000, (ymd / 100) % 100, ymd % 100, 0, 0, 0);
     }
 
-    // YYYYMMDD -> SYSTEMTIME（给月历用）；非法值返回 false
-    bool SysTimeFromYmd(int ymd, SYSTEMTIME& st)
-    {
-        if (ymd <= 0) return false;
-        ::ZeroMemory(&st, sizeof(st));
-        st.wYear = static_cast<WORD>(ymd / 10000);
-        st.wMonth = static_cast<WORD>((ymd / 100) % 100);
-        st.wDay = static_cast<WORD>(ymd % 100);
-        return true;
-    }
-
-    // SYSTEMTIME -> YYYYMMDD（给月历用）
-    int YmdOfSystemTime(const SYSTEMTIME& st)
-    {
-        if (st.wYear == 0) return 0;
-        return st.wYear * 10000 + st.wMonth * 100 + st.wDay;
-    }
-
     // 按预设算出起止日期（YYYYMMDD，含首尾；0 表示无界）
     void RangeOfPreset(RangePreset preset, int& from_ymd, int& to_ymd)
     {
@@ -159,9 +141,10 @@ void CPlayLogStatDlg::DoDataExchange(CDataExchange* pDX)
 {
     CBaseDialog::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_PLAYLOG_RANGE_PRESET, m_range_combo);
+    DDX_Control(pDX, IDC_PLAYLOG_DATE_FROM, m_date_from);
+    DDX_Control(pDX, IDC_PLAYLOG_DATE_TO, m_date_to);
     DDX_Control(pDX, IDC_PLAYLOG_MAIN_LIST, m_list);
     DDX_Control(pDX, IDC_PLAYLOG_VIEW_TAB, m_view_tab);
-    DDX_Control(pDX, IDC_PLAYLOG_CALENDAR, m_cal);
 }
 
 BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
@@ -170,9 +153,9 @@ BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
     ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_PLAYLOG_BTN_REFRESH, &CPlayLogStatDlg::OnBnClickedRefresh)
     ON_BN_CLICKED(IDC_PLAYLOG_BTN_REPORT, &CPlayLogStatDlg::OnBnClickedReport)
-    ON_BN_CLICKED(IDC_PLAYLOG_BTN_RANGE_PICK, &CPlayLogStatDlg::OnBnClickedRangePick)
-    ON_NOTIFY(MCN_SELCHANGE, IDC_PLAYLOG_CALENDAR, &CPlayLogStatDlg::OnCalendarSelChange)
     ON_CBN_SELCHANGE(IDC_PLAYLOG_RANGE_PRESET, &CPlayLogStatDlg::OnCbnSelchangeRangePreset)
+    ON_NOTIFY(DTN_DATETIMECHANGE, IDC_PLAYLOG_DATE_FROM, &CPlayLogStatDlg::OnDatetimeChange)
+    ON_NOTIFY(DTN_DATETIMECHANGE, IDC_PLAYLOG_DATE_TO, &CPlayLogStatDlg::OnDatetimeChange)
     ON_NOTIFY(TCN_SELCHANGE, IDC_PLAYLOG_VIEW_TAB, &CPlayLogStatDlg::OnTabSelChange)
     ON_MESSAGE(WM_STAT_RECORD_APPENDED, &CPlayLogStatDlg::OnRecordAppended)
 END_MESSAGE_MAP()
@@ -192,6 +175,9 @@ BOOL CPlayLogStatDlg::OnInitDialog()
     m_range_combo.SetCurSel(static_cast<int>(RangePreset::All));
     SetRangePreset(RangePreset::All);
 
+    m_date_from.SetFormat(L"yyyy-MM-dd");
+    m_date_to.SetFormat(L"yyyy-MM-dd");
+
     // ── 主列表：扩展样式只在初始化时设一次 ──
     m_list.SetExtendedStyle(m_list.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_LABELTIP | LVS_EX_DOUBLEBUFFER);
 
@@ -199,21 +185,13 @@ BOOL CPlayLogStatDlg::OnInitDialog()
     InitTabCtrl();
     ShowDlgCtrl(IDC_PLAYLOG_DETAIL_NOTICE, false);
 
-    // 月历默认收起，并按它自己的最佳尺寸摆一下，免得留一圈空白
-    m_cal.ShowWindow(SW_HIDE);
-    CRect rc_min;
-    if (m_cal.GetMinReqRect(rc_min))
-    {
-        CRect rc_cal;
-        m_cal.GetWindowRect(rc_cal);
-        ScreenToClient(rc_cal);
-        m_cal.MoveWindow(rc_cal.left, rc_cal.top, rc_min.Width(), rc_min.Height());
-    }
-
     InitListColumns();
 
     // ── 数据 ──
     RefreshAll();
+
+    // 数据读完后才知道日志的真实起止日期，这里再同步一次日期控件
+    SyncDateControls();
 
     // 播放记录写入后通知本窗口刷新；定时兜底 60 秒重读一次
     CPlayStatistics::GetInstance().SetNotifyTarget(GetSafeHwnd());
@@ -228,7 +206,6 @@ void CPlayLogStatDlg::OnDestroy()
     CPlayStatistics::GetInstance().SetNotifyTarget(nullptr);
     KillTimer(TIMER_PERIODIC);
     KillTimer(TIMER_DEBOUNCE);
-    KillTimer(TIMER_RANGE_DEBOUNCE);
     CBaseDialog::OnDestroy();
 }
 
@@ -248,13 +225,6 @@ void CPlayLogStatDlg::OnTimer(UINT_PTR nIDEvent)
         // 明细一批一批插，插完自己停
         if (!AppendDetailBatch())
             KillTimer(TIMER_DETAIL_BATCH);
-        return;
-    }
-    else if (nIDEvent == TIMER_RANGE_DEBOUNCE)
-    {
-        // 月历里拖选会连续触发，等手停下来再真正重算
-        KillTimer(TIMER_RANGE_DEBOUNCE);
-        ApplyFilter();
         return;
     }
     CBaseDialog::OnTimer(nIDEvent);
@@ -362,9 +332,8 @@ void CPlayLogStatDlg::SetRangePreset(RangePreset preset)
     int from_ymd = 0, to_ymd = 0;
     if (preset == RangePreset::Custom)
     {
-        // 「自定义」是月历里选出来的，沿用已经设好的范围，不要清零
-        from_ymd = m_data.filter.from_ymd;
-        to_ymd = m_data.filter.to_ymd;
+        from_ymd = YmdFromCtrl(m_date_from);
+        to_ymd = YmdFromCtrl(m_date_to);
     }
     else
     {
@@ -374,114 +343,35 @@ void CPlayLogStatDlg::SetRangePreset(RangePreset preset)
     m_data.filter.from_ymd = from_ymd;
     m_data.filter.to_ymd = to_ymd;
     m_data.filter.grain = Grain::Day;
-    UpdateRangeButtonText();
+    SyncDateControls();
+    // 日期控件不禁用：改成「自定义」之外的预设时，控件里显示的是这个预设实际覆盖的区间，
+    // 用户看着就知道自己在看哪一段；想改直接改，改完自动落到「自定义」，不需要把控件灰掉。
 }
 
-// 把当前范围写回按钮：有界就显示「起 至 止」，全都不限就显示「不限」
-void CPlayLogStatDlg::UpdateRangeButtonText()
+void CPlayLogStatDlg::SyncDateControls()
 {
-    const int from_ymd = m_data.filter.from_ymd;
-    const int to_ymd = m_data.filter.to_ymd;
+    // 「全部」这种没有明确边界的预设，用数据实际的起止日期填上，
+    // 让用户看到这次统计到底覆盖了哪一段，而不是留个空框。
+    int from_ymd = m_data.filter.from_ymd;
+    int to_ymd = m_data.filter.to_ymd;
+    if (from_ymd <= 0) from_ymd = m_data.first_ymd > 0 ? m_data.first_ymd : TodayYmd();
+    if (to_ymd <= 0) to_ymd = m_data.last_ymd > 0 ? m_data.last_ymd : TodayYmd();
 
-    std::wstring text;
-    if (from_ymd > 0 && to_ymd > 0)
-        text = CStatAnalysis::FormatYmd(from_ymd) + L" 至 " + CStatAnalysis::FormatYmd(to_ymd);
-    else if (from_ymd > 0)
-        text = CStatAnalysis::FormatYmd(from_ymd) + L" 起";
-    else if (to_ymd > 0)
-        text = L"截至 " + CStatAnalysis::FormatYmd(to_ymd);
-    else
-        text = L"不限";
-
-    SetDlgItemTextW(IDC_PLAYLOG_BTN_RANGE_PICK, text.c_str());
+    CTime t_from = TimeFromYmd(from_ymd);
+    CTime t_to = TimeFromYmd(to_ymd);
+    // SetTime 会触发 DTN_DATETIMECHANGE，用守卫避免被误判成用户手动改日期
+    m_syncing_date = true;
+    m_date_from.SetTime(&t_from);
+    m_date_to.SetTime(&t_to);
+    m_syncing_date = false;
 }
 
-// ───────────────────────── 日期范围：弹出月历拖选 ─────────────────────────
-
-void CPlayLogStatDlg::OnBnClickedRangePick()
+int CPlayLogStatDlg::YmdFromCtrl(CDateTimeCtrl& ctrl) const
 {
-    ShowRangeCalendar(!m_cal_visible);      // 再点一次收起
-}
-
-void CPlayLogStatDlg::ShowRangeCalendar(bool show)
-{
-    // 月历是 rc 模板建的，句柄由对话框创建；这里是防御，模板万一没建成就别硬点
-    if (m_cal.GetSafeHwnd() == NULL) return;
-
-    if (!show)
-    {
-        m_cal.ShowWindow(SW_HIDE);
-        m_cal_visible = false;
-        return;
-    }
-
-    // 把当前筛选范围选上，打开就能看到自己正在看哪一段
-    SYSTEMTIME st_from{}, st_to{};
-    const bool has_from = SysTimeFromYmd(m_data.filter.from_ymd, st_from);
-    const bool has_to = SysTimeFromYmd(m_data.filter.to_ymd, st_to);
-    if (has_from && has_to)
-    {
-        m_cal.SetSelRange(&st_from, &st_to);
-    }
-    else
-    {
-        // 没有范围时定位到今天（MCS_MULTISELECT 下 SetCurSel 只负责定位，不产生选区）
-        SYSTEMTIME st_today{};
-        ::GetLocalTime(&st_today);
-        m_cal.SetCurSel(&st_today);
-    }
-
-    m_cal.ShowWindow(SW_SHOW);
-    m_cal.SetFocus();
-    m_cal_visible = true;
-}
-
-void CPlayLogStatDlg::OnCalendarSelChange(NMHDR* pNMHDR, LRESULT* pResult)
-{
-    if (pResult != nullptr) *pResult = 0;
-    LPNMSELCHANGE pSel = reinterpret_cast<LPNMSELCHANGE>(pNMHDR);
-    if (pSel == nullptr) return;
-
-    const int from_ymd = YmdOfSystemTime(pSel->stSelStart);
-    const int to_ymd = YmdOfSystemTime(pSel->stSelEnd);
-    if (from_ymd <= 0 && to_ymd <= 0) return;
-
-    ApplyCalendarRange(from_ymd, to_ymd);
-}
-
-void CPlayLogStatDlg::ApplyCalendarRange(int from_ymd, int to_ymd)
-{
-    // 月历选出来的一律算「自定义」
-    m_range_combo.SetCurSel(static_cast<int>(RangePreset::Custom));
-    m_data.filter.preset = RangePreset::Custom;
-    m_data.filter.from_ymd = from_ymd;
-    m_data.filter.to_ymd = to_ymd;
-    UpdateRangeButtonText();
-
-    // 拖选过程中会连续触发，做个防抖：手停下来 400ms 后才真正重算
-    KillTimer(TIMER_RANGE_DEBOUNCE);
-    SetTimer(TIMER_RANGE_DEBOUNCE, 400, nullptr);
-}
-
-// 月历开着的时候，点到月历和「选择日期范围」按钮以外的地方就收起。
-// 放在 PreTranslateMessage 里按坐标判断，而不是靠 NM_KILLFOCUS ——
-// 失焦通知跟按钮的 toggle 会打架（点按钮收起的瞬间月历失焦，又被弹回来）。
-BOOL CPlayLogStatDlg::PreTranslateMessage(MSG* pMsg)
-{
-    if (m_cal_visible && pMsg->message == WM_LBUTTONDOWN)
-    {
-        CRect rc_cal;
-        m_cal.GetWindowRect(rc_cal);
-        CRect rc_btn;
-        CWnd* p_btn = GetDlgItem(IDC_PLAYLOG_BTN_RANGE_PICK);
-        if (p_btn != nullptr)
-            p_btn->GetWindowRect(rc_btn);
-
-        const CPoint pt(pMsg->pt);
-        if (!rc_cal.PtInRect(pt) && !rc_btn.PtInRect(pt))
-            ShowRangeCalendar(false);
-    }
-    return CBaseDialog::PreTranslateMessage(pMsg);
+    CTime t;
+    // 控件没勾选时 GetTime 返回 GDT_NONE，等于「不限」
+    if (ctrl.GetTime(t) != GDT_VALID) return 0;
+    return YmdOfTime(t);
 }
 
 // ───────────────────────── 视图切换 ─────────────────────────
@@ -990,6 +880,20 @@ void CPlayLogStatDlg::OnCbnSelchangeRangePreset()
     ApplyFilter();
 }
 
+void CPlayLogStatDlg::OnDatetimeChange(NMHDR* pNMHDR, LRESULT* pResult)
+{
+    if (pResult != nullptr) *pResult = 0;
+    // 程序自己同步日期控件时不当作筛选条件变更
+    if (m_syncing_date) return;
+
+    // 手工改日期一律切到「自定义」
+    m_range_combo.SetCurSel(static_cast<int>(RangePreset::Custom));
+    m_data.filter.preset = RangePreset::Custom;
+    m_data.filter.from_ymd = YmdFromCtrl(m_date_from);
+    m_data.filter.to_ymd = YmdFromCtrl(m_date_to);
+    ApplyFilter();
+}
+
 HBRUSH CPlayLogStatDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
     // 先走基类，别抢 Static/Button 的既有主题处理
@@ -998,14 +902,15 @@ HBRUSH CPlayLogStatDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
     if (m_ctl_bk_brush.GetSafeHandle() == NULL)
         m_ctl_bk_brush.CreateSolidBrush(::GetSysColor(COLOR_BTNFACE));
 
-    // CBS_DROPDOWNLIST 的 ComboBox 是复合控件，WM_CTLCOLOR 里的 pWnd
-    // 是它内部的显示子窗口，所以要往上比父窗口。
+    // SysDateTimePick32 和 CBS_DROPDOWNLIST 的 ComboBox 都是复合控件，
+    // WM_CTLCOLOR 里的 pWnd 是它们内部的显示子窗口，所以要往上比父窗口。
     HWND hwnd = (pWnd != nullptr ? pWnd->GetSafeHwnd() : NULL);
     HWND parent = (hwnd != nullptr ? ::GetParent(hwnd) : NULL);
 
+    const bool in_date = (parent == m_date_from.GetSafeHwnd() || parent == m_date_to.GetSafeHwnd());
     const bool in_combo = (parent == m_range_combo.GetSafeHwnd() || hwnd == m_range_combo.GetSafeHwnd());
 
-    if (in_combo)
+    if (in_date || in_combo)
     {
         pDC->SetBkMode(TRANSPARENT);
         pDC->SetTextColor(::GetSysColor(COLOR_BTNTEXT));
