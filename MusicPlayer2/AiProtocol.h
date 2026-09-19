@@ -176,19 +176,18 @@ namespace AiProtocol
 
     // ------------------------------------------------------------------ 响应解析
 
-    // 从一段 message / delta 里取可显示的文字。
-    //
-    // 只认 content 是不够的：ollama 的 gpt-oss、DeepSeek-R1 这类「先思考再回答」的模型
-    // 会把思考过程放在 reasoning_content / reasoning / thinking 里，正文要等思考结束才写。
-    // 「最大输出」偏小时 token 全被思考吃掉，content 会是空串 —— 这时候只认 content，
-    // 一次正常的 HTTP 200 就会被误报成「服务商没返回内容」。
-    //   各家字段名：DeepSeek=reasoning_content，ollama=reasoning，通义=thinking
-    inline std::wstring PickContent(const json& obj)
+    // 取正文。used_reasoning 非空时会告诉调用方「这次拿到的其实是思考过程」——
+    // 流式必须靠它把思考和正文**分开累积**。混在一起的话，用户看到的回答会是
+    // 「一大段模型的英文自言自语 + 最后一句正经回答」（2026-09-19 踩过）。
+    inline std::wstring PickContent(const json& obj, bool* used_reasoning = nullptr)
     {
+        if (used_reasoning) *used_reasoning = false;
         if (!obj.is_object())
             return std::wstring();
-        static const char* kKeys[] = { "content", "reasoning_content", "reasoning", "thinking", "text" };
-        for (const char* key : kKeys)
+
+        // ① 正文：content，以及旧版补全接口的 text
+        static const char* kBody[] = { "content", "text" };
+        for (const char* key : kBody)
         {
             auto it = obj.find(key);
             if (it == obj.end() || !it->is_string())
@@ -196,6 +195,21 @@ namespace AiProtocol
             std::wstring s = Utf8ToWide(it->get<std::string>());
             if (!s.empty())
                 return s;
+        }
+
+        // ② 兜底：思考过程只在正文完全没有时才拿出来顶上，并且打上标记
+        static const char* kThink[] = { "reasoning_content", "reasoning", "thinking" };
+        for (const char* key : kThink)
+        {
+            auto it = obj.find(key);
+            if (it == obj.end() || !it->is_string())
+                continue;
+            std::wstring s = Utf8ToWide(it->get<std::string>());
+            if (!s.empty())
+            {
+                if (used_reasoning) *used_reasoning = true;
+                return s;
+            }
         }
         return std::wstring();
     }
@@ -252,6 +266,7 @@ namespace AiProtocol
     {
         bool ok{ false };            // 拿到了正文
         bool server_error{ false };  // 服务商明说了错误（而不是单纯空正文）
+        bool text_is_reasoning{ false };    // 正文是空的，拿思考过程顶上了
         std::wstring text;
         std::wstring error;
     };
@@ -265,10 +280,12 @@ namespace AiProtocol
         if (j.contains("choices") && j["choices"].is_array() && !j["choices"].empty())
         {
             const json& ch = j["choices"][0];
+            bool is_reason = false;
             if (ch.contains("message"))
-                r.text = PickContent(ch["message"]);
+                r.text = PickContent(ch["message"], &is_reason);
             if (r.text.empty())
-                r.text = PickContent(ch);       // 旧版补全风格：text 直接挂在 choice 上
+                r.text = PickContent(ch, &is_reason);       // 旧版补全风格：text 挂在 choice 上
+            r.text_is_reasoning = (is_reason && !r.text.empty());
         }
 
         if (r.text.empty())
@@ -291,10 +308,12 @@ namespace AiProtocol
     //   · 规范写 "data: xxx"，但确实有服务商不带那个空格 —— 直接 substr(5) 再吃掉可选空格
     //   · 流式里多数给 delta，个别服务商塞的是完整的 message
     //   · 思考型模型头几片 delta 里只有 reasoning，正文还没开始
-    inline bool ParseSseLine(const std::string& line, std::wstring& delta_out, bool& done)
+    inline bool ParseSseLine(const std::string& line, std::wstring& delta_out, bool& done,
+                             bool* from_reasoning = nullptr)
     {
         delta_out.clear();
         done = false;
+        if (from_reasoning) *from_reasoning = false;
 
         if (line.size() < 5 || line.compare(0, 5, "data:") != 0)
             return false;                       // 空行 / event: / id: / :comment
@@ -316,13 +335,15 @@ namespace AiProtocol
                 return false;
             const json& ch = j["choices"][0];
             std::wstring d;
+            bool is_reason = false;
             if (ch.contains("delta"))
-                d = PickContent(ch["delta"]);
+                d = PickContent(ch["delta"], &is_reason);
             else if (ch.contains("message"))
-                d = PickContent(ch["message"]);
+                d = PickContent(ch["message"], &is_reason);
             if (d.empty())
                 return false;
             delta_out = d;
+            if (from_reasoning) *from_reasoning = is_reason;
             return true;
         }
         catch (...)

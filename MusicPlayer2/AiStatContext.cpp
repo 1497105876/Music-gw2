@@ -362,15 +362,22 @@ namespace AiStatContext
             return a;
         }
 
-        // ── 兜底：总览 ──
-        a = L"这段时间的数据我看过了：共 " + Num(fin.total) + L" 次播放、" +
-            Duration(sum.total_duration_sec) + L"，涉及 " + Num(sum.total_songs) + L" 首曲子，活跃 " +
-            Num(sum.active_days) + L" 天。";
+        // ── 兜底：一句话都没对上任何维度 ──
+        // 以前这里直接甩一段总览，用户问的是 A、回答的是 B，观感就是「答非所问」。
+        // 改成先**承认没对上**，再说清能问什么 —— 人和人说话就是这么处理的。
+        a = L"这句话我没找到能对上的数据维度。";
         if (fin.total > 0)
-            a += L"\n\n完播率 " + Pct(sum.completed_rate) + L"，跳过率 " + Pct(sum.skip_rate) + L"。";
-        if (!sum.top_artist.empty() && allow_song_meta)
-            a += L"\n\n听得最多的歌手是 " + sum.top_artist + L"（" + Duration(sum.top_artist_sec) + L"）。";
-        a += L"\n\n你可以问得更具体些，比如「听得最多的歌手是谁」「有没有反复听却没听完的歌」。";
+        {
+            a += L"\n\n顺手报个总量：一共 " + Num(fin.total) + L" 次播放、" +
+                 Duration(sum.total_duration_sec) + L"，涉及 " + Num(sum.total_songs) + L" 首曲子。";
+        }
+        a += L"\n\n我能回答这些方面：\n"
+             L"· 听得最多的歌手 / 专辑 / 曲目\n"
+             L"· 常听的时段，深夜和周末各占多少\n"
+             L"· 完播率、跳过率，有没有反复点开却没听完的歌\n"
+             L"· 连续听了多少天、最长纪录\n"
+             L"· 跟上一个周期比有什么变化、哪个月新歌最多\n"
+             L"\n换个说法再问，或者直接点下面的快捷提问。";
         return a;
     }
 

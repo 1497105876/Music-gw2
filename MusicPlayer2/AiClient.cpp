@@ -371,7 +371,8 @@ namespace
 
         // 流式：边收边把新内容递出去；非流式：一口气读完
         std::string recv;
-        std::wstring full;
+        std::wstring stream_body;      // 流式：正文（给用户看的）
+        std::wstring stream_think;     // 流式：思考过程（单独攒着，不往界面送）
         std::string carry;      // 上一次没凑成一行的零头
         char buf[8192];
         DWORD bytes_read = 0;
@@ -408,13 +409,24 @@ namespace
                     // 那份逻辑能被独立测试程序直接跑，不用靠读代码来相信它。
                     std::wstring delta;
                     bool sse_done = false;
-                    const bool got_delta = AiProtocol::ParseSseLine(line, delta, sse_done);
+                    bool from_reason = false;
+                    const bool got_delta = AiProtocol::ParseSseLine(line, delta, sse_done, &from_reason);
                     (void)sse_done;     // 收到 [DONE] 也只是继续读，不做额外动作
                     if (got_delta)
                     {
-                        full += delta;
-                        if (on_delta)
-                            on_delta(delta);
+                        if (from_reason)
+                        {
+                            // 思考过程**不往界面上送**：一边吐字一边拼进来的话，
+                            // 用户会看到「一大段模型的英文思考 + 最后一句正文」，
+                            // 而且会以为那一整段就是回答（2026-09-19 踩过）。
+                            stream_think += delta;
+                        }
+                        else
+                        {
+                            stream_body += delta;
+                            if (on_delta)
+                                on_delta(delta);
+                        }
                     }
                 }
                 if (pos < carry.size())
@@ -526,7 +538,9 @@ namespace
         out.ok = true;
         out.kind = AiErrorKind::None;
         if (stream)
-            out.body = ToUtf8(full);
+            // 正文一个字都没写出来（token 全被思考吃掉）才拿思考过程顶上，
+            // 否则只给正文 —— 混着给就是「答非所问」的最大来源
+            out.body = ToUtf8(stream_body.empty() ? stream_think : stream_body);
         else
             out.body = recv;
         return out;
@@ -863,6 +877,7 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
 
         std::wstring text;
         bool server_said_error = false;
+        bool text_is_reasoning = false;
         std::wstring server_error;
         try
         {
@@ -871,6 +886,7 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
             AiProtocol::ChatParseResult pr = AiProtocol::ParseChatResponse(raw.body);
             text = pr.text;
             server_said_error = pr.server_error;
+            text_is_reasoning = pr.text_is_reasoning;
             server_error = pr.error;
         }
         catch (...)
@@ -894,7 +910,12 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
         }
 
         result.ok = true;
-        result.text = text;
+        // 只拿到思考过程的话，必须当面说清楚 —— 不然用户会把模型的自言自语当成回答，
+        // 然后觉得「这答的是什么玩意儿」。
+        result.text = text_is_reasoning
+            ? (L"（这次模型只写了「思考过程」、「正文」是空的 —— 多半是「最大输出」给小了，"
+               L"或者它想到一半被截断了。可以把「最大输出」调大，再点「重新回答」）\n\n" + text)
+            : text;
         result.error_kind = AiErrorKind::None;
         return result;
     }

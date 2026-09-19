@@ -974,12 +974,12 @@ void CAiChatView::SetBusy(bool busy)
     m_busy = busy;
     if (busy)
     {
-        SetTimer(kTimerThink, 350, nullptr);
+        if (::IsWindow(m_hWnd)) SetTimer(kTimerThink, 350, nullptr);
         m_think_phase = 0;
     }
     else
     {
-        KillTimer(kTimerThink);
+        if (::IsWindow(m_hWnd)) KillTimer(kTimerThink);
     }
     // 输入框**不**禁用：等回答的这几十秒正好可以先把下一句打好；
     // 而且 EnableWindow(FALSE) 会把焦点抢走 —— 正打着字突然打不了了，最招人烦。
@@ -1006,7 +1006,9 @@ void CAiChatView::UpdateModeCombo()
 // 后者是即时反馈：用户不用按了才发现没反应。
 void CAiChatView::UpdateSendButton()
 {
-    if (!::IsWindow(m_send_btn.m_hWnd)) return;
+    // 用 GetSafeHwnd 挡一道：MFC 这些成员函数自己会 ASSERT，
+    // 控件还没建好或者已经销毁时直接调就会弹断言框。
+    if (m_send_btn.GetSafeHwnd() == nullptr) return;
     if (m_busy)
     {
         m_send_btn.SetWindowText(L"停止");
@@ -1014,6 +1016,11 @@ void CAiChatView::UpdateSendButton()
         return;
     }
     m_send_btn.SetWindowText(L"发送");
+    if (m_input.GetSafeHwnd() == nullptr)
+    {
+        m_send_btn.EnableWindow(FALSE);     // 输入框还没建好，先按「空」处理
+        return;
+    }
     CString s;
     m_input.GetWindowText(s);
     m_send_btn.EnableWindow(Trim(s.GetString()).empty() ? FALSE : TRUE);
@@ -1236,7 +1243,11 @@ void CAiChatView::StopAll()
 {
     m_gen++;
     if (m_cancel_flag) m_cancel_flag->store(true);
-    SetBusy(false);
+    // 注意：这里**不能**调 SetBusy —— 它在析构函数里也会被走到，
+    // 那时 m_hWnd 早就无效了，而 SetBusy 里的 KillTimer 会撞上
+    // ASSERT(::IsWindow(m_hWnd))（afxwin2.inl:155）。定时器会随窗口被系统一起清掉，
+    // 所以这儿只复位标志就够。
+    m_busy = false;
 }
 
 // ───────────────────────── 消息 ─────────────────────────
