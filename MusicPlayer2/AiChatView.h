@@ -89,6 +89,17 @@ private:
         int width{ 0 };
     };
 
+    // 底部选项带里的一个按钮。
+    //   分类      —— 点开看这一类有哪些问题（kind 0，key = "g<索引>"）
+    //   问题      —— 点了直接发出去（kind 1，key = 目录里的 id）
+    //   返回/换话题 —— 回到分类（kind 2）
+    struct ChipItem
+    {
+        std::wstring key;
+        std::wstring text;
+        int          kind{ 1 };
+    };
+
     struct Palette
     {
         COLORREF bg{};          // 顶栏 / 输入区底
@@ -140,7 +151,10 @@ private:
     int  MeasureTextWidth(CDC& dc, const std::wstring& text);
 
     // ── 收发 ──
-    bool DoSend(const std::wstring& question, bool push_user_bubble);   // false = 校验没过、没发出去
+    // qa_id 非空表示「这是从菜单里点的问题」，本地档据此用专用答案生成器；
+    // false = 校验没过、没发出去
+    bool DoSend(const std::wstring& question, bool push_user_bubble,
+        const std::wstring& qa_id = std::wstring());
     void OnSendOrStop();        // 发送键：闲着就发，忙着就停
     void OnEnterPressed();      // 输入框回车：只在闲着时当「发送」
     void OnStop();
@@ -165,7 +179,12 @@ private:
     void SetBusy(bool busy);
     void UpdateModeCombo();
     void UpdateSendButton();        // 「发送 / 停止」文字切换 + 空输入时置灰
-    void ReseedQuickQuestions();
+    int  ChipHeight() const;
+    void LayoutChips();                                 // 把当前选项摆成一行
+    void ShowChipMenu();                                // 一级：分类
+    void ShowChipGroup(int group_index);                // 二级：某一类的问题
+    void ShowChipFollowUp(const std::wstring& qa_id);   // 回答之后：接着能问什么
+    void OnChipClicked(int index);
     void ScrollToBottom();          // 强制滚到底
     void FollowBottomIfNeeded();    // 只在用户本来就贴着底部时才跟随
     bool AtBottom() const;
@@ -191,6 +210,7 @@ private:
     CRect m_banner_rect;
     CRect m_msg_rect;
     CRect m_input_rect;
+    CRect m_chip_rect;                      // 底部选项那条带
     CRect m_scroll_track;
     CRect m_scroll_thumb;
     CRect m_empty_title_rect;               // 空态标题
@@ -199,7 +219,8 @@ private:
 
     // ── 内容 ──
     std::vector<Bubble> m_messages;
-    std::vector<std::wstring> m_chips;      // 当前展示的快捷提问（4 条）
+    std::vector<ChipItem> m_chips;          // 底部选项：分类 / 某类的问题 / 追问
+    std::wstring m_last_qa_id;              // 最后一条回答来自目录里的哪条（取追问用）
     std::vector<AiChatMessage> m_history;   // 多轮对话历史，最多 6 轮 = 12 条
     std::wstring m_last_question;
     BannerKind m_banner_kind{ BannerKind::None };

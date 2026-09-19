@@ -1237,6 +1237,661 @@ namespace AiStatContext
         return a;
     }
 
+    // ═══════ 本地档的「菜单式问答」 ═══════
+    //
+    // 纯代码的规则引擎没法理解自由提问 —— 让用户随便打字，就必然出现
+    // 「问第三名答第一名」这类答非所问。与其装作听得懂，不如**把能答准的问题摆出来**：
+    // 用户从菜单里挑，答案由专用生成器算，准确率 100%，也不用猜。
+    //
+    // 每条 = 一个能问的问题 + 问完之后推荐什么（next 存 id，形成探索路径）。
+    const std::vector<LocalQa>& LocalQaCatalog()
+    {
+        static const std::vector<LocalQa> kQa = {
+            // ── 总览 ──
+            { L"overview",  L"我总共听了多少",           { L"recent7", L"month_now", L"top_artist", L"hour_peak" } },
+            { L"recent7",   L"我最近一周听得怎么样",      { L"top_artist", L"hour_peak", L"finish_rate", L"trend" } },
+            { L"month_now", L"我这个月听了多少",          { L"month_cmp", L"recent7", L"new_song" } },
+            { L"day_avg",   L"我平均每天听多久",          { L"day_best", L"streak", L"overview" } },
+
+            // ── 歌手 / 专辑 / 曲目 ──
+            { L"top_artist",    L"听得最多的歌手是谁",      { L"artist_2", L"artist_3", L"artist_all", L"top_album" } },
+            { L"artist_2",      L"听得第二多的歌手是谁",     { L"artist_3", L"artist_4", L"artist_all" } },
+            { L"artist_3",      L"听得第三多的歌手是谁",     { L"artist_4", L"artist_5", L"artist_all" } },
+            { L"artist_4",      L"听得第四多的歌手是谁",     { L"artist_5", L"artist_all", L"top_album" } },
+            { L"artist_5",      L"听得第五多的歌手是谁",     { L"artist_all", L"top_album", L"top_song" } },
+            { L"artist_all",    L"把歌手前十名都列出来",     { L"least_artist", L"top_album", L"album_all" } },
+            { L"least_artist",  L"我听得最少的歌手是谁",     { L"artist_all", L"top_artist" } },
+            { L"artist_except", L"除了最常听的歌手，我还听谁", { L"artist_2", L"artist_3", L"artist_all" } },
+            { L"top_album",     L"听得最多的专辑是哪张",     { L"album_all", L"top_song", L"song_all" } },
+            { L"album_all",     L"把专辑前十名都列出来",     { L"top_song", L"song_all" } },
+            { L"top_song",      L"听得最多的歌是哪首",       { L"song_all", L"never_skip", L"retire_gem" } },
+            { L"song_all",      L"把曲目前十名都列出来",     { L"never_skip", L"retire_gem", L"top_artist" } },
+
+            // ── 时段 / 习惯 ──
+            { L"hour_peak",   L"我一般在什么时段听歌",      { L"hour_all", L"hour_deep", L"weekend_cmp" } },
+            { L"hour_all",    L"我一天的听歌分布",          { L"hour_peak", L"hour_deep" } },
+            { L"hour_deep",   L"我深夜听歌多吗",            { L"hour_peak", L"weekend_cmp", L"day_best" } },
+            { L"weekend_cmp", L"周末和平时听歌有区别吗",     { L"hour_peak", L"hour_deep", L"day_avg" } },
+            { L"day_best",    L"我听得最久的一天是哪天",     { L"streak", L"day_avg", L"overview" } },
+            { L"streak",      L"我连续听歌多少天了",         { L"day_best", L"day_avg" } },
+
+            // ── 听歌行为 ──
+            { L"finish_rate", L"我的完播率高吗",            { L"never_skip", L"retire_gem", L"skip_most" } },
+            { L"never_skip",  L"有哪些歌我每次都听完",       { L"top_song", L"retire_gem" } },
+            { L"retire_gem",  L"有哪些歌我反复听却没听完",    { L"skip_most", L"finish_rate" } },
+            { L"skip_most",   L"我最常跳过的歌是哪首",       { L"finish_rate", L"retire_gem" } },
+
+            // ── 对比 / 变化 ──
+            { L"month_cmp", L"这个月比上个月听得多吗",        { L"month_now", L"trend", L"new_song" } },
+            { L"week_last", L"上周我听了多久",              { L"recent7", L"month_now", L"trend" } },
+            { L"trend",     L"我最近听歌变多了还是变少了",     { L"recent7", L"month_cmp", L"week_last" } },
+            { L"new_song",  L"我听了多少首新歌",             { L"top_song", L"recent7" } },
+        };
+        return kQa;
+    }
+
+    const std::vector<LocalQaGroup>& LocalQaMenu()
+    {
+        static const std::vector<LocalQaGroup> kMenu = {
+            { L"总览",        { L"overview", L"recent7", L"month_now", L"day_avg" } },
+            { L"歌手 专辑 曲目", { L"top_artist", L"artist_2", L"artist_3", L"artist_all",
+                                L"least_artist", L"artist_except", L"top_album",
+                                L"top_song", L"song_all" } },
+            { L"时段 习惯",    { L"hour_peak", L"hour_all", L"hour_deep", L"weekend_cmp",
+                                L"day_best", L"streak" } },
+            { L"听歌行为",     { L"finish_rate", L"never_skip", L"retire_gem", L"skip_most" } },
+            { L"对比 变化",    { L"month_cmp", L"week_last", L"trend", L"new_song" } },
+        };
+        return kMenu;
+    }
+
+    const LocalQa* FindLocalQaById(const std::wstring& id)
+    {
+        const std::vector<LocalQa>& all = LocalQaCatalog();
+        for (const auto& q : all)
+        {
+            if (q.id == id)
+                return &q;
+        }
+        return nullptr;
+    }
+
+    // 用户手打时也可能正好问在目录里 —— 去掉空白和常见标点后比一比，
+    // 能对上就用专用答案，比走关键词匹配准得多。
+    const LocalQa* FindLocalQaByText(const std::wstring& q)
+    {
+        std::wstring key;
+        for (wchar_t c : q)
+        {
+            if (c == L' ' || c == L'\t' || c == L'\r' || c == L'\n')
+                continue;
+            if (c == L'?' || c == L'？' || c == L'!' || c == L'！' ||
+                c == L'.' || c == L'。' || c == L',' || c == L'，')
+                continue;
+            key += c;
+        }
+        const std::vector<LocalQa>& all = LocalQaCatalog();
+        for (const auto& item : all)
+        {
+            std::wstring k2;
+            for (wchar_t c : item.question)
+            {
+                if (c == L' ' || c == L'\t' || c == L'\r' || c == L'\n')
+                    continue;
+                if (c == L'?' || c == L'？' || c == L'!' || c == L'！' ||
+                    c == L'.' || c == L'。' || c == L',' || c == L'，')
+                    continue;
+                k2 += c;
+            }
+            if (key == k2)
+                return &item;
+        }
+        return nullptr;
+    }
+
+    std::wstring BuildQaAnswer(const AiStatSnapshot& s, const std::wstring& id, bool allow_song_meta)
+    {
+        if (!s.Valid() || s.all_records == nullptr || s.all_records->empty())
+            return L"还没有可统计的播放记录。先去听几首歌，回来再问。";
+
+        const std::vector<PlayRecord>& all = *s.all_records;
+        const int today = TodayYmdLocal();
+
+        StatSummary sum0;
+        FinishBreakdown fin0;
+        int hour0[24]{};
+        AggregateOf(all, sum0, fin0, hour0);
+
+        // 「某段区间」类问题共用（最近一周 / 上周 / 本月…）：报总量，并跟上一段比一比。
+        // 有对比才叫回答 —— 单说「485 次」用户也不知道这是多还是少。
+        auto range_answer = [&](int from, int to, const wchar_t* label,
+                                const std::vector<PlayRecord>& prev) -> std::wstring
+        {
+            const std::vector<PlayRecord> r = SliceByDate(all, from, to);
+            if (r.empty())
+                return std::wstring(label) + L"（" + ShortDate(from) + L" ~ " + ShortDate(to) +
+                    L"）没有播放记录。";
+            StatSummary sum;
+            FinishBreakdown fin;
+            int hour[24]{};
+            AggregateOf(r, sum, fin, hour);
+
+            std::wstring t = std::wstring(label) + L"（" + ShortDate(from) + L" ~ " +
+                ShortDate(to) + L"）听了 " + Num(fin.total) + L" 次、" +
+                Duration(sum.total_duration_sec) + L"，涉及 " + Num(sum.total_songs) +
+                L" 首曲目，活跃 " + Num(sum.active_days) + L" 天。";
+            const int span = static_cast<int>(DaysFromYmd(to) - DaysFromYmd(from)) + 1;
+            if (span > 0)
+                t += L"平均每天 " + Duration(sum.total_duration_sec / span) + L"。";
+            if (!prev.empty())
+            {
+                const FinishBreakdown pf = CStatAnalysis::ComputeFinishBreakdown(prev);
+                if (pf.total > 0)
+                {
+                    const int d = fin.total - pf.total;
+                    if (d > 0)
+                        t += L"比上一段多 " + Num(d) + L" 次。";
+                    else if (d < 0)
+                        t += L"比上一段少 " + Num(-d) + L" 次。";
+                    else
+                        t += L"跟上一段次数持平。";
+                }
+            }
+            return t;
+        };
+
+        // ── 总览 ──
+        if (id == L"overview")
+        {
+            std::wstring t = L"从 " + DateText(s.first_ymd) + L" 到 " + DateText(s.last_ymd) +
+                L"，你一共听了 " + Num(fin0.total) + L" 次、" +
+                Duration(sum0.total_duration_sec) + L"，涉及 " + Num(sum0.total_songs) +
+                L" 首曲子，活跃 " + Num(sum0.active_days) + L" 天。";
+            if (fin0.total > 0)
+                t += L"完播率 " + Pct(sum0.completed_rate) + L"，平均每次听 " +
+                     Duration(sum0.total_duration_sec / fin0.total) + L"。";
+            return t;
+        }
+        if (id == L"recent7")
+            return range_answer(AddDays(today, -6), today, L"最近 7 天",
+                SliceByDate(all, AddDays(today, -13), AddDays(today, -7)));
+        if (id == L"month_now")
+            return range_answer(MonthFirstDay(today), today, L"本月", std::vector<PlayRecord>());
+        if (id == L"day_avg")
+        {
+            const int span = static_cast<int>(DaysFromYmd(s.last_ymd) - DaysFromYmd(s.first_ymd)) + 1;
+            const int active = (sum0.active_days > 0) ? sum0.active_days : 1;
+            std::wstring t = L"从 " + DateText(s.first_ymd) + L" 到现在一共 " + Num(span) +
+                L" 天，其中 " + Num(sum0.active_days) + L" 天听过歌。";
+            t += L"按活跃天算，平均每天 " + Duration(sum0.total_duration_sec / active) + L"；";
+            t += L"摊到每一天是 " +
+                 Duration(sum0.total_duration_sec / (span > 0 ? span : 1)) + L"。";
+            return t;
+        }
+
+        // ── 歌手（含任意名次 —— 用户就是问「第三名」被答成榜首才要求改的）──
+        if (id == L"top_artist" || id == L"artist_2" || id == L"artist_3" ||
+            id == L"artist_4" || id == L"artist_5")
+        {
+            const int n = (id == L"top_artist") ? 1
+                : (id == L"artist_2") ? 2
+                : (id == L"artist_3") ? 3
+                : (id == L"artist_4") ? 4 : 5;
+            static const wchar_t* kOrd[] = { L"第一", L"第二", L"第三", L"第四", L"第五" };
+
+            const std::vector<ArtistRankItem> r = CStatAnalysis::ComputeArtistRank(all, 10);
+            if (static_cast<int>(r.size()) < n)
+                return L"你听过的歌手不到 " + Num(n) + L" 个，没有第 " + Num(n) + L" 名。";
+
+            const ArtistRankItem& a = r[n - 1];
+            std::wstring t = L"听得";
+            t += kOrd[n - 1];
+            t += L"多的是 " + ArtistLabel(a.artist, allow_song_meta) + L"，" +
+                 Num(a.count) + L" 次、" + Duration(a.duration_sec);
+            if (a.song_count > 0)
+                t += L"（" + Num(a.song_count) + L" 首曲目）";
+            t += L"。";
+            if (n == 1 && r.size() > 1 && r[1].count > 0)
+            {
+                if (a.count >= r[1].count * 2)
+                    t += L"比第二名「" + ArtistLabel(r[1].artist, allow_song_meta) +
+                         L"」多出一倍还多，听得相当集中。";
+                else
+                    t += L"第二名是 " + ArtistLabel(r[1].artist, allow_song_meta) +
+                         L"（" + Num(r[1].count) + L" 次），咬得挺紧。";
+            }
+            else if (n > 1)
+            {
+                const ArtistRankItem& p = r[n - 2];
+                const int d = p.count - a.count;
+                if (d > 0)
+                    t += L"比第 " + Num(n - 1) + L" 名「" +
+                         ArtistLabel(p.artist, allow_song_meta) + L"」（" + Num(p.count) +
+                         L" 次）少 " + Num(d) + L" 次。";
+            }
+            return t;
+        }
+        if (id == L"artist_all")
+        {
+            const std::vector<ArtistRankItem> r = CStatAnalysis::ComputeArtistRank(all, 10);
+            if (r.empty())
+                return L"还没有歌手数据。";
+            std::wstring t = L"歌手前十（按时长排）：";
+            for (size_t i = 0; i < r.size(); ++i)
+            {
+                t += L"\n" + Num(static_cast<int>(i + 1)) + L". " +
+                     ArtistLabel(r[i].artist, allow_song_meta) + L" " +
+                     Duration(r[i].duration_sec) + L"（" + Num(r[i].count) + L" 次）";
+            }
+            return t;
+        }
+        if (id == L"least_artist")
+        {
+            const std::vector<ArtistRankItem> r = CStatAnalysis::ComputeArtistRank(all, 0);
+            if (r.size() < 3)
+                return L"你听过的歌手太少，还排不出「最少」的。";
+            std::wstring t = L"在「你听过的」范围里，听得最少的是 ";
+            for (size_t k = 0; k < 3; ++k)
+            {
+                const ArtistRankItem& a = r[r.size() - 1 - k];
+                if (k > 0) t += L"、";
+                t += ArtistLabel(a.artist, allow_song_meta) + L"（" + Num(a.count) + L" 次）";
+            }
+            t += L" —— 基本点开就切了。";
+            t += L"\n（数据里只有你播放过的歌手，完全没听过的不会出现）";
+            return t;
+        }
+        if (id == L"artist_except")
+        {
+            const std::vector<ArtistRankItem> r = CStatAnalysis::ComputeArtistRank(all, 1);
+            if (r.empty())
+                return L"还没有歌手数据。";
+            std::vector<PlayRecord> rest;
+            for (const auto& x : all)
+            {
+                if (x.artist != r[0].artist)
+                    rest.push_back(x);
+            }
+            if (rest.empty())
+                return L"你只听过 " + ArtistLabel(r[0].artist, allow_song_meta) +
+                    L" 一个歌手，没有别人了。";
+            const std::vector<ArtistRankItem> r2 = CStatAnalysis::ComputeArtistRank(rest, 3);
+            std::wstring t = L"把听得最多的「" + ArtistLabel(r[0].artist, allow_song_meta) +
+                L"」去掉之后，排在最前面的是：";
+            for (size_t i = 0; i < r2.size(); ++i)
+            {
+                t += L"\n" + Num(static_cast<int>(i + 1)) + L". " +
+                     ArtistLabel(r2[i].artist, allow_song_meta) + L" " +
+                     Duration(r2[i].duration_sec) + L"（" + Num(r2[i].count) + L" 次）";
+            }
+            return t;
+        }
+
+        // ── 专辑 / 曲目 ──
+        if (id == L"top_album" || id == L"album_all")
+        {
+            const std::vector<AlbumRankItem> r = CStatAnalysis::ComputeAlbumRank(all, 10);
+            if (r.empty())
+                return L"这些记录里没有专辑标签，统计不了。";
+            const std::wstring hide = L"（专辑名已隐藏）";
+            if (id == L"top_album")
+            {
+                std::wstring t = L"听得最多的专辑是《" +
+                    (allow_song_meta ? r[0].album : hide) + L"》，" + Duration(r[0].duration_sec) +
+                    L"（" + Num(r[0].count) + L" 次）";
+                if (r.size() > 1)
+                    t += L"；第二名是《" + (allow_song_meta ? r[1].album : hide) + L"》（" +
+                         Num(r[1].count) + L" 次）";
+                t += L"。";
+                return t;
+            }
+            std::wstring t = L"专辑前十（按时长）：";
+            for (size_t i = 0; i < r.size(); ++i)
+            {
+                t += L"\n" + Num(static_cast<int>(i + 1)) + L". " +
+                     (allow_song_meta ? r[i].album : hide) + L" " +
+                     Duration(r[i].duration_sec);
+            }
+            return t;
+        }
+        if (id == L"top_song" || id == L"song_all")
+        {
+            const std::vector<SongRankItem> r = CStatAnalysis::ComputeSongRank(all, 10);
+            if (r.empty())
+                return L"还没有曲目数据。";
+            if (id == L"top_song")
+            {
+                std::wstring t = L"听得最多的是《" + SongLabel(r[0].title, allow_song_meta) +
+                    L"》，" + Num(r[0].count) + L" 次、" + Duration(r[0].duration_sec);
+                if (r.size() > 1)
+                    t += L"；紧随其后的是《" + SongLabel(r[1].title, allow_song_meta) + L"》（" +
+                         Num(r[1].count) + L" 次）";
+                t += L"。";
+                return t;
+            }
+            std::wstring t = L"曲目前十（按次数）：";
+            for (size_t i = 0; i < r.size(); ++i)
+            {
+                t += L"\n" + Num(static_cast<int>(i + 1)) + L". " +
+                     SongLabel(r[i].title, allow_song_meta) + L"（" + Num(r[i].count) + L" 次）";
+            }
+            return t;
+        }
+
+        // ── 时段 / 习惯 ──
+        if (id == L"hour_peak")
+        {
+            int peak = -1, cnt = 0;
+            for (int h = 0; h < 24; ++h)
+            {
+                if (hour0[h] > cnt) { cnt = hour0[h]; peak = h; }
+            }
+            if (peak < 0 || cnt == 0)
+                return L"还没有足够的时段数据。";
+            const double pct = (fin0.total > 0) ? cnt * 100.0 / fin0.total : 0.0;
+            std::wstring t = L"最常在 " + Num(peak) + L":00-" + Num(peak) + L":59 听，这个小时 " +
+                Num(cnt) + L" 次，占全部的 " + Pct(pct) + L"。";
+            t += L"前后各一小时分别是 " + Num(hour0[(peak + 23) % 24]) + L" 次和 " +
+                 Num(hour0[(peak + 1) % 24]) + L" 次。";
+            if (sum0.night_owl_percent > 0)
+                t += L"深夜（0-6 点）占全部时长的 " + Pct(sum0.night_owl_percent) + L"。";
+            return t;
+        }
+        if (id == L"hour_all")
+        {
+            std::wstring t = L"一天 24 小时的听歌次数：";
+            for (int h = 0; h < 24; ++h)
+            {
+                if (hour0[h] == 0) continue;
+                t += L"\n" + Num(h) + L" 点：" + Num(hour0[h]) + L" 次";
+            }
+            return t;
+        }
+        if (id == L"hour_deep")
+        {
+            int cnt = 0, sec = 0;
+            for (const auto& r : all)
+            {
+                const int h = CStatAnalysis::HourOf(r.played_at);
+                if (h >= 0 && h < 6)
+                {
+                    cnt++;
+                    sec += r.play_duration_sec;
+                }
+            }
+            std::wstring t = L"深夜 0-6 点一共 " + Num(cnt) + L" 次、" + Duration(sec);
+            if (sum0.total_duration_sec > 0)
+                t += L"，占全部听歌时长的 " + Pct(sec * 100.0 / sum0.total_duration_sec);
+            t += L"。";
+            if (sum0.active_days > 0)
+            {
+                wchar_t buf[64]{};
+                swprintf_s(buf, L"每个听歌的日子平均有 %.1f 次。", cnt / (double)sum0.active_days);
+                t += buf;
+            }
+            if (sum0.night_owl_percent >= 20.0)
+                t += L"深夜听的比例不低，注意作息。";
+            else
+                t += L"占比不算高。";
+            return t;
+        }
+        if (id == L"weekend_cmp")
+        {
+            int wd_cnt = 0, wd_sec = 0, we_cnt = 0, we_sec = 0;
+            std::set<int> wd_days, we_days;
+            for (const auto& r : all)
+            {
+                const int y = CStatAnalysis::YmdOf(r.played_at);
+                if (y == 0) continue;
+                const int wd = WeekdayOf(y);
+                if (wd == 0 || wd == 6)
+                {
+                    we_cnt++;
+                    we_sec += r.play_duration_sec;
+                    we_days.insert(y);
+                }
+                else
+                {
+                    wd_cnt++;
+                    wd_sec += r.play_duration_sec;
+                    wd_days.insert(y);
+                }
+            }
+            if (wd_cnt == 0 || we_cnt == 0 || wd_days.empty() || we_days.empty())
+                return L"工作日或周末缺一边的数据，比不了。";
+            const double wa = wd_sec / static_cast<double>(wd_days.size());
+            const double ea = we_sec / static_cast<double>(we_days.size());
+            std::wstring t = L"工作日合计 " + Num(wd_cnt) + L" 次、" + Duration(wd_sec) +
+                L"；周末 " + Num(we_cnt) + L" 次、" + Duration(we_sec) + L"。";
+            t += L"按活跃日平均：工作日每天 " + Duration(static_cast<int>(wa)) + L"，周末每天 " +
+                 Duration(static_cast<int>(ea));
+            if (ea > wa * 1.2)
+                t += L" —— 周末明显听得多。";
+            else if (wa > ea * 1.2)
+                t += L" —— 工作日反而听得多。";
+            else
+                t += L" —— 两者差不多。";
+            t += L"（比日均才公平：一周里工作日有 5 天、周末只有 2 天）";
+            return t;
+        }
+        if (id == L"day_best")
+        {
+            const std::vector<PeriodBucket> days = CStatAnalysis::ComputeBuckets(all, Grain::Day);
+            if (days.empty())
+                return L"还没有足够的日期数据。";
+            const PeriodBucket* bt = &days.front();
+            const PeriodBucket* bc = &days.front();
+            for (const auto& b : days)
+            {
+                if (b.duration_sec > bt->duration_sec) bt = &b;
+                if (b.count > bc->count) bc = &b;
+            }
+            std::wstring t = L"听得最久的一天是 " + bt->label + L"，" +
+                Duration(bt->duration_sec) + L"（" + Num(bt->count) + L" 次）";
+            if (bc != bt)
+                t += L"；次数最多的是 " + bc->label + L"（" + Num(bc->count) + L" 次），不是同一天";
+            t += L"。";
+            t += L"平均每个听歌的日子 " +
+                 Duration(sum0.total_duration_sec / static_cast<int>(days.size())) + L"。";
+            return t;
+        }
+        if (id == L"streak")
+        {
+            std::wstring t = L"当前连续听了 " + Num(sum0.current_streak) + L" 天，最长纪录 " +
+                Num(sum0.longest_streak) + L" 天。";
+            const int miss = CStatAnalysis::ComputeStreakMiss(all);
+            if (miss > 0)
+                t += L"中间断过最长的一段是 " + Num(miss) + L" 天。";
+            return t;
+        }
+
+        // ── 听歌行为 ──
+        if (id == L"finish_rate")
+        {
+            if (fin0.total <= 0)
+                return L"还没有足够的播放记录。";
+            std::wstring t = L"一共 " + Num(fin0.total) + L" 次，完整听完 " +
+                Num(fin0.completed) + L" 次（" + Pct(sum0.completed_rate) + L"），中途切走 " +
+                Num(fin0.skipped) + L" 次（" + Pct(sum0.skip_rate) + L"）。";
+            if (fin0.avg_completion > 0.0)
+                t += L"平均完成度 " + Pct(fin0.avg_completion) + L"。";
+            if (sum0.completed_rate >= 80.0)
+                t += L"完播率很高，你听歌基本从头到尾，不怎么跳。";
+            else if (sum0.completed_rate >= 60.0)
+                t += L"算正常水平。";
+            else
+                t += L"跳过偏多，歌单里可能有些不太合口味的。";
+            return t;
+        }
+        if (id == L"never_skip")
+        {
+            std::map<std::wstring, int> total, done;
+            for (const auto& r : all)
+            {
+                if (r.title.empty()) continue;
+                total[r.title]++;
+                if (r.finish_reason == PlayRecord::FinishReason::COMPLETED)
+                    done[r.title]++;
+            }
+            std::vector<std::pair<std::wstring, int>> full;
+            for (const auto& kv : total)
+            {
+                if (kv.second >= 3 && kv.second == done[kv.first])
+                    full.push_back(std::make_pair(kv.first, kv.second));
+            }
+            std::stable_sort(full.begin(), full.end(),
+                [](const std::pair<std::wstring, int>& x, const std::pair<std::wstring, int>& y)
+                { return x.second > y.second; });
+            if (full.empty())
+                return L"没有「每次点开都听完」的曲子 —— 听 3 次以上的里面，每条都至少跳过一次。";
+            std::wstring t = L"听 3 次以上、每次都完整听完的有 " +
+                Num(static_cast<int>(full.size())) + L" 首：";
+            for (size_t i = 0; i < full.size() && i < 8; ++i)
+            {
+                t += L"\n· " + SongLabel(full[i].first, allow_song_meta) + L"（" +
+                     Num(full[i].second) + L" 次全听完）";
+            }
+            return t;
+        }
+        if (id == L"retire_gem")
+        {
+            const std::vector<RetiredGem> g = CStatAnalysis::ComputeRetiredGems(all, 8);
+            if (g.empty())
+                return L"没找到「反复点开却没听完」的曲子 —— 你听歌挺有始有终的。";
+            std::wstring t = L"有 " + Num(static_cast<int>(g.size())) +
+                L" 首是反复点开、却一次都没听完的：";
+            for (size_t i = 0; i < g.size() && i < 8; ++i)
+            {
+                t += L"\n· " + SongLabel(g[i].title, allow_song_meta) + L"（点开 " +
+                     Num(g[i].count) + L" 遍）";
+            }
+            return t;
+        }
+        if (id == L"skip_most")
+        {
+            std::map<std::wstring, int> sk;
+            for (const auto& r : all)
+            {
+                if (r.title.empty()) continue;
+                if (r.finish_reason == PlayRecord::FinishReason::SKIPPED)
+                    sk[r.title]++;
+            }
+            if (sk.empty())
+                return L"你一次都没主动切过歌 —— 没有「最常跳过」的曲子。";
+            std::vector<std::pair<std::wstring, int>> v(sk.begin(), sk.end());
+            std::stable_sort(v.begin(), v.end(),
+                [](const std::pair<std::wstring, int>& x, const std::pair<std::wstring, int>& y)
+                { return x.second > y.second; });
+            std::wstring t = L"被你切掉最多的曲子：";
+            for (size_t i = 0; i < v.size() && i < 5; ++i)
+            {
+                t += L"\n· " + SongLabel(v[i].first, allow_song_meta) + L"（切掉 " +
+                     Num(v[i].second) + L" 次）";
+            }
+            return t;
+        }
+
+        // ── 对比 / 变化 ──
+        if (id == L"month_cmp")
+        {
+            const int mf = MonthFirstDay(today);
+            const int lm_last = AddDays(mf, -1);
+            const int lm_first = MonthFirstDay(lm_last);
+            const std::vector<PlayRecord> cur = SliceByDate(all, mf, today);
+            const std::vector<PlayRecord> prv = SliceByDate(all, lm_first, lm_last);
+            if (cur.empty() && prv.empty())
+                return L"本月和上月都没有播放记录。";
+            const FinishBreakdown fc = CStatAnalysis::ComputeFinishBreakdown(cur);
+            const FinishBreakdown fp = CStatAnalysis::ComputeFinishBreakdown(prv);
+            std::wstring t = L"本月到目前 " + Num(fc.total) + L" 次，上个月整月 " +
+                Num(fp.total) + L" 次。";
+            if (fp.total > 0)
+            {
+                const double r = (fc.total - fp.total) * 100.0 / fp.total;
+                wchar_t buf[80]{};
+                if (r > 10.0)
+                {
+                    swprintf_s(buf, L"本月已经比上月多 %.0f%%。", r);
+                    t += buf;
+                }
+                else if (r < -10.0)
+                {
+                    swprintf_s(buf, L"目前比上月少 %.0f%%。", -r);
+                    t += buf;
+                }
+                else
+                {
+                    t += L"跟上月差不多。";
+                }
+                if (today < MonthLastDay(today))
+                    t += L"（本月还没过完）";
+            }
+            return t;
+        }
+        if (id == L"week_last")
+        {
+            const int wd = WeekdayOf(today);
+            const int mon = AddDays(today, -((wd + 6) % 7));
+            return range_answer(AddDays(mon, -7), AddDays(mon, -1), L"上周",
+                SliceByDate(all, AddDays(mon, -14), AddDays(mon, -8)));
+        }
+        if (id == L"trend")
+        {
+            const std::vector<PlayRecord> a7 = SliceByDate(all, AddDays(today, -6), today);
+            const std::vector<PlayRecord> b7 = SliceByDate(all, AddDays(today, -13),
+                AddDays(today, -7));
+            const FinishBreakdown fa = CStatAnalysis::ComputeFinishBreakdown(a7);
+            const FinishBreakdown fb = CStatAnalysis::ComputeFinishBreakdown(b7);
+            if (fa.total == 0 && fb.total == 0)
+                return L"最近两周都没有播放记录，看不出趋势。";
+            std::wstring t = L"最近 7 天 " + Num(fa.total) + L" 次，再往前 7 天 " +
+                Num(fb.total) + L" 次";
+            if (fb.total > 0)
+            {
+                const double r = (fa.total - fb.total) * 100.0 / fb.total;
+                if (r > 15.0)
+                    t += L"，多了 " + Pct(r);
+                else if (r < -15.0)
+                    t += L"，少了 " + Pct(-r);
+                else
+                    t += L"，基本持平";
+            }
+            t += L"。";
+            return t;
+        }
+        if (id == L"new_song")
+        {
+            std::map<std::wstring, int> first_ymd;
+            for (const auto& r : all)
+            {
+                if (r.title.empty()) continue;
+                if (!CStatAnalysis::IsCounted(r)) continue;
+                const int y = CStatAnalysis::YmdOf(r.played_at);
+                if (y == 0) continue;
+                auto it = first_ymd.find(r.title);
+                if (it == first_ymd.end() || y < it->second)
+                    first_ymd[r.title] = y;
+            }
+            if (first_ymd.empty())
+                return L"还没有曲目数据。";
+            const int mf = MonthFirstDay(today);
+            const int last30 = AddDays(today, -29);
+            int n_month = 0, n_30 = 0;
+            for (const auto& kv : first_ymd)
+            {
+                if (kv.second >= mf) n_month++;
+                if (kv.second >= last30) n_30++;
+            }
+            std::wstring t = L"记录里一共出现过 " + Num(static_cast<int>(first_ymd.size())) +
+                L" 首不同的曲子。";
+            t += L"本月第一次听的有 " + Num(n_month) + L" 首；最近 30 天里有 " +
+                 Num(n_30) + L" 首。";
+            return t;
+        }
+
+        return std::wstring();
+    }
+
     const std::vector<std::wstring>& QuickQuestionPool()
     {
         static const std::vector<std::wstring> pool = {

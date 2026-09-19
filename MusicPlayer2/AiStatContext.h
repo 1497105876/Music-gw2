@@ -54,6 +54,30 @@ namespace AiStatContext
     // 这次回答用到了哪些数字（气泡底部那行「依据：…」）
     std::wstring BuildSourceText(const AiStatSnapshot& s, const std::wstring& question);
 
+
+    // ── 本地档的「菜单式问答」──
+    // 纯代码引擎理解不了自由提问，所以把**能答准的问题**做成菜单让用户挑：
+    // 点一下直接发，答案由专用生成器算，不再出现「问第三名答第一名」这类事。
+    struct LocalQa
+    {
+        std::wstring              id;
+        std::wstring              question;
+        std::vector<std::wstring> next;      // 追问（存 id），形成探索路径
+    };
+    struct LocalQaGroup
+    {
+        std::wstring              name;
+        std::vector<std::wstring> ids;
+    };
+
+    const std::vector<LocalQa>&      LocalQaCatalog();
+    const std::vector<LocalQaGroup>& LocalQaMenu();
+    const LocalQa* FindLocalQaById(const std::wstring& id);
+    const LocalQa* FindLocalQaByText(const std::wstring& question);
+
+    // 按 id 生成一段有把握的答案；id 不认识就返回空串
+    std::wstring BuildQaAnswer(const AiStatSnapshot& s, const std::wstring& id, bool allow_song_meta);
+
     // 快捷提问池，界面每次进来随机挑几条
     const std::vector<std::wstring>& QuickQuestionPool();
 }

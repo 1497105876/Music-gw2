@@ -78,7 +78,7 @@ bool CAiChatView::CreatePanel(CWnd* parent, const CRect& rect)
 
     UpdatePalette();
     CreateChildCtrls();
-    ReseedQuickQuestions();
+    ShowChipMenu();
 
     // 子控件都建好了，从这一刻起才允许布局/绘制（见 m_ready 的注释）
     m_ready = true;
@@ -214,12 +214,19 @@ void CAiChatView::RecalcLayout()
     m_banner_rect = CRect(0, y, rc.Width(), y + ban_h);
     y = m_banner_rect.bottom;
 
-    // ③ 输入区贴着底边先定下来
+    // ③ 底部两块（选项带 + 输入区）贴着底边先定下来。
+    //    选项带没内容时高度为 0，不占地方。
+    const int chip_band = m_chips.empty() ? 0 : ChipHeight();
     m_input_rect = CRect(0, rc.Height() - InputHeight(), rc.Width(), rc.Height());
-    if (m_input_rect.top < y) m_input_rect.top = y;      // 窗口实在太矮，别压到横幅上
+    m_chip_rect = CRect(0, m_input_rect.top - chip_band, rc.Width(), m_input_rect.top);
+    if (m_chip_rect.top < y)                             // 窗口实在太矮，别压到横幅上
+    {
+        m_chip_rect.top = y;
+        m_input_rect.top = m_chip_rect.bottom;
+    }
 
     // ④ 消息区吃剩下的全部
-    m_msg_rect = CRect(0, y, rc.Width(), m_input_rect.top);
+    m_msg_rect = CRect(0, y, rc.Width(), m_chip_rect.top);
     if (m_msg_rect.bottom < m_msg_rect.top) m_msg_rect.bottom = m_msg_rect.top;
 
     // 顶部条：左「模式」下拉 / 中说明 / 右「清空」
@@ -251,6 +258,7 @@ void CAiChatView::RecalcLayout()
     m_send_btn.MoveWindow(m_input_rect.right - pad - send_w,
         inp_y + (inp_h - send_h) / 2, send_w, send_h);
 
+    LayoutChips();
     RelayoutBubbles();      // 里面会顺带把空态位置也算好
     FollowBottomIfNeeded();
 }
@@ -259,9 +267,11 @@ std::wstring CAiChatView::EmptyHintText() const
 {
     std::wstring s;
     if (AiConfig::Get().chat_mode == AiChatMode::Local)
-        s = L"现在这套是「本地」档，什么都不往外发，答案由本机自己算。";
+        s = L"现在这套是「本地」档，什么都不往外发，答案由本机自己算。"
+            L"\n下面挑一个问题点一下就行 —— 也可以直接打字问。";
     else
-        s = L"发出去的内容只有统计数字 —— 文件路径、歌词、封面都不会离开这台电脑。";
+        s = L"发出去的内容只有统计数字 —— 文件路径、歌词、封面都不会离开这台电脑。"
+            L"\n下面挑一个问题点一下就行 —— 也可以直接打字问。";
     s += L"\n回车发送，Shift+回车换行；在消息上点右键可以复制。";
     return s;
 }
@@ -270,7 +280,6 @@ std::wstring CAiChatView::EmptyHintText() const
 // chips 必须按顺序填进 m_chip_rects，点击时靠下标去 m_chips 取原文。
 void CAiChatView::LayoutEmptyState()
 {
-    m_chip_rects.clear();
     m_empty_title_rect.SetRectEmpty();
     m_empty_text_rect.SetRectEmpty();
 
@@ -288,72 +297,21 @@ void CAiChatView::LayoutEmptyState()
     const int title_h = MeasureTextHeight(dc, title, text_w);
     const int hint_h = MeasureTextHeight(dc, hint, text_w);
 
-    const int chip_h = theApp.DPI(24);
-    const int gap_x = theApp.DPI(7);
-    const int gap_y = theApp.DPI(7);
-    const int inner = theApp.DPI(11);
-
-    std::vector<int> widths;
-    widths.reserve(m_chips.size());
-    for (const auto& q : m_chips)
-    {
-        CSize sz = dc.GetTextExtent(q.c_str(), static_cast<int>(q.size()));
-        int w = sz.cx + inner * 2;
-        if (w < theApp.DPI(56)) w = theApp.DPI(56);
-        if (w > text_w) w = text_w;
-        widths.push_back(w);
-    }
-
-    // 按可用宽度分行
-    std::vector<std::vector<size_t>> rows;
-    std::vector<size_t> cur;
-    int cur_w = 0;
-    for (size_t i = 0; i < widths.size(); i++)
-    {
-        if (!cur.empty() && cur_w + gap_x + widths[i] > text_w)
-        {
-            rows.push_back(cur);        // 这一行放不下了，换个行
-            cur.clear();
-            cur_w = 0;
-        }
-        cur_w += (cur.empty() ? 0 : gap_x) + widths[i];
-        cur.push_back(i);
-    }
-    if (!cur.empty()) rows.push_back(cur);
-
-    const int chips_h = rows.empty() ? 0
-        : (static_cast<int>(rows.size()) * chip_h + (static_cast<int>(rows.size()) - 1) * gap_y);
-
+    // 选项在下面那条独立带子里，这里只摆标题和说明 —— 以前把选项塞在这里，
+    // 结果聊过天之后空态不再绘制，追问就再也显示不出来了。
     const int gap_title_hint = theApp.DPI(6);
-    const int gap_hint_chips = (chips_h > 0) ? theApp.DPI(12) : 0;
-    const int block_h = title_h + gap_title_hint + hint_h + gap_hint_chips + chips_h;
+    const int block_h = title_h + gap_title_hint + hint_h;
 
     int top = m_msg_rect.top + (m_msg_rect.Height() - block_h) / 2;
     if (top < m_msg_rect.top + theApp.DPI(6))
         top = m_msg_rect.top + theApp.DPI(6);
 
     m_empty_title_rect = CRect(m_msg_rect.left + side, top, m_msg_rect.right - side, top + title_h);
-    int y = m_empty_title_rect.bottom + gap_title_hint;
+    const int y = m_empty_title_rect.bottom + gap_title_hint;
     m_empty_text_rect = CRect(m_msg_rect.left + side, y, m_msg_rect.right - side, y + hint_h);
-    y = m_empty_text_rect.bottom + gap_hint_chips;
-
-    for (const auto& row : rows)
-    {
-        int row_w = 0;
-        for (size_t k = 0; k < row.size(); k++)
-            row_w += widths[row[k]] + (k == 0 ? 0 : gap_x);
-        int x = m_msg_rect.left + (m_msg_rect.Width() - row_w) / 2;
-        for (size_t k = 0; k < row.size(); k++)
-        {
-            m_chip_rects.push_back(CRect(x, y, x + widths[row[k]], y + chip_h));
-            x += widths[row[k]] + gap_x;
-        }
-        y += chip_h + gap_y;
-    }
 
     if (p_old != nullptr) dc.SelectObject(p_old);
 }
-
 void CAiChatView::RelayoutBubbles()
 {
     if (!m_ready || !::IsWindow(m_hWnd) || m_msg_rect.Width() <= 0) return;
@@ -630,7 +588,18 @@ void CAiChatView::DrawScrollbar(CDC& dc)
 
 void CAiChatView::DrawQuickChips(CDC& dc)
 {
+    if (m_chip_rect.Width() <= 0 || m_chip_rect.Height() <= 0) return;
     if (m_chip_rects.size() != m_chips.size()) return;
+
+    // 带子底色跟顶栏一致，让它看起来是「操作区」而不是消息内容
+    CBrush band(m_pal.top_bg);
+    dc.FillRect(m_chip_rect, &band);
+    CPen top_line(PS_SOLID, 1, m_pal.bubble_border);
+    CPen* p_old_line = dc.SelectObject(&top_line);
+    dc.MoveTo(m_chip_rect.left, m_chip_rect.top);
+    dc.LineTo(m_chip_rect.right, m_chip_rect.top);
+    dc.SelectObject(p_old_line);
+
     CFont* p_old = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
     dc.SetBkMode(TRANSPARENT);
 
@@ -647,7 +616,7 @@ void CAiChatView::DrawQuickChips(CDC& dc)
         dc.SelectObject(p_old_pen);
 
         dc.SetTextColor(m_pal.chip_text);
-        dc.DrawText(m_chips[i].c_str(), static_cast<int>(m_chips[i].size()), &m_chip_rects[i],
+        dc.DrawText(m_chips[i].text.c_str(), static_cast<int>(m_chips[i].text.size()), &m_chip_rects[i],
             DT_SINGLELINE | DT_CENTER | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS);
     }
     if (p_old != nullptr) dc.SelectObject(p_old);
@@ -766,7 +735,8 @@ void CAiChatView::OnStop()
 
 // 返回 true = 真的发出去了（本地档答完也算）。校验没过返回 false，
 // 调用方据此决定「输入框里的字要不要留着」。
-bool CAiChatView::DoSend(const std::wstring& question, bool push_user_bubble)
+bool CAiChatView::DoSend(const std::wstring& question, bool push_user_bubble,
+    const std::wstring& qa_id)
 {
     if (m_busy) return false;
     HideBanner();
@@ -822,10 +792,36 @@ bool CAiChatView::DoSend(const std::wstring& question, bool push_user_bubble)
 
     if (mode == AiChatMode::Local)
     {
+        // 先看这个问题是不是菜单里的某一条：是就用**专用生成器**（答案确定正确），
+        // 不是才退回关键词匹配（那是没法保证准的兜底）。
+        // 之所以要有这条路径，就是因为「听得最多的歌手的第三名是谁」被答成了榜首。
         const bool allow_meta = AiConfig::Get().privacy.allow_song_meta;
-        std::wstring answer = AiStatContext::BuildLocalAnswer(snap, question, allow_meta);
+        const AiStatContext::LocalQa* qa = nullptr;
+        if (!qa_id.empty())
+            qa = AiStatContext::FindLocalQaById(qa_id);
+        if (qa == nullptr)
+            qa = AiStatContext::FindLocalQaByText(question);
+
+        std::wstring answer;
+        if (qa != nullptr)
+        {
+            answer = AiStatContext::BuildQaAnswer(snap, qa->id, allow_meta);
+            m_last_qa_id = qa->id;
+        }
+        if (answer.empty())
+        {
+            answer = AiStatContext::BuildLocalAnswer(snap, question, allow_meta);
+            m_last_qa_id.clear();
+        }
         std::wstring source = AiStatContext::BuildSourceText(snap, question);
         PushAi(answer, source);
+
+        // 答完就把「接着能问什么」摆出来
+        if (!m_last_qa_id.empty())
+            ShowChipFollowUp(m_last_qa_id);
+        else
+            ShowChipMenu();
+        Invalidate();
         return true;
     }
 
@@ -1062,22 +1058,144 @@ BOOL CAiChatView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
     return CWnd::OnSetCursor(pWnd, nHitTest, message);
 }
 
-void CAiChatView::ReseedQuickQuestions()
+int CAiChatView::ChipHeight() const
 {
-    const std::vector<std::wstring>& pool = AiStatContext::QuickQuestionPool();
-    m_chips.clear();
-    if (pool.empty()) return;
-
-    std::vector<size_t> idx(pool.size());
-    for (size_t i = 0; i < idx.size(); i++) idx[i] = i;
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    std::shuffle(idx.begin(), idx.end(), rng);
-
-    size_t n = (std::min)(static_cast<size_t>(4), idx.size());
-    for (size_t i = 0; i < n; i++) m_chips.push_back(pool[idx[i]]);
+    return theApp.DPI(32);
 }
 
+// 把当前选项摆成一行。放不下的直接不显示 —— 换行会再吃掉一行消息区高度，
+// 而这块地方本来就不大；重要的问题都排在前面，够用。
+void CAiChatView::LayoutChips()
+{
+    m_chip_rects.clear();
+    if (!m_ready || !::IsWindow(m_hWnd)) return;
+    if (m_chips.empty()) return;
+    if (m_chip_rect.Width() <= 0 || m_chip_rect.Height() <= 0) return;
+
+    CClientDC dc(this);
+    CFont* p_old = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
+
+    const int pad = theApp.DPI(6);
+    const int inner = theApp.DPI(10);
+    const int chip_h = theApp.DPI(24);
+    const int gap = theApp.DPI(6);
+    int x = m_chip_rect.left + pad;
+    const int y = m_chip_rect.top + (m_chip_rect.Height() - chip_h) / 2;
+    if (y < m_chip_rect.top) return;
+
+    for (const auto& c : m_chips)
+    {
+        CSize sz = dc.GetTextExtent(c.text.c_str(), static_cast<int>(c.text.size()));
+        int w = sz.cx + inner * 2;
+        if (w < theApp.DPI(52)) w = theApp.DPI(52);
+        if (x + w > m_chip_rect.right - pad)
+            break;
+        m_chip_rects.push_back(CRect(x, y, x + w, y + chip_h));
+        x += w + gap;
+    }
+    if (p_old != nullptr) dc.SelectObject(p_old);
+}
+
+// 一级：分类。进页面、清空对话、点「换个话题」都回到这里。
+void CAiChatView::ShowChipMenu()
+{
+    m_chips.clear();
+    const std::vector<AiStatContext::LocalQaGroup>& menu = AiStatContext::LocalQaMenu();
+    for (size_t i = 0; i < menu.size(); ++i)
+    {
+        ChipItem c;
+        c.key = L"g" + std::to_wstring(i);
+        c.text = menu[i].name;
+        c.kind = 0;
+        m_chips.push_back(c);
+    }
+    RecalcLayout();
+}
+
+// 二级：某一类里的问题
+void CAiChatView::ShowChipGroup(int group_index)
+{
+    m_chips.clear();
+    const std::vector<AiStatContext::LocalQaGroup>& menu = AiStatContext::LocalQaMenu();
+    if (group_index < 0 || group_index >= static_cast<int>(menu.size()))
+    {
+        ShowChipMenu();
+        return;
+    }
+    for (const auto& id : menu[group_index].ids)
+    {
+        const AiStatContext::LocalQa* qa = AiStatContext::FindLocalQaById(id);
+        if (qa == nullptr) continue;
+        ChipItem c;
+        c.key = qa->id;
+        c.text = qa->question;
+        c.kind = 1;
+        m_chips.push_back(c);
+    }
+    ChipItem back;
+    back.text = L"← 返回分类";
+    back.kind = 2;
+    m_chips.push_back(back);
+    RecalcLayout();
+}
+
+// 回答之后：把这条问题的 next 摆出来。
+// 这是整套交互最关键的一步 —— 用户不用猜「还能问什么」，顺着点就行。
+void CAiChatView::ShowChipFollowUp(const std::wstring& qa_id)
+{
+    m_chips.clear();
+    const AiStatContext::LocalQa* qa = AiStatContext::FindLocalQaById(qa_id);
+    if (qa != nullptr)
+    {
+        for (const auto& nid : qa->next)
+        {
+            const AiStatContext::LocalQa* nq = AiStatContext::FindLocalQaById(nid);
+            if (nq == nullptr) continue;
+            ChipItem c;
+            c.key = nq->id;
+            c.text = nq->question;
+            c.kind = 1;
+            m_chips.push_back(c);
+            if (m_chips.size() >= 4) break;     // 一行放不下更多
+        }
+    }
+    ChipItem more;
+    more.text = L"换个话题";
+    more.kind = 2;
+    m_chips.push_back(more);
+    RecalcLayout();
+}
+
+void CAiChatView::OnChipClicked(int index)
+{
+    if (m_busy) return;
+    if (index < 0 || index >= static_cast<int>(m_chips.size())) return;
+
+    const ChipItem c = m_chips[index];
+
+    if (c.kind == 2)                    // 返回分类 / 换个话题
+    {
+        ShowChipMenu();
+        Invalidate();
+        return;
+    }
+    if (c.kind == 0)                    // 展开某一分类
+    {
+        int gi = 0;
+        for (size_t k = 1; k < c.key.size(); ++k)       // key 形如 "g3"
+        {
+            if (c.key[k] >= L'0' && c.key[k] <= L'9')
+                gi = gi * 10 + static_cast<int>(c.key[k] - L'0');
+        }
+        ShowChipGroup(gi);
+        Invalidate();
+        return;
+    }
+
+    // 问题：直接发出去（用户点它就是要看答案，再让确认一次反而多一步）
+    DoSend(c.text, true, c.key);
+    Invalidate();
+}
 void CAiChatView::ScrollToBottom()
 {
     const int view_h = m_msg_rect.Height();
@@ -1159,14 +1277,14 @@ void CAiChatView::OnClearClick()
     m_last_question.clear();
     m_scroll_pos = 0;
     m_auto_follow = true;
-    ReseedQuickQuestions();
+    ShowChipMenu();
 
     // 先把旧横幅抹掉，再报一句「已清空」—— 动作有反馈，用户才知道这一下点生效了
     m_banner_kind = BannerKind::None;
     m_banner_text.clear();
     if (::IsWindow(m_retry_btn.m_hWnd)) m_retry_btn.ShowWindow(SW_HIDE);
     RecalcLayout();
-    ShowBanner(BannerKind::Info, L"对话已清空，快捷提问也换了一批。");
+    ShowBanner(BannerKind::Info, L"对话已清空。下面可以重新挑一个问题。");
     if (::IsWindow(m_input.m_hWnd)) m_input.SetFocus();
 }
 
@@ -1200,10 +1318,10 @@ void CAiChatView::OnPageActivated()
     UpdateModeCombo();
     RecalcLayout();
 
-    // 每次进来（还没聊过的时候）重新抽一批快捷提问，别老是那四条
+    // 还没聊过就回到分类菜单；聊过的话保留当前追问，别把人家的探索路径冲掉
     if (m_messages.empty())
     {
-        ReseedQuickQuestions();
+        ShowChipMenu();
         LayoutEmptyState();
         InvalidateRect(m_msg_rect, FALSE);
     }
@@ -1364,18 +1482,13 @@ void CAiChatView::OnLButtonDown(UINT nFlags, CPoint point)
         }
     }
 
-    // 快捷提问：点一下把问题**放进输入框**，而不是直接发出去。
-    // 直接发的话点错了没法撤回（联网档还会真花掉一次调用）；
-    // 放进框里想改就改、想发就回车，代价低得多。
+    // 底部选项：点分类 → 展开；点问题 → 直接发；点「换个话题」→ 回分类。
+    // 以前是「填进输入框再让用户回车」，但既然是菜单式引导，多点一步反而别扭。
     for (size_t i = 0; i < m_chip_rects.size() && i < m_chips.size(); i++)
     {
         if (m_chip_rects[i].PtInRect(point))
         {
-            if (m_busy) return;         // 正在回答时点它没意义，别让文字莫名跳进框里
-            m_input.SetWindowText(m_chips[i].c_str());
-            m_input.SetSel(-1, -1);     // 光标挪到末尾，好接着补字
-            m_input.SetFocus();
-            UpdateSendButton();
+            OnChipClicked(static_cast<int>(i));
             return;
         }
     }
@@ -1439,14 +1552,17 @@ void CAiChatView::OnMouseMove(UINT nFlags, CPoint point)
     }
 
     int hover = -1;
-    for (size_t i = 0; i < m_chip_rects.size(); i++)
+    if (m_chip_rect.PtInRect(point))
     {
-        if (m_chip_rects[i].PtInRect(point)) { hover = static_cast<int>(i); break; }
+        for (size_t i = 0; i < m_chip_rects.size(); i++)
+        {
+            if (m_chip_rects[i].PtInRect(point)) { hover = static_cast<int>(i); break; }
+        }
     }
     if (hover != m_hover_chip)
     {
         m_hover_chip = hover;
-        InvalidateRect(m_msg_rect, FALSE);
+        InvalidateRect(m_chip_rect, FALSE);
     }
     CWnd::OnMouseMove(nFlags, point);
 }
