@@ -71,14 +71,16 @@ private:
         std::wstring text;
         std::wstring source;        // 气泡底部那行「依据：…」
         bool thinking{ false };     // 正在思考：画三个跳动的点
-        int top{ 0 };               // 相对内容区顶部的 y
+        int top{ 0 };               // 相对内容区顶部的 y（内容坐标系，未减滚动量）
+        int left{ 0 };              // 客户区坐标
         int height{ 0 };
         int width{ 0 };
     };
 
     struct Palette
     {
-        COLORREF bg{};
+        COLORREF bg{};          // 顶栏 / 输入区底
+        COLORREF msg_bg{};      // 消息区底（跟主列表一样是白的）
         COLORREF top_bg{};
         COLORREF bubble_me{};
         COLORREF bubble_ai{};
@@ -150,6 +152,11 @@ private:
     bool HasRecords() const;
     const AiModelConfig* CurrentModelOrNull() const;
 
+    // ── 右键菜单：复制消息 ──
+    int  HitTestBubble(CPoint pt) const;        // 客户区坐标，返回气泡下标，-1 没命中
+    void CopyBubbleText(int index);
+    void CopyAllText();
+
 private:
     // ── 子控件 ──
     CButton      m_mode_btn;
@@ -208,6 +215,7 @@ public:
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+    afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnDestroy();

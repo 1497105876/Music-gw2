@@ -21,11 +21,17 @@ END_MESSAGE_MAP()
 
 void CAiChatInput::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
-    // 回车直接发；想换行用 Ctrl+回车
-    if (nChar == VK_RETURN && (::GetKeyState(VK_CONTROL) & 0x8000) == 0)
+    // 回车 = 发送；想换行就按住 Shift 或 Ctrl 再回车（Shift+Enter 是聊天的通用习惯）
+    if (nChar == VK_RETURN)
     {
-        if (on_enter) on_enter();
-        return;
+        const bool with_mod =
+            ((::GetKeyState(VK_SHIFT) & 0x8000) != 0) ||
+            ((::GetKeyState(VK_CONTROL) & 0x8000) != 0);
+        if (!with_mod)
+        {
+            if (on_enter) on_enter();
+            return;
+        }
     }
     CEdit::OnKeyDown(nChar, nRepCnt, nFlags);
 }
@@ -113,47 +119,33 @@ void CAiChatView::CreateChildCtrls()
 
 void CAiChatView::UpdatePalette()
 {
-    const bool dark = theApp.m_app_setting_data.dark_mode;
-    if (dark)
-    {
-        m_pal.bg = RGB(38, 38, 43);
-        m_pal.top_bg = RGB(47, 47, 53);
-        m_pal.bubble_me = RGB(58, 74, 102);
-        m_pal.bubble_ai = RGB(51, 51, 58);
-        m_pal.bubble_border = RGB(69, 69, 79);
-        m_pal.text = RGB(232, 232, 238);
-        m_pal.text_dim = RGB(154, 154, 166);
-        m_pal.chip_bg = RGB(51, 51, 58);
-        m_pal.chip_border = RGB(74, 74, 85);
-        m_pal.chip_text = RGB(216, 216, 224);
-        m_pal.warn_bg = RGB(74, 63, 34);
-        m_pal.warn_border = RGB(106, 90, 48);
-        m_pal.warn_text = RGB(240, 208, 144);
-        m_pal.err_bg = RGB(74, 42, 42);
-        m_pal.err_border = RGB(106, 58, 58);
-        m_pal.err_text = RGB(240, 160, 160);
-    }
-    else
-    {
-        m_pal.bg = RGB(250, 250, 252);
-        m_pal.top_bg = RGB(242, 243, 247);
-        m_pal.bubble_me = RGB(227, 240, 255);
-        m_pal.bubble_ai = RGB(255, 255, 255);
-        m_pal.bubble_border = RGB(226, 229, 236);
-        m_pal.text = RGB(26, 26, 26);
-        m_pal.text_dim = RGB(138, 143, 154);
-        m_pal.chip_bg = RGB(255, 255, 255);
-        m_pal.chip_border = RGB(216, 221, 232);
-        m_pal.chip_text = RGB(58, 65, 80);
-        m_pal.warn_bg = RGB(255, 247, 230);
-        m_pal.warn_border = RGB(240, 217, 168);
-        m_pal.warn_text = RGB(138, 90, 0);
-        m_pal.err_bg = RGB(253, 236, 236);
-        m_pal.err_border = RGB(243, 196, 196);
-        m_pal.err_text = RGB(163, 32, 32);
-    }
+    // 一律走系统色。
+    // 同一个对话框里的主列表和洞察文本框都是「白底黑字」，之前这里自己按
+    // m_app_setting_data.dark_mode 拍了一套深色出来，结果整块面板变成黑底，
+    // 跟周围完全不是一路。系统色还能自动跟着系统浅色/深色走，不用自己操心。
+    m_pal.bg            = ::GetSysColor(COLOR_BTNFACE);      // 顶栏、输入区：跟对话框同色
+    m_pal.top_bg        = ::GetSysColor(COLOR_BTNFACE);
+    m_pal.msg_bg        = ::GetSysColor(COLOR_WINDOW);       // 消息区：跟主列表一样的白底
+    m_pal.bubble_ai     = ::GetSysColor(COLOR_WINDOW);       // 它说的：白底
+    m_pal.bubble_me     = ::GetSysColor(COLOR_BTNFACE);      // 我说的：浅灰底，一眼能分开
+    m_pal.bubble_border = ::GetSysColor(COLOR_3DSHADOW);
+    m_pal.text          = ::GetSysColor(COLOR_WINDOWTEXT);
+    m_pal.text_dim      = ::GetSysColor(COLOR_GRAYTEXT);
+    m_pal.chip_bg       = ::GetSysColor(COLOR_WINDOW);
+    m_pal.chip_border   = ::GetSysColor(COLOR_3DSHADOW);
+    m_pal.chip_text     = ::GetSysColor(COLOR_WINDOWTEXT);
+    m_pal.warn_bg       = ::GetSysColor(COLOR_INFOBK);
+    m_pal.warn_border   = ::GetSysColor(COLOR_3DSHADOW);
+    m_pal.warn_text     = ::GetSysColor(COLOR_WINDOWTEXT);
+    m_pal.err_bg        = ::GetSysColor(COLOR_INFOBK);
+    m_pal.err_border    = ::GetSysColor(COLOR_3DSHADOW);
+    // 系统色里没有「错误」专用色，红字最直接；深色主题下要提亮一点才看得清
+    const COLORREF t = m_pal.text;
+    const int lum = (GetRValue(t) * 299 + GetGValue(t) * 587 + GetBValue(t) * 114) / 1000;
+    m_pal.err_text = (lum > 128) ? RGB(180, 0, 0) : RGB(255, 130, 130);
+
     if (m_edit_brush.m_hObject != nullptr) m_edit_brush.DeleteObject();
-    m_edit_brush.CreateSolidBrush(m_pal.bg);
+    m_edit_brush.CreateSolidBrush(m_pal.msg_bg);     // 输入框跟编辑框一样白底
 }
 
 // ───────────────────────── 布局 ─────────────────────────
@@ -229,9 +221,13 @@ void CAiChatView::RecalcLayout()
 
 std::wstring CAiChatView::EmptyHintText() const
 {
+    std::wstring s;
     if (AiConfig::Get().chat_mode == AiChatMode::Local)
-        return L"现在这套是「本地」档，什么都不往外发，答案由本机自己算。";
-    return L"发出去的内容只有统计数字 —— 文件路径、歌词、封面都不会离开这台电脑。";
+        s = L"现在这套是「本地」档，什么都不往外发，答案由本机自己算。";
+    else
+        s = L"发出去的内容只有统计数字 —— 文件路径、歌词、封面都不会离开这台电脑。";
+    s += L"\n回车发送，Shift+回车换行；在消息上点右键可以复制。";
+    return s;
 }
 
 // 空态整块（标题 / 说明 / 快捷提问）在消息区里居中摆放。
@@ -366,6 +362,8 @@ void CAiChatView::RelayoutBubbles()
             b.height = h + pad_y * 2;
         }
         b.top = y;
+        // 水平位置也在这里定下来：右键命中测试要用，不能再留在绘制里现算
+        b.left = b.mine ? (m_msg_rect.right - margin - b.width) : (m_msg_rect.left + margin);
         y += b.height + gap;
     }
     m_content_h = y - gap + pad_y;      // 最后一条下面不留间距，只留一点底部内边距
@@ -400,9 +398,14 @@ int CAiChatView::MeasureTextWidth(CDC& dc, const std::wstring& text)
 
 void CAiChatView::DrawAll(CDC& dc, const CRect& client)
 {
-    // 背景
+    // 面板底用对话框色，消息区单独刷成白 —— 跟旁边的列表、洞察文本框看起来才是一路的
     CBrush bg_brush(m_pal.bg);
     dc.FillRect(client, &bg_brush);
+    if (m_msg_rect.Height() > 0 && m_msg_rect.Width() > 0)
+    {
+        CBrush msg_brush(m_pal.msg_bg);
+        dc.FillRect(m_msg_rect, &msg_brush);
+    }
 
     DrawTopBar(dc);
     if (m_banner_kind != BannerKind::None) DrawBanner(dc);
@@ -495,12 +498,9 @@ void CAiChatView::DrawMessages(CDC& dc)
 
 void CAiChatView::DrawOneBubble(CDC& dc, const Bubble& b)
 {
-    const int margin = theApp.DPI(12);
     const int pad_x = theApp.DPI(12);
     const int pad_y = theApp.DPI(8);
-    int x = b.mine ? (m_msg_rect.right - margin - b.width) : (m_msg_rect.left + margin);
-    CRect rc(x, b.top, x + b.width, b.top + b.height);
-    if (rc.right > m_msg_rect.right) { rc.right = m_msg_rect.right; rc.left = rc.right - b.width; }
+    CRect rc(b.left, b.top, b.left + b.width, b.top + b.height);
 
     CBrush br(b.mine ? m_pal.bubble_me : m_pal.bubble_ai);
     CPen pen(PS_SOLID, 1, m_pal.bubble_border);
@@ -574,7 +574,7 @@ void CAiChatView::DrawScrollbar(CDC& dc)
     m_scroll_thumb.SetRectEmpty();
     if (view_h <= 0 || m_content_h <= view_h) return;
 
-    const int w = theApp.DPI(6);
+    const int w = theApp.DPI(9);        // 别太细，不然鼠标点不住
     CRect track(m_msg_rect.right - w - theApp.DPI(4), m_msg_rect.top + theApp.DPI(4),
         m_msg_rect.right - theApp.DPI(4), m_msg_rect.bottom - theApp.DPI(4));
     m_scroll_track = track;
@@ -586,9 +586,9 @@ void CAiChatView::DrawScrollbar(CDC& dc)
     int y = track.top + (track_h - thumb_h) * m_scroll_pos / (max_pos > 0 ? max_pos : 1);
     m_scroll_thumb = CRect(track.left, y, track.right, y + thumb_h);
 
-    CBrush br(m_pal.bubble_border);
+    CBrush br(::GetSysColor(COLOR_BTNFACE));        // 轨道
     dc.FillRect(track, &br);
-    CBrush tb(m_pal.text_dim);
+    CBrush tb(::GetSysColor(COLOR_3DSHADOW));       // 滑块
     dc.FillRect(m_scroll_thumb, &tb);
 }
 
@@ -1020,6 +1020,7 @@ BEGIN_MESSAGE_MAP(CAiChatView, CWnd)
     ON_WM_LBUTTONDOWN()
     ON_WM_LBUTTONUP()
     ON_WM_MOUSEMOVE()
+    ON_WM_CONTEXTMENU()
     ON_WM_TIMER()
     ON_WM_CTLCOLOR()
     ON_WM_DESTROY()
@@ -1174,11 +1175,108 @@ void CAiChatView::OnMouseMove(UINT nFlags, CPoint point)
     CWnd::OnMouseMove(nFlags, point);
 }
 
+// ───────────────────────── 右键：复制 ─────────────────────────
+
+int CAiChatView::HitTestBubble(CPoint pt) const
+{
+    if (!m_msg_rect.PtInRect(pt))
+        return -1;
+    for (size_t i = 0; i < m_messages.size(); i++)
+    {
+        const Bubble& b = m_messages[i];
+        const int top = m_msg_rect.top + b.top - m_scroll_pos;
+        CRect rc(b.left, top, b.left + b.width, top + b.height);
+        if (rc.PtInRect(pt))
+            return static_cast<int>(i);
+    }
+    return -1;
+}
+
+namespace
+{
+    void PutTextToClipboard(CWnd* pWnd, const std::wstring& text)
+    {
+        if (pWnd == nullptr || text.empty())
+            return;
+        if (!::OpenClipboard(pWnd->GetSafeHwnd()))
+            return;
+        ::EmptyClipboard();
+        const size_t bytes = (text.size() + 1) * sizeof(wchar_t);
+        if (HGLOBAL h = ::GlobalAlloc(GMEM_MOVEABLE, bytes))
+        {
+            if (void* p = ::GlobalLock(h))
+            {
+                memcpy(p, text.c_str(), bytes);
+                ::GlobalUnlock(h);
+                if (::SetClipboardData(CF_UNICODETEXT, h) == nullptr)
+                    ::GlobalFree(h);        // 交出所有权失败才自己释放
+            }
+            else
+            {
+                ::GlobalFree(h);
+            }
+        }
+        ::CloseClipboard();
+    }
+}
+
+void CAiChatView::CopyBubbleText(int index)
+{
+    if (index < 0 || index >= static_cast<int>(m_messages.size()))
+        return;
+    const Bubble& b = m_messages[index];
+    if (b.thinking)     // 「思考中」那块没内容可复制
+        return;
+    std::wstring text = b.text;
+    if (!b.source.empty())
+        text += L"\n依据：" + b.source;
+    PutTextToClipboard(this, text);
+}
+
+void CAiChatView::CopyAllText()
+{
+    std::wstring all;
+    for (const auto& b : m_messages)
+    {
+        if (b.thinking) continue;
+        all += b.mine ? L"我：" : L"AI：";
+        all += b.text;
+        if (!b.source.empty())
+            all += L"\n依据：" + b.source;
+        all += L"\n\n";
+    }
+    while (!all.empty() && (all.back() == L'\n' || all.back() == L'\r'))
+        all.pop_back();
+    PutTextToClipboard(this, all);
+}
+
+void CAiChatView::OnContextMenu(CWnd*, CPoint point)
+{
+    CPoint pt = point;
+    ScreenToClient(&pt);
+    const int idx = HitTestBubble(pt);
+    if (idx < 0)
+        return;     // 点在空白处不弹菜单
+
+    CMenu menu;
+    if (!menu.CreatePopupMenu())
+        return;
+    menu.AppendMenu(MF_STRING, 1, L"复制这条消息");
+    menu.AppendMenu(MF_STRING, 2, L"复制全部对话");
+
+    const int cmd = static_cast<int>(menu.TrackPopupMenu(
+        TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x, point.y, this));
+    if (cmd == 1)
+        CopyBubbleText(idx);
+    else if (cmd == 2)
+        CopyAllText();
+}
+
 HBRUSH CAiChatView::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
     if (pWnd != nullptr && pWnd->GetSafeHwnd() == m_input.GetSafeHwnd())
     {
-        pDC->SetBkColor(m_pal.bg);
+        pDC->SetBkColor(m_pal.msg_bg);
         pDC->SetTextColor(m_pal.text);
         return m_edit_brush;
     }
