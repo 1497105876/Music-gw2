@@ -6,6 +6,7 @@
 // 注意：本文件里所有函数都是同步阻塞的，只允许在工作线程里调用。
 
 #include "stdafx.h"
+#include "MusicPlayer2.h"       // 诊断日志要用 theApp.m_appdata_dir
 #include "AiClient.h"
 #include "Common.h"
 #include <winhttp.h>
@@ -27,6 +28,33 @@ namespace
     std::wstring FromUtf8(const std::string& s)
     {
         return CCommon::StrToUnicode(s, CodeType::UTF8);
+    }
+
+    // 诊断日志：把这次请求真正发出去的 URL / 头 / body、以及收到的状态码记下来。
+    // 落 %APPDATA%\MusicPlayer2\ai_request.log（UTF-8，追加）。Key 会打码。
+    // 存在的意义是「界面显示 A、发出去却是 B」这类问题 —— 光看代码和界面都看不出来，
+    // 只有把字节摊开才能定案。
+    void LogRequest(const std::string& utf8_line)
+    {
+        const std::wstring dir = theApp.m_appdata_dir;
+        if (dir.empty())
+            return;
+        std::wstring path = dir;
+        if (!path.empty() && path.back() != L'\\' && path.back() != L'/')
+            path += L'\\';
+        path += L"ai_request.log";
+
+        FILE* f = nullptr;
+        if (_wfopen_s(&f, path.c_str(), L"ab") != 0 || f == nullptr)
+            return;
+        fwrite(utf8_line.data(), 1, utf8_line.size(), f);
+        fwrite("\r\n", 1, 2, f);
+        fclose(f);
+    }
+
+    void LogRequest(const std::wstring& line)
+    {
+        LogRequest(ToUtf8(line));
     }
 
     // 去掉首尾空白。地址和 Key 常常是粘贴来的，前后带空格是很常见的事，
@@ -268,6 +296,23 @@ namespace
             return out;
         }
 
+        // 真正发出去的东西落一份盘（Key 打码）。出问题时拿这个跟界面上的值逐字对比，
+        // 「界面显示 A、发出去是 B」这种就再也藏不住了。
+        {
+            std::wstring masked = headers;
+            const std::wstring tag = L"Authorization: Bearer ";
+            const size_t p = masked.find(tag);
+            if (p != std::wstring::npos)
+            {
+                const size_t s = p + tag.size();
+                if (masked.size() > s + 8)
+                    masked.replace(s, masked.size() - s, masked.substr(s, 8) + L"***");
+            }
+            LogRequest(L"====> " + verb + L" " + full_url);
+            LogRequest(L"headers: " + masked);
+            LogRequest(L"body(" + std::to_wstring(body.size()) + L"): " + FromUtf8(body));
+        }
+
         DWORD tick_begin = ::GetTickCount();
 
         BOOL sent = body.empty()
@@ -306,6 +351,7 @@ namespace
             out.detail = WinHttpErrorText(err)
                 + L"（Windows 错误码 " + std::to_wstring(err)
                 + L"，地址 " + full_url + L"）";
+            LogRequest(L"<==== 传输失败 err=" + std::to_wstring(err) + L"  " + out.detail);
             return out;
         }
 
@@ -314,6 +360,7 @@ namespace
         WinHttpQueryHeaders(h.request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
             WINHTTP_HEADER_NAME_BY_INDEX, &status, &status_size, WINHTTP_NO_HEADER_INDEX);
         out.status = static_cast<int>(status);
+        LogRequest(L"<==== HTTP " + std::to_wstring(status));
 
         // 流式：边收边把新内容递出去；非流式：一口气读完
         std::string recv;
@@ -459,6 +506,7 @@ namespace
                 for (auto& c : raw)
                     if (c == L'\r' || c == L'\n' || c == L'\t') c = L' ';
                 out.detail += L"\n服务商原始返回：" + raw;
+                LogRequest(L"<==== 服务商原始返回：" + FromUtf8(recv.substr(0, 500)));
             }
 
             // 把「真正装在请求体里发出去的那个 model」原样摘出来，连长度一起报。

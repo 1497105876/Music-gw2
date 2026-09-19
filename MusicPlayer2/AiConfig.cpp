@@ -19,11 +19,8 @@ namespace
         { L"deepseek", L"DeepSeek",       L"https://api.deepseek.com/v1",                       L"deepseek-chat" },
         { L"kimi",     L"月之暗面 Kimi",  L"https://api.moonshot.cn/v1",                        L"moonshot-v1-8k" },
         { L"qwen",     L"通义千问",       L"https://dashscope.aliyuncs.com/compatible-mode/v1", L"qwen-plus" },
-        { L"agnes",    L"Agnes AI",       L"https://apihub.agnes-ai.com/v1",                    L"agnes-2.5-flash" },
-        { L"ollama",   L"Ollama 云端",    L"https://ollama.com/v1",                             L"gpt-oss:20b" },
-        // 本机跑的那个，不花额度、不用 key。模型名留空是有意的 ——
-        // 各家装的模型不一样，硬填一个反而误导；点「获取可用模型」就能列出本机已有的。
-        { L"ollama_local", L"Ollama 本机", L"http://127.0.0.1:11434/v1",                        L"" },
+        { L"agnes",    L"Agnes AI",       L"https://apihub.agnes-ai.com/v1",                    L"agnes-3.0-flash" },
+        { L"ollama",   L"Ollama",         L"https://ollama.com/v1",                             L"gpt-oss:120b" },
         { L"openai",   L"OpenAI",         L"https://api.openai.com/v1",                         L"gpt-4o-mini" },
         { L"custom",   L"自定义",         L"",                                                  L"" },
     };
