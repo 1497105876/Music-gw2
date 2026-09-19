@@ -362,12 +362,23 @@ void CPlayLogStatDlg::SetRangePreset(RangePreset preset)
 // 顺手把「字体换了但内部 Edit 还按旧字体算宽度」这个坑一起填掉。
 void CPlayLogStatDlg::LayoutFilterRow()
 {
-    const int margin = theApp.DPI(7);
-    const int gap = theApp.DPI(4);
-    // 各控件的高度不同（原生 DTP 比按钮略高），用 y 让它们的垂直中心对齐在同一线上
-    const int y_label = theApp.DPI(10), h_label = theApp.DPI(8);
-    const int y_ctrl = theApp.DPI(7), h_ctrl = theApp.DPI(14);
-    const int y_date = theApp.DPI(6), h_date = theApp.DPI(16);
+    // ⚠️ 单位：rc 里的坐标是「对话框单位(DLU)」，而 MoveWindow 吃的是像素，
+    // 两者差一个跟对话框字体挂钩的系数（垂直方向大约 2 倍）。
+    // 所以下面统一用 MapDialogRect 把 DLU 换算成像素，**不要**直接写 theApp.DPI(数字) ——
+    // 那是把 DLU 数值当像素用，整行会等比缩水，文字下半截就被切掉。
+    auto dlu = [this](int x, int y, int w, int h)
+    {
+        CRect rc(x, y, x + w, y + h);
+        MapDialogRect(rc);
+        return rc;
+    };
+
+    const int margin = dlu(0, 0, 7, 0).left;
+    const int gap = dlu(0, 0, 4, 0).left;
+    // 各控件高度不同（原生 DTP 比按钮略高），用 y 让它们的垂直中心对齐在同一线上
+    const int y_label = dlu(0, 10, 0, 0).top, h_label = dlu(0, 0, 0, 8).bottom;
+    const int y_ctrl = dlu(0, 7, 0, 0).top, h_ctrl = dlu(0, 0, 0, 14).bottom;
+    const int y_date = dlu(0, 6, 0, 0).top, h_date = dlu(0, 0, 0, 16).bottom;
 
     CClientDC dc(this);
     CFont* p_old_font = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
@@ -385,10 +396,10 @@ void CPlayLogStatDlg::LayoutFilterRow()
     place(IDC_PLAYLOG_LABEL_RANGE, dc.GetTextExtent(L"范围").cx, y_label, h_label);
 
     // 2) 预设下拉：按最长的一项算宽度，再加下拉箭头的位置
-    place(IDC_PLAYLOG_RANGE_PRESET, dc.GetTextExtent(L"近 30 天").cx + theApp.DPI(26), y_ctrl, h_ctrl);
+    place(IDC_PLAYLOG_RANGE_PRESET, dc.GetTextExtent(L"近 30 天").cx + dlu(0, 0, 26, 0).right, y_ctrl, h_ctrl);
 
     // 3) 起始日期：日期文字宽 + 日历下拉按钮 + 左右内边距
-    const int date_w = dc.GetTextExtent(L"2026-09-18").cx + theApp.DPI(34);
+    const int date_w = dc.GetTextExtent(L"2026-09-18").cx + dlu(0, 0, 34, 0).right;
     place(IDC_PLAYLOG_DATE_FROM, date_w, y_date, h_date);
 
     // 4) 「至」
@@ -403,7 +414,7 @@ void CPlayLogStatDlg::LayoutFilterRow()
     {
         CRect rc_dlg;
         GetClientRect(rc_dlg);
-        const int w = dc.GetTextExtent(L"刷新").cx + theApp.DPI(18);
+        const int w = dc.GetTextExtent(L"刷新").cx + dlu(0, 0, 18, 0).right;
         p_refresh->MoveWindow(rc_dlg.Width() - margin - w, y_ctrl, w, h_ctrl);
     }
 
