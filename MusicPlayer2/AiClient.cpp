@@ -62,6 +62,30 @@ namespace
         LogRequest(ToUtf8(line));
     }
 
+    // 从一段 message / delta 里取可显示的文字。
+    //
+    // 只认 content 是不够的：ollama 的 gpt-oss 这类模型会先把「思考过程」放在
+    // reasoning / reasoning_content / thinking 里，正文要等思考结束才开始写。
+    // 「最大输出」偏小的时候 token 全被思考吃掉，content 会是一个空串 ——
+    // 这时候如果只认 content，一次正常的 HTTP 200 就会被误报成
+    // 「服务商没返回内容」。所以按优先级依次兜底。
+    std::wstring PickContent(const json& obj)
+    {
+        if (!obj.is_object())
+            return std::wstring();
+        static const char* kKeys[] = { "content", "reasoning_content", "reasoning", "thinking" };
+        for (const char* key : kKeys)
+        {
+            auto it = obj.find(key);
+            if (it == obj.end() || !it->is_string())
+                continue;
+            std::wstring s = FromUtf8(it->get<std::string>());
+            if (!s.empty())
+                return s;
+        }
+        return std::wstring();
+    }
+
     // 去掉首尾空白。地址和 Key 常常是粘贴来的，前后带空格是很常见的事，
     // 不处理的话「 https://xxx 」会被判成「地址要以 http:// 开头」，看着莫名其妙。
     std::wstring Trim(const std::wstring& s)
@@ -415,9 +439,11 @@ namespace
                         if (j.contains("choices") && j["choices"].is_array() && !j["choices"].empty())
                         {
                             const json& ch = j["choices"][0];
-                            if (ch.contains("delta") && ch["delta"].contains("content") && ch["delta"]["content"].is_string())
+                            if (ch.contains("delta"))
                             {
-                                std::wstring delta = FromUtf8(ch["delta"]["content"].get<std::string>());
+                                // 同样要兼容 reasoning：会「先思考」的模型在流式下
+                                // 头一段 delta 里只有 reasoning，content 还是空的
+                                std::wstring delta = PickContent(ch["delta"]);
                                 if (!delta.empty())
                                 {
                                     full += delta;
@@ -852,8 +878,8 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
             if (j.contains("choices") && j["choices"].is_array() && !j["choices"].empty())
             {
                 const json& ch = j["choices"][0];
-                if (ch.contains("message") && ch["message"].contains("content") && ch["message"]["content"].is_string())
-                    text = FromUtf8(ch["message"]["content"].get<std::string>());
+                if (ch.contains("message"))
+                    text = PickContent(ch["message"]);
             }
             if (text.empty() && j.contains("error") && j["error"].contains("message"))
             {
@@ -870,7 +896,9 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
 
         if (text.empty())
         {
-            result.SetError(AiErrorKind::Protocol, L"服务商没返回内容（可能不支持这个模型名）");
+            result.SetError(AiErrorKind::Protocol,
+                L"服务商返回了 200，但正文是空的。常见两种：① 这个模型名服务商其实不认；"
+                L"② 模型把输出额度都花在「思考」上了 —— 把模型设置里的「最大输出」调大些（128 以上）");
             return result;
         }
 
@@ -948,8 +976,10 @@ AiCallResult AiHttpClient::TestConnection(const AiCallParams& params)
     AiCallParams p = params;
     p.stream = false;
     p.retry = 0;
-    // 只求验证通不通，别让它真去写一篇小作文
-    p.max_tokens = 16;
+    // 只求验证通不通，别让它真去写一篇小作文 —— 但也不能太小：
+    // ollama 的 gpt-oss 这类模型会先输出思考过程，给 16 的话 token 全被思考吃掉，
+    // content 一个字都没写就被截断，界面上就成了「服务商没返回内容」。
+    p.max_tokens = 128;
     if (p.timeout_sec > 20)
         p.timeout_sec = 20;
 
