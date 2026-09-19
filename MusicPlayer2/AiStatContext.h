@@ -44,8 +44,11 @@ namespace AiStatContext
         std::wstring text;                  // 现成的一句话
         std::vector<std::wstring> keys;     // 问题里出现这些词就算命中
         int weight{ 0 };                    // 一条都没命中时按它挑最重要的
+        bool exclusive{ false };            // 命中就独占回答，不再拼别的事实
     };
-    std::vector<LocalFact> BuildLocalFacts(const AiStatSnapshot& s, bool allow_song_meta);
+    // 只针对传入的这一批记录构造事实（调用方可能已把范围缩到「上周」）
+    std::vector<LocalFact> BuildLocalFacts(const std::vector<PlayRecord>& recs,
+        bool allow_song_meta, const std::wstring& question);
     std::wstring BuildLocalAnswer(const AiStatSnapshot& s, const std::wstring& question, bool allow_song_meta);
 
     // 这次回答用到了哪些数字（气泡底部那行「依据：…」）
