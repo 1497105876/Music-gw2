@@ -1,5 +1,7 @@
 ﻿#pragma once
+#include <atomic>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 #include "AiConfig.h"
@@ -10,7 +12,7 @@
 //   模型   GET  {base_url}/models
 //
 // 这里的函数都是**同步阻塞**的，设计上就只应该在**工作线程**里调用；
-// 想中途放弃就往 cancel 指向的 bool 里写 true。
+// 想中途放弃就把 cancel 指向的原子标志置 true。
 
 // 一次调用的失败原因，界面据此决定说什么话
 enum class AiErrorKind
@@ -96,8 +98,13 @@ struct AiModelListResult
 };
 
 // 起工作线程的三个入口。线程自己持有参数副本，界面可以放心先销毁。
+//
+// cancel 是可选的「中断开关」：界面点「停止生成」时把它置 true，工作线程
+// 下一次读数据时就会收手（延迟很短）。用 shared_ptr 而不是裸指针是为了生命周期安全 ——
+// 界面（窗口）先销毁时它那份引用就没了，但线程手里还握着一份，绝不会变成野指针。
 void AiStartChatJob(HWND hwnd, int gen, const AiCallParams& params,
-                    const std::vector<AiChatMessage>& messages, const std::wstring& source);
+                    const std::vector<AiChatMessage>& messages, const std::wstring& source,
+                    std::shared_ptr<std::atomic<bool>> cancel = nullptr);
 void AiStartTestJob(HWND hwnd, int gen, const AiCallParams& params);
 void AiStartFetchModelsJob(HWND hwnd, int gen, const AiCallParams& params);
 
@@ -109,7 +116,7 @@ public:
     static AiCallResult Chat(const AiCallParams& params,
                              const std::vector<AiChatMessage>& messages,
                              std::function<void(const std::wstring&)> on_delta = nullptr,
-                             volatile bool* cancel = nullptr);
+                             const std::atomic<bool>* cancel = nullptr);
 
     // 拉服务商的模型列表。失败不算致命 —— 让调用方退回手填就行。
     static bool FetchModels(const AiCallParams& params,

@@ -272,7 +272,7 @@ namespace
                           const std::string& body,
                           bool stream,
                           std::function<void(const std::wstring&)> on_delta,
-                          volatile bool* cancel)
+                          const std::atomic<bool>* cancel)
     {
         RawResponse out;
         UrlParts url = CrackUrl(full_url);
@@ -377,7 +377,7 @@ namespace
         DWORD bytes_read = 0;
         while (WinHttpReadData(h.request, buf, sizeof(buf), &bytes_read) && bytes_read > 0)
         {
-            if (cancel != nullptr && *cancel)
+            if (cancel != nullptr && cancel->load())
             {
                 out.elapsed_ms = static_cast<int>(::GetTickCount() - tick_begin);
                 h.Close();
@@ -572,6 +572,8 @@ namespace
         AiCallParams params;
         std::vector<AiChatMessage> messages;
         std::wstring source;
+        // 「停止生成」用的中断开关。线程持有一份 shared_ptr，界面销毁了也不怕悬空。
+        std::shared_ptr<std::atomic<bool>> cancel;
     };
 
     // 线程里要 PostMessage 增量，但 PostMessage 是同步送到界面的，
@@ -581,6 +583,11 @@ namespace
         ChatJob* job = static_cast<ChatJob*>(pParam);
         if (job == nullptr)
             return 0;
+
+        // AiHttpClient::Chat 收的是裸指针；这里只在 job 活着期间用，安全
+        // Chat 收的是 const std::atomic<bool>*；shared_ptr 为空时 get() 也是 nullptr，正好。
+        // job 活着期间这个指针一直有效，不用担心界面先销毁。
+        const std::atomic<bool>* cancel = job->cancel.get();
 
         AiCallResult r = AiHttpClient::Chat(job->params, job->messages,
             [job](const std::wstring& delta) {
@@ -592,7 +599,7 @@ namespace
                         // 窗口已经没了，自己收拾
                     }
                 }
-            }, nullptr);
+            }, cancel);
 
         std::unique_ptr<AiChatDoneResult> done(new AiChatDoneResult);
         done->ok = r.ok;
@@ -657,7 +664,8 @@ namespace
 }
 
 void AiStartChatJob(HWND hwnd, int gen, const AiCallParams& params,
-                    const std::vector<AiChatMessage>& messages, const std::wstring& source)
+                    const std::vector<AiChatMessage>& messages, const std::wstring& source,
+                    std::shared_ptr<std::atomic<bool>> cancel)
 {
     ChatJob* job = new ChatJob;
     job->hwnd = hwnd;
@@ -665,6 +673,7 @@ void AiStartChatJob(HWND hwnd, int gen, const AiCallParams& params,
     job->params = params;
     job->messages = messages;
     job->source = source;
+    job->cancel = std::move(cancel);
     CWinThread* pThread = AfxBeginThread(ChatThreadProc, job, THREAD_PRIORITY_NORMAL, 0, CREATE_SUSPENDED);
     if (pThread == nullptr)
     {
@@ -755,7 +764,7 @@ bool AiCallParams::Valid(std::wstring& why) const
 AiCallResult AiHttpClient::Chat(const AiCallParams& params,
                                 const std::vector<AiChatMessage>& messages,
                                 std::function<void(const std::wstring&)> on_delta,
-                                volatile bool* cancel)
+                                const std::atomic<bool>* cancel)
 {
     AiCallResult result;
 
@@ -804,7 +813,7 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
     const int attempts = params.retry + 1;
     while (true)
     {
-        if (cancel != nullptr && *cancel)
+        if (cancel != nullptr && cancel->load())
         {
             result.SetError(AiErrorKind::Cancelled, L"已取消");
             return result;

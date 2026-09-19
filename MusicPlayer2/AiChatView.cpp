@@ -91,11 +91,20 @@ void CAiChatView::CreateChildCtrls()
 {
     CFont* p_font = &theApp.m_font_set.dlg.GetFont();
 
-    m_mode_btn.Create(L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
-        CRect(0, 0, 0, 0), this, kIdModeBtn);
-    m_mode_btn.SetFont(p_font);
+    // 模式做成下拉框，而不是「点一下循环切一档」。
+    // 循环按钮有两个硬伤：看不到有哪些选项、也不知道点一下会跳到哪儿
+    // （想从 Max 回本地还得点两下）；而且档位之间差的是「往外发多少数据」，
+    // 这种事必须摆在明面上让用户挑。下拉项里直接把含义写全。
+    // Create 时给的高度是**下拉列表展开后的高度**，控件本身的高度由 MoveWindow 定。
+    m_mode_combo.Create(WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST,
+        CRect(0, 0, theApp.DPI(150), theApp.DPI(120)), this, kIdModeCombo);
+    m_mode_combo.SetFont(p_font);
+    m_mode_combo.SetMouseWheelEnable(false);    // 免得在消息区滚轮时误改档位
+    m_mode_combo.AddString(L"本地 · 不联网");
+    m_mode_combo.AddString(L"模型 · 发聚合值");
+    m_mode_combo.AddString(L"Max · 发全部记录");
 
-    m_clear_btn.Create(L"清空对话", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+    m_clear_btn.Create(L"清空", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
         CRect(0, 0, 0, 0), this, kIdClearBtn);
     m_clear_btn.SetFont(p_font);
 
@@ -112,9 +121,13 @@ void CAiChatView::CreateChildCtrls()
         CRect(0, 0, 0, 0), this, kIdInput);
     m_input.SetFont(p_font);
     m_input.SetLimitText(2000);
-    m_input.on_enter = [this]() { OnSendClick(); };
+    // 输入框空着的时候显示灰字提示 —— 不然「回车能发」这条规则只有空态里提过一次，
+    // 聊起来以后就没人记得了。
+    m_input.SetCueBanner(L"问点关于听歌数据的事…（回车发送，Shift+回车换行）", TRUE);
+    m_input.on_enter = [this]() { OnEnterPressed(); };
 
-    UpdateModeButton();
+    UpdateModeCombo();
+    UpdateSendButton();
 }
 
 void CAiChatView::UpdatePalette()
@@ -152,11 +165,33 @@ void CAiChatView::UpdatePalette()
 
 // 三条横带的高度都压得比较紧：这块面板实际只有主列表那么大
 // （rc 里是 326x138 DLU，约 489x276 像素），固定带多占一点，气泡就少看一行。
-int CAiChatView::TopBarHeight() const { return theApp.DPI(30); }
-int CAiChatView::InputHeight() const { return theApp.DPI(48); }
-int CAiChatView::BannerHeight() const
+int CAiChatView::TopBarHeight() const { return theApp.DPI(32); }   // 32 才塞得下 22px 的下拉
+int CAiChatView::InputHeight() const { return theApp.DPI(56); }    // 够看两行，写长问题不用摸黑
+
+// 横幅高度按**实际文字量**算。错误信息里会带上完整请求地址和服务商原话，
+// 固定一行的话只显示得下「服务商那边出..」这类半截话（用户真被这么坑过），
+// 所以这里量出真实高度，最多给到三行左右，再长就点一下看完整内容。
+int CAiChatView::BannerHeight()
 {
-    return (m_banner_kind == BannerKind::None) ? 0 : theApp.DPI(28);
+    if (m_banner_kind == BannerKind::None) return 0;
+    const int min_h = theApp.DPI(28);
+    if (!m_ready || !::IsWindow(m_hWnd)) return min_h;
+
+    CRect rc;
+    GetClientRect(rc);
+    int w = rc.Width() - theApp.DPI(10) * 2 - theApp.DPI(56);    // 右边给「重试」留位
+    if (w < theApp.DPI(80)) w = theApp.DPI(80);
+
+    CClientDC dc(this);
+    CFont* p_old = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
+    int h = MeasureTextHeight(dc, m_banner_text, w);
+    if (p_old != nullptr) dc.SelectObject(p_old);
+
+    h += theApp.DPI(10);                                        // 上下内边距
+    if (h < min_h) h = min_h;
+    const int max_h = theApp.DPI(62);
+    if (h > max_h) h = max_h;
+    return h;
 }
 
 void CAiChatView::RecalcLayout()
@@ -186,13 +221,13 @@ void CAiChatView::RecalcLayout()
     m_msg_rect = CRect(0, y, rc.Width(), m_input_rect.top);
     if (m_msg_rect.bottom < m_msg_rect.top) m_msg_rect.bottom = m_msg_rect.top;
 
-    // 顶部条里的两个按钮
-    int mode_w = theApp.DPI(100);
-    int btn_h = theApp.DPI(22);
-    int btn_y = m_top_rect.top + (m_top_rect.Height() - btn_h) / 2;
-    m_mode_btn.MoveWindow(pad, btn_y, mode_w, btn_h);
-    int clear_w = theApp.DPI(60);
-    m_clear_btn.MoveWindow(m_top_rect.right - pad - clear_w, btn_y, clear_w, btn_h);
+    // 顶部条：左「模式」下拉 / 中说明 / 右「清空」
+    int ctl_h = theApp.DPI(22);
+    int ctl_y = m_top_rect.top + (m_top_rect.Height() - ctl_h) / 2;
+    int mode_w = theApp.DPI(132);
+    m_mode_combo.MoveWindow(pad, ctl_y, mode_w, ctl_h);
+    int clear_w = theApp.DPI(52);
+    m_clear_btn.MoveWindow(m_top_rect.right - pad - clear_w, ctl_y, clear_w, ctl_h);
 
     // 横幅右侧的「重试」
     if (ban_h > 0)
@@ -216,7 +251,7 @@ void CAiChatView::RecalcLayout()
         inp_y + (inp_h - send_h) / 2, send_w, send_h);
 
     RelayoutBubbles();      // 里面会顺带把空态位置也算好
-    ScrollToBottom();
+    FollowBottomIfNeeded();
 }
 
 std::wstring CAiChatView::EmptyHintText() const
@@ -428,21 +463,18 @@ void CAiChatView::DrawTopBar(CDC& dc)
     dc.LineTo(m_top_rect.right, m_top_rect.bottom - 1);
     dc.SelectObject(p_old_pen);
 
-    // 中间那行说明：模式按钮右边、清空按钮左边
+    // 中间那行说明：模式下拉右边、清空按钮左边。
+    // 模式的含义已经写在模式框里了，这里只留最有用的那个数，别重复占地方。
     CRect r = m_top_rect;
-    r.left += theApp.DPI(104) + theApp.DPI(12);
-    r.right -= theApp.DPI(64) + theApp.DPI(12);
+    r.left += theApp.DPI(138) + theApp.DPI(8);
+    r.right -= theApp.DPI(56) + theApp.DPI(8);
     if (r.Width() <= 0) return;
 
-    std::wstring text = L"上下文：全部记录";
+    std::wstring text;
     if (m_all_count > 0)
-        text += L" · 共 " + std::to_wstring(m_all_count) + L" 条";
-    switch (AiConfig::Get().chat_mode)
-    {
-    case AiChatMode::Local: text += L" · 本次不联网"; break;
-    case AiChatMode::Model: text += L" · 本次发送聚合值"; break;
-    default:                text += L" · 本次发送全部原始记录"; break;
-    }
+        text = L"共 " + std::to_wstring(m_all_count) + L" 条记录";
+    else
+        text = L"暂无记录";
 
     dc.SetBkMode(TRANSPARENT);
     dc.SetTextColor(m_pal.text_dim);
@@ -467,10 +499,13 @@ void CAiChatView::DrawBanner(CDC& dc)
     r.left += theApp.DPI(10);
     r.right -= theApp.DPI(10);
     if (m_banner_kind == BannerKind::Error) r.right -= theApp.DPI(56);
+    r.DeflateRect(0, theApp.DPI(5));
     dc.SetBkMode(TRANSPARENT);
     dc.SetTextColor(fg);
+    // 多行 + 按词断行：错误信息里带着完整请求地址和服务商原话，
+    // 单行省略号会把它截成「服务商那边出..」这种半截话（用户真被坑过）
     dc.DrawText(m_banner_text.c_str(), static_cast<int>(m_banner_text.size()), &r,
-        DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS);
+        DT_WORDBREAK | DT_NOPREFIX);
 }
 
 void CAiChatView::DrawMessages(CDC& dc)
@@ -673,49 +708,115 @@ std::wstring CAiChatView::BuildContextText(AiStatSnapshot& snap) const
     return head + t + tail;
 }
 
-void CAiChatView::OnSendClick()
-{
-    CString s;
-    m_input.GetWindowText(s);
-    std::wstring q = Trim(s.GetString());
-    if (q.empty() || m_busy) return;
-    DoSend(q, true);
-}
-
-void CAiChatView::DoSend(const std::wstring& question, bool push_user_bubble)
+// 发送键一个按钮两种身份：闲着是「发送」，等待中是「停止」。
+// 这样不用再往这条窄顶栏挤一个按钮，用户也不用满界面找「停止」在哪。
+// 输入框里按回车。
+// 正在生成的时候不响应 —— 「停止」是会打断回答的动作，该由用户明确点按钮，
+// 而不是他正打着下一句、顺手一回车就把它撞停了。
+void CAiChatView::OnEnterPressed()
 {
     if (m_busy) return;
-    m_last_question = question;
+    OnSendOrStop();     // 这时它等价于「发送」
+}
+
+void CAiChatView::OnSendOrStop()
+{
+    if (m_busy)
+    {
+        OnStop();
+        return;
+    }
+
+    CString s;
+    m_input.GetWindowText(s);
+    const std::wstring q = Trim(s.GetString());
+    if (q.empty()) return;          // 按钮本来就是灰的，这里只是兜底
+
+    // 先发；发出去了才清输入框 —— 万一被「没记录 / 没配模型」拦下，
+    // 用户刚敲的字必须还在框里，不能凭空消失。
+    if (DoSend(q, true))
+    {
+        m_input.SetWindowText(L"");
+        UpdateSendButton();
+    }
+    m_input.SetFocus();             // 焦点还给输入框，好接着打下一句
+}
+
+void CAiChatView::OnStop()
+{
+    if (!m_busy) return;
+
+    // 真的中断：把开关置上，工作线程下一次读数据就收手，服务商那边这次调用不会白花。
+    // m_cancel_flag 是 shared_ptr，线程手里也握着一份，不怕这里先失效。
+    if (m_cancel_flag) m_cancel_flag->store(true);
+    m_gen++;                        // 双保险：迟到的那条结果直接作废
+    SetBusy(false);
+
+    // 「思考中」那块收掉；已经吐出来的字留着，补一句说明
+    if (!m_messages.empty())
+    {
+        if (m_messages.back().thinking)
+            m_messages.pop_back();
+        else if (m_messages.back().streamed)
+            m_messages.back().text += L"\n（已停止）";
+    }
+    ShowBanner(BannerKind::Info, L"已停止生成。");
+}
+
+// 返回 true = 真的发出去了（本地档答完也算）。校验没过返回 false，
+// 调用方据此决定「输入框里的字要不要留着」。
+bool CAiChatView::DoSend(const std::wstring& question, bool push_user_bubble)
+{
+    if (m_busy) return false;
     HideBanner();
+
+    // 本地档是纯本机规则引擎，不联网、也不看模型配置 —— 所以「有没有开 AI」
+    // 「有没有配模型」这两关只对联网档生效；「有没有记录可问」才是共同前提。
+    const AiChatMode mode = AiConfig::Get().chat_mode;
 
     if (m_all_count <= 0)
     {
         ShowBanner(BannerKind::Info, L"还没有播放记录。先去听几首歌，再回来问我。");
-        return;
+        return false;
     }
 
     AiStatSnapshot snap = m_snapshot_fn ? m_snapshot_fn() : AiStatSnapshot{};
     if (!snap.Valid())
     {
         ShowBanner(BannerKind::Info, L"统计数据还没算出来，等一下再试。");
-        return;
+        return false;
     }
 
-    if (!AiConfig::Get().enabled)
-    {
-        ShowBanner(BannerKind::Warn, L"AI 功能还没打开。到「选项设置 → AI 设置」里启用它，并添加一套模型。");
-        return;
-    }
-
-    // 本地档不需要模型，规则引擎自己就能答
-    const AiChatMode mode = AiConfig::Get().chat_mode;
     const AiModelConfig* model = CurrentModelOrNull();
-    if (mode != AiChatMode::Local && model == nullptr)
+    AiCallParams params;
+    if (mode != AiChatMode::Local)
     {
-        ShowBanner(BannerKind::Warn, L"还没配可用的模型。到「选项设置 → AI 设置」里添加一套，再双击它设为「当前使用」。");
-        return;
+        if (!AiConfig::Get().enabled)
+        {
+            ShowBanner(BannerKind::Warn,
+                L"AI 功能还没打开。到「选项设置 → AI 设置」里启用它并添加一套模型；"
+                L"也可以把左边切到「本地」档 —— 那一档不用任何配置。");
+            return false;
+        }
+        if (model == nullptr)
+        {
+            ShowBanner(BannerKind::Warn,
+                L"还没配可用的模型。到「选项设置 → AI 设置」里添加一套，双击它设为「当前使用」；"
+                L"也可以切到「本地」档直接用。");
+            return false;
+        }
+        params = AiCallParams::FromModel(*model, AiConfig::Get().request);
+        std::wstring why;
+        if (!params.Valid(why))
+        {
+            ShowBanner(BannerKind::Warn, L"这套模型还差东西：" + why);
+            return false;
+        }
     }
 
+    // —— 到这儿才算真的发出去了 ——
+    m_last_question = question;
+    m_auto_follow = true;           // 自己发的消息，一定要看得见
     if (push_user_bubble) PushUser(question);
 
     if (mode == AiChatMode::Local)
@@ -724,15 +825,7 @@ void CAiChatView::DoSend(const std::wstring& question, bool push_user_bubble)
         std::wstring answer = AiStatContext::BuildLocalAnswer(snap, question, allow_meta);
         std::wstring source = AiStatContext::BuildSourceText(snap, question);
         PushAi(answer, source);
-        return;
-    }
-
-    AiCallParams params = AiCallParams::FromModel(*model, AiConfig::Get().request);
-    std::wstring why;
-    if (!params.Valid(why))
-    {
-        ShowBanner(BannerKind::Warn, L"这套模型还差东西：" + why);
-        return;
+        return true;
     }
 
     std::vector<AiChatMessage> msgs;
@@ -754,10 +847,11 @@ void CAiChatView::DoSend(const std::wstring& question, bool push_user_bubble)
     std::wstring source = AiStatContext::BuildSourceText(snap, question);
 
     m_stream_text.clear();
-    m_cancel = false;
+    m_cancel_flag = std::make_shared<std::atomic<bool>>(false);
     SetBusy(true);
     PushThinking();
-    AiStartChatJob(m_hWnd, m_gen, params, msgs, source);
+    AiStartChatJob(m_hWnd, m_gen, params, msgs, source, m_cancel_flag);
+    return true;
 }
 
 void CAiChatView::PushUser(const std::wstring& text)
@@ -887,21 +981,77 @@ void CAiChatView::SetBusy(bool busy)
     {
         KillTimer(kTimerThink);
     }
-    if (::IsWindow(m_input.m_hWnd)) m_input.EnableWindow(!busy);
-    if (::IsWindow(m_send_btn.m_hWnd)) m_send_btn.EnableWindow(!busy);
+    // 输入框**不**禁用：等回答的这几十秒正好可以先把下一句打好；
+    // 而且 EnableWindow(FALSE) 会把焦点抢走 —— 正打着字突然打不了了，最招人烦。
+    // 发送键这时变成「停止」，照样可点。
+    UpdateSendButton();
 }
 
-void CAiChatView::UpdateModeButton()
+// 模式下拉：把当前档位选上就行。加进去的顺序跟 AiChatMode 一致（本地/模型/Max）
+void CAiChatView::UpdateModeCombo()
 {
-    if (!::IsWindow(m_mode_btn.m_hWnd)) return;
-    std::wstring t = L"模式：";
+    if (!::IsWindow(m_mode_combo.m_hWnd)) return;
+    int sel = 0;
     switch (AiConfig::Get().chat_mode)
     {
-    case AiChatMode::Local: t += L"本地"; break;
-    case AiChatMode::Model: t += L"模型"; break;
-    default:                t += L"Max";  break;
+    case AiChatMode::Local: sel = 0; break;
+    case AiChatMode::Model: sel = 1; break;
+    default:                sel = 2; break;
     }
-    m_mode_btn.SetWindowText(t.c_str());
+    if (m_mode_combo.GetCurSel() != sel)
+        m_mode_combo.SetCurSel(sel);
+}
+
+// 发送键的两种身份，外加「输入框空着就点不动」。
+// 后者是即时反馈：用户不用按了才发现没反应。
+void CAiChatView::UpdateSendButton()
+{
+    if (!::IsWindow(m_send_btn.m_hWnd)) return;
+    if (m_busy)
+    {
+        m_send_btn.SetWindowText(L"停止");
+        m_send_btn.EnableWindow(TRUE);
+        return;
+    }
+    m_send_btn.SetWindowText(L"发送");
+    CString s;
+    m_input.GetWindowText(s);
+    m_send_btn.EnableWindow(Trim(s.GetString()).empty() ? FALSE : TRUE);
+}
+
+void CAiChatView::OnInputChanged()
+{
+    // 输入框一空就把「发送」置灰，一有字就点亮 —— 用户不用按了才发现没反应
+    UpdateSendButton();
+}
+
+BOOL CAiChatView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+    // 能点、能拖的地方给手型光标。自绘控件没有原生控件的那些暗示，
+    // 不给光标的话用户只能靠猜 —— 尤其是那条能点开详情的横幅。
+    CPoint pt;
+    ::GetCursorPos(&pt);
+    ScreenToClient(&pt);
+
+    bool hand = false;
+    if (m_banner_kind != BannerKind::None && m_banner_rect.PtInRect(pt))
+        hand = true;
+    if (!hand)
+    {
+        for (size_t i = 0; i < m_chip_rects.size(); i++)
+        {
+            if (m_chip_rects[i].PtInRect(pt)) { hand = true; break; }
+        }
+    }
+    if (!hand && !m_scroll_thumb.IsRectEmpty() && m_scroll_thumb.PtInRect(pt))
+        hand = true;
+
+    if (hand)
+    {
+        ::SetCursor(::LoadCursor(nullptr, IDC_HAND));
+        return TRUE;
+    }
+    return CWnd::OnSetCursor(pWnd, nHitTest, message);
 }
 
 void CAiChatView::ReseedQuickQuestions()
@@ -922,9 +1072,26 @@ void CAiChatView::ReseedQuickQuestions()
 
 void CAiChatView::ScrollToBottom()
 {
-    int view_h = m_msg_rect.Height();
+    const int view_h = m_msg_rect.Height();
     m_scroll_pos = m_content_h - view_h;
     if (m_scroll_pos < 0) m_scroll_pos = 0;
+    m_auto_follow = true;
+}
+
+bool CAiChatView::AtBottom() const
+{
+    const int view_h = m_msg_rect.Height();
+    const int max_pos = m_content_h - view_h;
+    if (max_pos <= 0) return true;
+    return m_scroll_pos >= max_pos - theApp.DPI(8);     // 差几个像素也算到底
+}
+
+// 只在用户本来就贴着底部时才跟着滚。
+// 不然流式回答一边吐字一边把他拽回底部，正在往上翻的历史根本看不住 ——
+// 这是聊天界面最经典的「反人类」点之一。
+void CAiChatView::FollowBottomIfNeeded()
+{
+    if (m_auto_follow) ScrollToBottom();
 }
 
 bool CAiChatView::HasRecords() const { return m_all_count > 0; }
@@ -938,38 +1105,72 @@ const AiModelConfig* CAiChatView::CurrentModelOrNull() const
     return m;
 }
 
-void CAiChatView::OnModeClick()
+void CAiChatView::OnModeChanged()
 {
-    if (m_busy) return;
-    AiChatMode m = AiConfig::Get().chat_mode;
-    m = (m == AiChatMode::Local) ? AiChatMode::Model
-        : (m == AiChatMode::Model ? AiChatMode::Max : AiChatMode::Local);
+    const int sel = m_mode_combo.GetCurSel();
+    AiChatMode m = AiChatMode::Local;
+    if (sel == 1)      m = AiChatMode::Model;
+    else if (sel == 2) m = AiChatMode::Max;
+
+    const AiChatMode old = AiConfig::Get().chat_mode;
     AiConfig::Get().chat_mode = m;      // 记住上次档位，下次进来还是它
-    UpdateModeButton();
-    HideBanner();
+
+    if (m != AiChatMode::Local && CurrentModelOrNull() == nullptr)
+    {
+        // 要联网的档位没模型，当场说清楚 —— 别等用户打完字按了发送才拦
+        ShowBanner(BannerKind::Warn,
+            L"这一档要联网，得先有模型。到「选项设置 → AI 设置」里加一套 —— "
+            L"在那之前「本地」档可以照常用。");
+    }
+    else if (old != m && m_banner_kind != BannerKind::Error)
+    {
+        // 换了档位，之前的提示多半不适用了，重算一遍
+        RefreshStatusBanner();
+    }
     Invalidate();
 }
 
 void CAiChatView::OnClearClick()
 {
-    if (m_busy) return;
+    if (m_busy)
+    {
+        ShowBanner(BannerKind::Info, L"正在回答。等它说完，或者点「停止」再清空。");
+        return;
+    }
+    if (m_messages.empty())
+    {
+        ShowBanner(BannerKind::Info, L"现在没有对话可清。");
+        return;
+    }
     if (MessageBox(L"确定清空当前对话？", L"AI 对话", MB_ICONQUESTION | MB_YESNO) != IDYES)
         return;
+
     m_messages.clear();
     m_history.clear();
     m_stream_text.clear();
+    m_last_question.clear();
     m_scroll_pos = 0;
-    HideBanner();
+    m_auto_follow = true;
     ReseedQuickQuestions();
-    RelayoutBubbles();
-    Invalidate();
+
+    // 先把旧横幅抹掉，再报一句「已清空」—— 动作有反馈，用户才知道这一下点生效了
+    m_banner_kind = BannerKind::None;
+    m_banner_text.clear();
+    if (::IsWindow(m_retry_btn.m_hWnd)) m_retry_btn.ShowWindow(SW_HIDE);
+    RecalcLayout();
+    ShowBanner(BannerKind::Info, L"对话已清空，快捷提问也换了一批。");
+    if (::IsWindow(m_input.m_hWnd)) m_input.SetFocus();
 }
 
 void CAiChatView::OnRetryClick()
 {
     if (m_busy) return;
-    HideBanner();
-    if (m_last_question.empty()) return;
+    if (m_last_question.empty())
+    {
+        HideBanner();
+        return;
+    }
+    // 重试不用重新打字 —— 但这里不能再补一条用户气泡，那条本来就还在上面
     DoSend(m_last_question, false);
 }
 
@@ -982,7 +1183,7 @@ void CAiChatView::OnDataChanged(int all_count)
 void CAiChatView::OnPageActivated()
 {
     UpdatePalette();
-    UpdateModeButton();
+    UpdateModeCombo();
     RecalcLayout();
 
     // 每次进来（还没聊过的时候）重新抽一批快捷提问，别老是那四条
@@ -993,21 +1194,49 @@ void CAiChatView::OnPageActivated()
         InvalidateRect(m_msg_rect, FALSE);
     }
 
-    if (m_banner_kind != BannerKind::None) return;
+    RefreshStatusBanner();
+
+    // 进来就能直接打字，不用先点一下输入框
+    if (::IsWindow(m_input.m_hWnd)) m_input.SetFocus();
+}
+
+// 每次进页面都重新判断一遍状态。
+// 以前这里是「已经有横幅就直接 return」短路 —— 结果用户跑去设置里把模型配好了，
+// 切回来头顶上还挂着「还没配好模型」的黄条，明明已经配好了，看着莫名其妙。
+void CAiChatView::RefreshStatusBanner()
+{
+    // 错误横幅是「刚才那次失败」的凭据，留着让用户看清，不主动覆盖
+    if (m_banner_kind == BannerKind::Error) return;
+
     if (m_all_count <= 0)
     {
-        ShowBanner(BannerKind::Info, L"还没有播放记录。先去听几首歌，再来问我。");
+        ShowBanner(BannerKind::Info, L"还没有播放记录。先去听几首歌，再回来问我。");
+        return;
     }
-    else if (!AiConfig::Get().enabled || CurrentModelOrNull() == nullptr)
+
+    // 本地档是纯本机算的，完全不需要配置，别拿模型的事烦它
+    if (AiConfig::Get().chat_mode == AiChatMode::Local)
     {
-        ShowBanner(BannerKind::Warn, L"还没配好模型。到「选项设置 → AI 设置」里启用并添加一套 —— 现在可以先切到「本地」档直接用。");
+        HideBanner();
+        return;
     }
+
+    if (!AiConfig::Get().enabled || CurrentModelOrNull() == nullptr)
+    {
+        ShowBanner(BannerKind::Warn,
+            L"还没配好模型。到「选项设置 → AI 设置」里启用并添加一套，双击设为「当前使用」；"
+            L"也可以把左边切到「本地」档，那一档不用配置。");
+        return;
+    }
+
+    HideBanner();
 }
 
 void CAiChatView::StopAll()
 {
     m_gen++;
-    m_cancel = true;
+    if (m_cancel_flag) m_cancel_flag->store(true);
+    SetBusy(false);
 }
 
 // ───────────────────────── 消息 ─────────────────────────
@@ -1020,14 +1249,16 @@ BEGIN_MESSAGE_MAP(CAiChatView, CWnd)
     ON_WM_LBUTTONDOWN()
     ON_WM_LBUTTONUP()
     ON_WM_MOUSEMOVE()
+    ON_WM_SETCURSOR()
     ON_WM_CONTEXTMENU()
     ON_WM_TIMER()
     ON_WM_CTLCOLOR()
     ON_WM_DESTROY()
-    ON_BN_CLICKED(kIdModeBtn, &CAiChatView::OnModeClick)
+    ON_CBN_SELCHANGE(kIdModeCombo, &CAiChatView::OnModeChanged)
     ON_BN_CLICKED(kIdClearBtn, &CAiChatView::OnClearClick)
-    ON_BN_CLICKED(kIdSendBtn, &CAiChatView::OnSendClick)
+    ON_BN_CLICKED(kIdSendBtn, &CAiChatView::OnSendOrStop)
     ON_BN_CLICKED(kIdRetryBtn, &CAiChatView::OnRetryClick)
+    ON_EN_CHANGE(kIdInput, &CAiChatView::OnInputChanged)
     ON_MESSAGE(WM_AI_CHAT_DELTA, &CAiChatView::OnChatDelta)
     ON_MESSAGE(WM_AI_CHAT_DONE, &CAiChatView::OnChatDone)
 END_MESSAGE_MAP()
@@ -1088,6 +1319,7 @@ BOOL CAiChatView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
         m_scroll_pos += step;
         if (m_scroll_pos < 0) m_scroll_pos = 0;
         if (m_scroll_pos > max_pos) m_scroll_pos = max_pos;
+        m_auto_follow = AtBottom();     // 滚回底部就恢复自动跟随
         InvalidateRect(m_msg_rect, FALSE);
     }
     return CWnd::OnMouseWheel(nFlags, zDelta, pt);
@@ -1095,13 +1327,37 @@ BOOL CAiChatView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 
 void CAiChatView::OnLButtonDown(UINT nFlags, CPoint point)
 {
-    // 快捷提问：点一下填进输入框
+    // 点提示横幅 → 弹窗看完整内容。横幅最多三行，错误信息里的请求地址、
+    // 服务商原话经常放不下；弹窗里的字还能选中、复制。
+    if (m_banner_kind != BannerKind::None && !m_banner_text.empty() && m_banner_rect.PtInRect(point))
+    {
+        bool on_retry = false;
+        if (::IsWindow(m_retry_btn.m_hWnd) && m_retry_btn.IsWindowVisible())
+        {
+            CRect rb;
+            m_retry_btn.GetWindowRect(rb);
+            ScreenToClient(&rb);
+            on_retry = (rb.PtInRect(point) != FALSE);
+        }
+        if (!on_retry)
+        {
+            MessageBox(m_banner_text.c_str(), L"详细信息", MB_ICONINFORMATION | MB_OK);
+            return;
+        }
+    }
+
+    // 快捷提问：点一下把问题**放进输入框**，而不是直接发出去。
+    // 直接发的话点错了没法撤回（联网档还会真花掉一次调用）；
+    // 放进框里想改就改、想发就回车，代价低得多。
     for (size_t i = 0; i < m_chip_rects.size() && i < m_chips.size(); i++)
     {
         if (m_chip_rects[i].PtInRect(point))
         {
+            if (m_busy) return;         // 正在回答时点它没意义，别让文字莫名跳进框里
             m_input.SetWindowText(m_chips[i].c_str());
+            m_input.SetSel(-1, -1);     // 光标挪到末尾，好接着补字
             m_input.SetFocus();
+            UpdateSendButton();
             return;
         }
     }
@@ -1122,6 +1378,7 @@ void CAiChatView::OnLButtonDown(UINT nFlags, CPoint point)
             m_scroll_pos += (point.y < m_scroll_thumb.top ? -view_h : view_h);
             if (m_scroll_pos < 0) m_scroll_pos = 0;
             if (m_scroll_pos > max_pos) m_scroll_pos = max_pos;
+            m_auto_follow = AtBottom();
             InvalidateRect(m_msg_rect, FALSE);
             return;
         }
@@ -1157,6 +1414,7 @@ void CAiChatView::OnMouseMove(UINT nFlags, CPoint point)
             m_scroll_pos = y * max_pos / usable;
             if (m_scroll_pos < 0) m_scroll_pos = 0;
             if (m_scroll_pos > max_pos) m_scroll_pos = max_pos;
+            m_auto_follow = AtBottom();
             InvalidateRect(m_msg_rect, FALSE);
         }
         return;
@@ -1250,6 +1508,74 @@ void CAiChatView::CopyAllText()
     PutTextToClipboard(this, all);
 }
 
+// 「重新回答这一个」：找出这条回答对应的那个问题，重新发一次。
+// 历史也要跟着退回去 —— 不然同一轮问答会往上下文里塞两遍。
+bool CAiChatView::RerunQuestionFor(int ai_bubble_index)
+{
+    if (m_busy) return false;
+    if (ai_bubble_index < 0 || ai_bubble_index >= static_cast<int>(m_messages.size()))
+        return false;
+    if (m_messages[ai_bubble_index].mine) return false;
+
+    // 往上找最近的一条用户消息，就是它问的
+    std::wstring q;
+    for (int i = ai_bubble_index - 1; i >= 0; i--)
+    {
+        if (m_messages[i].mine && !m_messages[i].thinking)
+        {
+            q = m_messages[i].text;
+            break;
+        }
+    }
+    if (q.empty()) return false;
+
+    // 这条回答以及它后面的内容都不要了
+    m_messages.erase(m_messages.begin() + ai_bubble_index, m_messages.end());
+    // 历史里最后那一轮如果正是这个问题，一并退掉
+    if (m_history.size() >= 2 &&
+        m_history[m_history.size() - 2].role == L"user" &&
+        m_history[m_history.size() - 2].content == q)
+    {
+        m_history.pop_back();
+        m_history.pop_back();
+    }
+
+    RelayoutBubbles();
+    Invalidate();
+    return DoSend(q, false);        // 用户气泡还在上面，不用再补一条
+}
+
+// 把气泡对应的问题放回输入框，用户改完自己发
+bool CAiChatView::RefillQuestionFor(int bubble_index)
+{
+    if (bubble_index < 0 || bubble_index >= static_cast<int>(m_messages.size()))
+        return false;
+
+    std::wstring q;
+    if (m_messages[bubble_index].mine)
+    {
+        q = m_messages[bubble_index].text;
+    }
+    else
+    {
+        for (int i = bubble_index - 1; i >= 0; i--)
+        {
+            if (m_messages[i].mine && !m_messages[i].thinking)
+            {
+                q = m_messages[i].text;
+                break;
+            }
+        }
+    }
+    if (q.empty()) return false;
+
+    m_input.SetWindowText(q.c_str());
+    m_input.SetSel(-1, -1);
+    m_input.SetFocus();
+    UpdateSendButton();
+    return true;
+}
+
 void CAiChatView::OnContextMenu(CWnd*, CPoint point)
 {
     CPoint pt = point;
@@ -1261,15 +1587,24 @@ void CAiChatView::OnContextMenu(CWnd*, CPoint point)
     CMenu menu;
     if (!menu.CreatePopupMenu())
         return;
+    // 菜单跟着气泡的类型走：AI 的回答能给「重新回答」，自己发的问题能给「改一改」
+    const bool mine = m_messages[idx].mine;
+    const bool thinking = m_messages[idx].thinking;
+
     menu.AppendMenu(MF_STRING, 1, L"复制这条消息");
-    menu.AppendMenu(MF_STRING, 2, L"复制全部对话");
+    if (!mine && !thinking)
+        menu.AppendMenu(MF_STRING, 2, L"重新回答这一个");
+    if (mine)
+        menu.AppendMenu(MF_STRING, 3, L"放回输入框改一改");
+    menu.AppendMenu(MF_SEPARATOR, 0, L"");
+    menu.AppendMenu(MF_STRING, 4, L"复制全部对话");
 
     const int cmd = static_cast<int>(menu.TrackPopupMenu(
         TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x, point.y, this));
-    if (cmd == 1)
-        CopyBubbleText(idx);
-    else if (cmd == 2)
-        CopyAllText();
+    if (cmd == 1)      CopyBubbleText(idx);
+    else if (cmd == 2) RerunQuestionFor(idx);
+    else if (cmd == 3) RefillQuestionFor(idx);
+    else if (cmd == 4) CopyAllText();
 }
 
 HBRUSH CAiChatView::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
@@ -1305,10 +1640,11 @@ LRESULT CAiChatView::OnChatDelta(WPARAM wParam, LPARAM lParam)
     {
         Bubble& b = m_messages.back();
         b.thinking = false;
+        b.streamed = true;      // 收尾时就地补「依据」，不再 push 一条（否则会重复显示）
         b.text = m_stream_text;
     }
     RelayoutBubbles();
-    ScrollToBottom();
+    FollowBottomIfNeeded();     // 用户正往上翻的话别把他拽回来
     InvalidateRect(m_msg_rect, FALSE);
     return 0;
 }
@@ -1327,14 +1663,31 @@ LRESULT CAiChatView::OnChatDone(WPARAM wParam, LPARAM lParam)
 
     if (p->ok)
     {
-        // 流式已经把文字铺进最后一条气泡了，这里补上「依据」那行并补一句耗时
         std::wstring text = p->text.empty() ? m_stream_text : p->text;
-        PopThinking();
-        Bubble b;
-        b.mine = false;
-        b.text = text;
-        b.source = p->source;
-        m_messages.push_back(b);
+
+        // 流式模式下文字已经被 OnChatDelta 就地铺进最后那条气泡了 ——
+        // 这里只补「依据」。以前会再 push 一条，结果同一次回答显示成两条一模一样的。
+        bool filled_inline = false;
+        if (!m_messages.empty())
+        {
+            Bubble& last = m_messages.back();
+            if (last.streamed && !last.mine)
+            {
+                last.text = text;
+                last.source = p->source;
+                last.streamed = false;
+                filled_inline = true;
+            }
+        }
+        if (!filled_inline)
+        {
+            PopThinking();
+            Bubble b;
+            b.mine = false;
+            b.text = text;
+            b.source = p->source;
+            m_messages.push_back(b);
+        }
 
         if (!m_last_question.empty())
         {
