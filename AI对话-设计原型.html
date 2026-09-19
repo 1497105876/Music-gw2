@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 对话页 · 设计原型</title>
+<style>
+:root {
+  --bg: #fafaf8; --ink: #14161a; --ink-2: #4a4f57; --ink-3: #878d96;
+  --hair: #d9dad5; --hair-soft: #e8e8e4;
+  --accent: #0f6b5c; --accent-soft: #e5efec;
+  --warn: #9a6b1f; --warn-soft: #f6efdf;
+  --bad: #94382e; --bad-soft: #f5e7e4;
+  --blue: #31569b; --blue-soft: #e4e9f5;
+  --mono: "Cascadia Mono", Consolas, "SF Mono", monospace;
+  --sans: "Segoe UI", "Microsoft YaHei", sans-serif;
+  --serif: "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.65; padding: 48px 24px 96px; }
+.page { max-width: 1080px; margin: 0 auto; }
+.kicker { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+h1 { font-family: var(--serif); font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25; margin-bottom: 14px; }
+.lede { font-size: 16px; color: var(--ink-2); max-width: 62ch; margin-bottom: 22px; }
+.meta-row { font-family: var(--mono); font-size: 12px; color: var(--ink-3); padding: 12px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 40px; }
+.verdict { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 18px 22px; margin-bottom: 48px; font-size: 15.5px; }
+.verdict strong { color: var(--accent); }
+h2 { font-family: var(--serif); font-size: 23px; font-weight: 600; letter-spacing: -0.01em; margin: 56px 0 6px; padding-top: 20px; border-top: 1px solid var(--hair); }
+h2 .no { font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-right: 10px; font-weight: 400; }
+h2 + p.sub { color: var(--ink-3); font-size: 13.5px; margin-bottom: 18px; }
+h3 { font-size: 15px; font-weight: 600; margin: 26px 0 10px; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0 26px; font-size: 13.5px; }
+th { text-align: left; font-weight: 600; font-size: 12px; letter-spacing: 0.05em; color: var(--ink-3); padding: 8px 12px 8px 0; border-bottom: 1.5px solid var(--ink); }
+td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--hair-soft); vertical-align: top; }
+td.mono { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.tag { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 1.5px 8px; border-radius: 3px; letter-spacing: 0.03em; vertical-align: 1px; }
+.tag.ok { background: var(--accent-soft); color: var(--accent); }
+.tag.part { background: var(--warn-soft); color: var(--warn); }
+.tag.no { background: var(--bad-soft); color: var(--bad); }
+.tag.info { background: var(--blue-soft); color: var(--blue); }
+.note { color: var(--ink-2); }
+.dim { color: var(--ink-3); }
+pre { background: #f2f2ee; border: 1px solid var(--hair); padding: 14px 18px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; overflow-x: auto; margin: 12px 0 26px; color: var(--ink-2); }
+.risk { counter-reset: risk; margin: 14px 0 26px; }
+.risk li { list-style: none; counter-increment: risk; padding: 10px 0 10px 44px; position: relative; border-bottom: 1px solid var(--hair-soft); font-size: 14px; color: var(--ink-2); }
+.risk li::before { content: counter(risk, decimal-leading-zero); position: absolute; left: 0; top: 10px; font-family: var(--mono); font-size: 13px; color: var(--accent); }
+.risk li strong { color: var(--ink); font-weight: 600; }
+.footnote { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--hair); font-family: var(--mono); font-size: 12px; color: var(--ink-3); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+/* ── 「歌曲详细记录」对话框模拟 ── */
+.win { border: 1px solid #c9c9c5; border-radius: 7px 7px 4px 4px; overflow: hidden; background: #f1f1ef; box-shadow: 0 6px 22px rgba(0,0,0,.11); margin: 16px 0 28px; }
+.win-titlebar { height: 34px; background: #fbfbf9; display: flex; align-items: center; padding: 0 6px 0 12px; border-bottom: 1px solid #e7e7e3; gap: 9px; }
+.win-titlebar .gear { color: #4a4a48; font-size: 14px; }
+.win-titlebar .t { font-size: 13px; color: #26262a; }
+.win-titlebar .wbtn { width: 34px; height: 26px; display: flex; align-items: center; justify-content: center; color: #4a4a48; font-size: 11px; border-radius: 3px; }
+.win-titlebar .wbtn.close:hover { background: #e04a4a; color: #fff; }
+.win-titlebar .sp { margin-left: auto; display: flex; }
+
+.win-toolbar { display: flex; align-items: center; gap: 10px; padding: 9px 12px 7px; background: #fbfbf9; border-bottom: 1px solid #efefeb; font-size: 12.5px; }
+.win-toolbar .fld { border: 1px solid #cfcfcb; background: #fff; padding: 3px 8px; font-size: 12.5px; border-radius: 2px; color: var(--ink); }
+.win-toolbar .lbl { color: var(--ink-3); font-size: 12px; }
+.win-toolbar .sp { margin-left: auto; }
+.win-tabs { display: flex; align-items: flex-end; background: #ebebe8; padding: 6px 6px 0 6px; border-bottom: 1px solid #d8d8d4; gap: 1px; flex-wrap: wrap; }
+.win-tab { display: flex; align-items: center; gap: 6px; padding: 7px 12px 8px; font-size: 13px; color: #45454a; cursor: pointer; border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0; position: relative; top: 1px; white-space: nowrap; }
+.win-tab:hover { background: #e3e3e0; }
+.win-tab.active { background: #fbfbf9; color: #14161a; font-weight: 600; border-color: #d8d8d4; box-shadow: inset 0 2px 0 var(--accent); }
+
+.win-body { background: #fbfbf9; padding: 0; }
+.chat-wrap { display: flex; flex-direction: column; height: 380px; }
+
+.ctxbar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: #f4f4f1; border-bottom: 1px solid #e8e8e4; font-size: 11.5px; color: var(--ink-3); font-family: var(--mono); flex-wrap: wrap; }
+.ctxbar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.ctxbar .sp { margin-left: auto; }
+.modebtn {
+  border: 1px solid #cfcfcb; background: #fff; padding: 2px 11px;
+  font-size: 11.5px; font-family: var(--mono); cursor: pointer;
+  border-radius: 10px; color: var(--ink-2); letter-spacing: .02em; white-space: nowrap;
+}
+.modebtn:hover { background: #f0f0ec; }
+.modebtn.on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.modebtn.max { color: var(--blue); border-color: var(--blue); background: var(--blue-soft); font-weight: 600; }
+.sysline {
+  text-align: center; font-size: 11.5px; color: var(--ink-3);
+  font-family: var(--mono); padding: 4px 0 10px;
+}
+
+.msgs { flex: 1; overflow-y: auto; padding: 14px 14px 6px; }
+
+.msg { display: flex; margin-bottom: 12px; }
+.msg.me { justify-content: flex-end; }
+.msg .bubble { max-width: 84%; padding: 8px 12px; border-radius: 9px; font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+.msg.me .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 3px; }
+.msg.ai .bubble { background: #f0f0ec; color: var(--ink); border-bottom-left-radius: 3px; }
+.msg.ai .bubble .src { display: block; margin-top: 7px; padding-top: 6px; border-top: 1px solid #e0e0db; font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
+
+.typing { display: flex; gap: 4px; padding: 10px 12px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: #b9b9b3; animation: bl 1.1s infinite; }
+.typing i:nth-child(2) { animation-delay: .18s; }
+.typing i:nth-child(3) { animation-delay: .36s; }
+@keyframes bl { 0%,60%,100% { opacity: .28; } 30% { opacity: 1; } }
+
+.empty { text-align: center; padding: 26px 16px 10px; color: var(--ink-3); }
+.empty h4 { font-size: 14px; color: var(--ink-2); font-weight: 600; margin-bottom: 6px; }
+.empty p { font-size: 12.5px; margin-bottom: 14px; }
+.chips { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; }
+.chip { border: 1px solid var(--hair); background: #fff; padding: 5px 11px; border-radius: 14px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.chip:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.inputrow { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #e8e8e4; background: #fbfbf9; align-items: flex-end; }
+.inputrow input { flex: 1; border: 1px solid #cfcfcb; background: #fff; padding: 7px 10px; font-size: 13px; font-family: var(--sans); border-radius: 3px; }
+.inputrow input:focus { outline: none; border-color: var(--accent); }
+.ibtn { border: 1px solid #cfcfcb; background: #fbfbf9; padding: 7px 13px; font-size: 13px; cursor: pointer; border-radius: 3px; color: var(--ink-2); white-space: nowrap; }
+.ibtn:hover { background: #f0f0ed; }
+.ibtn.p { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ibtn.p:hover { opacity: .9; }
+
+.win-foot { background: #f1f1ef; padding: 9px 12px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #e0e0dc; }
+.win-foot .warn { font-size: 11.5px; color: var(--ink-3); }
+.dbtn { min-width: 74px; padding: 5px 14px; font-size: 13px; border: 1px solid #c9c9c5; background: #fbfbf9; color: #26262a; border-radius: 3px; cursor: pointer; }
+.dbtn.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+.sp { margin-left: auto; }
+.banner { padding: 10px 14px; font-size: 12.5px; border-bottom: 1px solid #e8e8e4; }
+.banner.warn { background: var(--warn-soft); color: var(--warn); }
+.banner.bad { background: var(--bad-soft); color: var(--bad); }
+.banner a { color: inherit; text-decoration: underline; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="kicker">Song Log · AI Chat Tab</div>
+  <h1>AI 对话页：让模型读着你的统计记录聊</h1>
+  <p class="lede">
+    「歌曲详细记录」的第 7 个页签。特别之处是它带着上下文 —— 你在页面上选了哪段时间，
+    它答的就是那段时间的数据。
+  </p>
+
+  <div class="meta-row">
+    <span>原型 V1 · 待确认</span>
+    <span>落点：CPlayLogStatDlg 第 7 个页签</span>
+    <span>代码基线 HEAD 402bbd0</span>
+  </div>
+
+  <div class="verdict">
+    <strong>一句话：</strong>这不是一个万能聊天框，而是<strong>「对着自己的统计记录问问题」</strong>。
+    每轮请求都会把当前筛选范围算好的聚合值塞进上下文，
+    模型只负责把它们讲成人话；<strong>它编不出数据里没有的东西</strong>。
+  </div>
+
+  <h2><span class="no">01</span>放在哪</h2>
+  <p class="sub">「歌曲详细记录」现有的 7 个页签，AI 对话在最右（现在是占位）。它跟洞察页一样，不使用列表控件。</p>
+
+  <table>
+    <tr><th>页签</th><th>内容</th><th>状态</th></tr>
+    <tr><td class="note">概览 / 歌手 / 专辑 / 曲目 / 明细</td><td class="dim">列表，按维度展示</td><td><span class="tag ok">已完成</span></td></tr>
+    <tr><td class="note">洞察</td><td class="dim">纯文字，本地规则引擎生成</td><td><span class="tag ok">已完成</span></td></tr>
+    <tr style="background:var(--accent-soft)"><td class="note"><strong>AI 对话</strong></td><td class="dim">对话界面，按需联网调模型</td><td><span class="tag part">本原型</span></td></tr>
+  </table>
+
+  <h2><span class="no">02</span>界面长什么样</h2>
+  <p class="sub">可点的模拟 —— 输入一句话回车，或点下面的快捷提问，能看到完整的一轮问答。</p>
+
+  <div class="win">
+    <div class="win-titlebar">
+      <span class="gear">&#9881;</span>
+      <span class="t">歌曲详细记录</span>
+      <span class="sp">
+        <span class="wbtn">&#8212;</span><span class="wbtn">&#9633;</span><span class="wbtn close">&#10005;</span>
+      </span>
+    </div>
+
+    <div class="win-toolbar">
+      <span class="lbl">范围</span>
+      <span class="fld">全部</span>
+      <span class="fld">2026-08-19</span>
+      <span class="lbl">至</span>
+      <span class="fld">2026-09-18</span>
+      <span class="sp"></span>
+      <span class="fld">刷新</span>
+    </div>
+
+    <div class="win-tabs">
+      <div class="win-tab" data-i="0">概览</div>
+      <div class="win-tab" data-i="1">歌手</div>
+      <div class="win-tab" data-i="2">专辑</div>
+      <div class="win-tab" data-i="3">曲目</div>
+      <div class="win-tab" data-i="4">明细</div>
+      <div class="win-tab" data-i="5">洞察</div>
+      <div class="win-tab active" data-i="6">AI 对话</div>
+    </div>
+
+    <div class="win-body">
+      <div class="banner warn" id="cfgBanner" style="display:none;">
+        &#9888; 还没配置可用的模型 —— 去 <a onclick="return false;">选项设置 → AI 设置</a> 里加一个，再回来聊。
+        <span class="dim">（本轮只做设置页，这里先给你看形态）</span>
+      </div>
+
+      <div class="chat-wrap">
+        <div class="ctxbar">
+          <span class="dot" id="modeDot"></span>
+          <span id="ctxModel">本地规则引擎 · 零网络</span>
+          <span>|</span>
+          <span id="ctxRange">全部记录 · 3241 条（不受上方日期范围影响）</span>
+          <span class="sp"></span>
+          <button class="modebtn" id="modeBtn" onclick="cycleMode()"
+                  title="点一下换档：本地规则 → 模型（带聚合值）→ Max（带完整原始记录）">本地</button>
+        </div>
+
+        <div class="msgs" id="msgs">
+          <div class="empty" id="emptyHint">
+            <h4>问点关于你自己的事</h4>
+            <p id="emptySub">我会带着上面那个时间范围的统计结果回答</p>
+            <div class="chips" id="chipBox"></div>
+          </div>
+        </div>
+
+        <div class="inputrow">
+          <input id="chatInput" placeholder="说点什么…（Enter 发送）" onkeydown="onKey(event)">
+          <button class="ibtn p" onclick="send()">发送</button>
+          <button class="ibtn" onclick="clearChat()">清空</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="win-foot">
+      <span class="warn" id="saveHint">对话记录未保存（默认关）</span>
+      <span class="sp"></span>
+      <button class="dbtn">生成网页报告</button>
+      <button class="dbtn primary">关闭</button>
+    </div>
+  </div>
+
+  <h3>三档模式，点一下换一档</h3>
+  <p class="note" style="font-size:13.5px;">
+    上下文条右边那个小圆角按钮就是开关，<strong>点一下换一档：本地 → 模型 → Max → 本地</strong>。
+    跟 manictime-analysis 里那个「本地 / 真模型」按钮是同一个路子（一个按钮循环切，激活态用主题色）。
+  </p>
+
+  <table>
+    <tr><th>档位</th><th>发给模型什么</th><th>联网</th><th>速度</th><th>适合</th></tr>
+    <tr>
+      <td class="note"><strong>本地</strong><br><span class="dim">（首次进入默认）</span></td>
+      <td class="dim">什么都不发，规则引擎在本机算</td>
+      <td><span class="tag ok">不联网</span></td>
+      <td class="dim">秒回</td>
+      <td class="dim">常见问法；不想花钱、不想联网</td>
+    </tr>
+    <tr>
+      <td class="note"><strong>模型</strong></td>
+      <td class="dim">时间范围 + 聚合值（总览 / 时段分布 / Top5 / 行为分解）</td>
+      <td><span class="tag part">联网</span></td>
+      <td class="dim">几秒</td>
+      <td class="dim">"我最近听得怎么样"这类开放问题</td>
+    </tr>
+    <tr>
+      <td class="note"><strong>Max</strong></td>
+      <td class="dim">聚合值 <strong>+ 完整原始记录</strong>（全部 3241 条）</td>
+      <td><span class="tag part">联网</span></td>
+      <td class="dim">慢一些</td>
+      <td class="dim">问细节，比如"上周三晚上我听了什么"</td>
+    </tr>
+  </table>
+
+  <p class="note" style="font-size:13.5px;">
+    <strong>模式会记住：</strong>第一次进这个页面是「本地」，之后你切成什么，下次进来还是什么
+    <span class="dim">（存进设置文件，跟其它配置放一起）。</span>
+  </p>
+
+  <div class="banner warn" style="border-radius:0; margin:12px 0 26px; border-left:3px solid var(--warn);">
+    <strong>Max 的代价得说清：</strong>把 683 条原始记录塞进 prompt，token 量是聚合值的几十倍 ——
+    慢、贵，而且记录越多越夸张。<strong>它是个"偶尔用一次"的档位，日常问题用「模型」档就够。</strong>
+    另外无论哪一档，<strong>文件路径永远不发</strong>。
+  </div>
+
+  <h2><span class="no">03</span>AI 能看到什么</h2>
+  <p class="sub">
+    这是这一页最要紧的设计：<strong>不是把原始记录丢给模型</strong>，而是把已经算好的聚合值喂过去。
+    既省 token，也让它没法编造。
+  </p>
+
+  <table>
+    <tr><th>给</th><th>具体内容</th><th>为什么</th></tr>
+    <tr><td class="note">数据范围</td><td class="mono">全部记录（2026-07-01 ~ 最新）</td><td class="dim"><strong>不受页面上方那个日期范围影响</strong></td></tr>
+    <tr><td class="note">总览指标</td><td class="mono">总时长 / 次数 / 曲目数 / 活跃天数 / 完播率</td><td class="dim">回答"最近听得怎么样"这类问题的基础</td></tr>
+    <tr><td class="note">时段分布</td><td class="mono">24 小时计数</td><td class="dim">回答"我什么时候听歌"</td></tr>
+    <tr><td class="note">Top 榜</td><td class="mono">歌手 / 专辑 / 曲目 各 Top 5</td><td class="dim">回答"最爱听谁"，而且有具体名字</td></tr>
+    <tr><td class="note">行为分解</td><td class="mono">播完 / 跳过 / 停止 / 出错 各多少</td><td class="dim">回答"我是不是老跳歌"</td></tr>
+    <tr><td class="note">遗珠</td><td class="mono">反复听却没听完的曲子</td><td class="dim">这类"发现型"问题很有意思</td></tr>
+    <tr><td class="note">曲名与歌手</td><td class="mono">受设置页那个开关控制（默认开）</td><td class="dim">关掉就只有统计数字，说不出歌名</td></tr>
+  </table>
+
+  <h3>永远不发</h3>
+  <table>
+    <tr><td class="note">文件路径</td><td><span class="tag no">不发</span></td><td class="dim">最敏感的字段，任何情况下都挡在本地</td></tr>
+    <tr><td class="note">歌词、封面图片路径</td><td><span class="tag no">不发</span></td><td class="dim">跟问题无关</td></tr>
+    <tr><td class="note">完整原始记录（几千条 JSONL）</td><td><span class="tag no">不发</span></td><td class="dim">只发聚合值，省 token 也省隐私</td></tr>
+  </table>
+
+  <h3>发出去的东西长这样（点开看）</h3>
+  <p class="note" style="font-size:13.5px;">
+    「模型」档实际拼出来的 prompt 如下。<strong>不是把几千条记录倒进去</strong>，而是把算好的数字填进模板 ——
+    整份约 <strong>600~900 token</strong>。
+  </p>
+
+  <details style="margin:12px 0 26px; border:1px solid var(--hair); background:#fff;">
+    <summary style="padding:10px 14px; cursor:pointer; font-size:13px; font-weight:600;">展开看完整 prompt（模型档）</summary>
+    <pre style="margin:0; border:none; border-top:1px solid var(--hair); max-height:430px;">你是内置在「歌曲详细记录」里的音乐数据助手。用户是数据的主人本人。
+请根据下面的真实统计数据回答他的问题。
+
+## 你的能力边界
+- 只依据「真实统计数据」回答；数据里没有的就直说没有，不要编造
+- 回答简短口语化（3-6 句为宜），重点数字加粗
+- 可以给观察和判断（趋势、异常、建议），但要说清依据
+
+## 真实统计数据（全部记录，2026-07-01 ~ 2026-09-19）
+- 计入统计：683 次播放 / 41 小时 12 分 / 218 首曲目 / 活跃 22 天
+- 完播 72.4%；跳过 22.7%；平均单次 3 分 37 秒
+- 最活跃时段 22:00-23:00；深夜(0-6 点)占 23%；周末占 38%
+- 连续听歌：当前 7 天 / 最长 21 天
+- 时段分布：0点12 1点8 2点3 … 21点71 22点95 23点88
+- Top5 歌手：周杰伦 6.7h / 陈奕迅 4.2h / 五月天 3.1h / …
+- Top5 专辑：叶惠美 2.4h / 认了吧 1.9h / …
+- Top5 曲目：晴天(28 次) / 稻香(24 次) / …
+- 行为分解：播完 482 / 跳过 151 / 停止 38 / 出错 12
+- 遗珠（反复听却没听完）：某曲(5 遍) / 另一曲(4 遍)
+
+## 最近对话
+用户：我听得最多的歌手是谁
+助手：周杰伦，累计 6 小时 44 分，118 次…
+
+## 用户的问题
+我最近听得怎么样？
+
+请直接回答（不要复述本提示词）：</pre>
+  </details>
+
+  <div class="banner warn" style="border-radius:0; margin:0 0 26px; border-left:3px solid var(--blue); background:var(--blue-soft); color:var(--blue);">
+    <strong>Max 档的区别：</strong>上面这些聚合值<strong>照发</strong>，另外在末尾追加一整段「## 原始播放记录」，
+    把范围内每条记录的<b>时间 / 标题 / 歌手 / 播放时长 / 是否完播</b>逐行罗列（3241 条 ≈ 3~4 万 token）。
+    <strong>文件路径在任何档位都不出现。</strong>
+  </div>
+
+  <h2><span class="no">04</span>几种状态都要处理好</h2>
+
+  <table>
+    <tr><th>状态</th><th>表现</th></tr>
+    <tr><td class="note">空态</td><td class="dim">显示引导 + 4 个快捷提问，点一下填进输入框</td></tr>
+    <tr><td class="note">思考中</td><td class="dim">AI 气泡位置显示三个跳动的点，输入框和发送按钮置灰</td></tr>
+    <tr><td class="note"><strong>没配模型</strong></td><td class="dim">顶部一条黄色提示，引导去「选项设置 → AI 设置」；输入框仍可打字但发送会拦下</td></tr>
+    <tr><td class="note">鉴权失败（401）</td><td class="dim">红色提示，写明"Key 可能无效"，并指出是哪个服务商</td></tr>
+    <tr><td class="note">网络失败 / 超时</td><td class="dim">红色提示 + 一个「重试」按钮，不用重新打字</td></tr>
+    <tr><td class="note">一条记录都没有</td><td class="dim">提示先去听几首歌再来，不浪费一次调用</td></tr>
+  </table>
+
+  <h2><span class="no">05</span>实现要点</h2>
+
+  <ul class="risk">
+    <li><strong>页签内不用列表控件</strong>。跟洞察页一样，切到这个页签时把主列表隐藏，
+      换成一个自定义的子窗口（消息区 + 输入行）。这是这个对话框里第一处需要「非列表」布局的复杂页签。</li>
+    <li><strong>请求放工作线程</strong>，结果 PostMessage 回主线程。流式的话按片段追加，别等整段。</li>
+    <li><strong>对话历史只存在内存里</strong>（除非用户在设置里开了落盘）。
+      切换页签不丢、关掉窗口就没了 —— 跟设置页那个开关的默认值（关）保持一致。</li>
+    <li><strong>上下文用「全部记录」</strong>，不跟着页面上方那个日期范围走 ——
+      这一页问的是"我这个人"，不是"我这段日子"。每次发消息前重新算一遍聚合
+      （新写入的播放记录要能跟上），不要用页面打开时的旧快照。</li>
+    <li><strong>带上历史轮次</strong>，但要有上限（建议 6 轮），超了就丢最早的。
+      否则上下文越来越长，token 成本和延迟都失控。</li>
+    <li><strong>请求体里加一句硬约束</strong>：让模型只用给定数据回答，数据里没有就直说。
+      这比事后纠正便宜得多（设置页的系统提示词里也有这条）。</li>
+    <li><strong>清空对话</strong>要问一次（"确定清空当前对话？"），别一键抹掉。</li>
+  </ul>
+
+  <h2><span class="no">06</span>本轮范围</h2>
+
+  <table>
+    <tr><th>做</th><th>不做</th></tr>
+    <tr>
+      <td class="note" style="width:50%;">
+        · 页签内的对话界面（消息区 / 输入 / 快捷提问）<br>
+        · 空态、思考中、各类错误态的提示<br>
+        · 上下文构造（把聚合值拼成 prompt）<br>
+        · 和设置页的模型配置联动（读当前模型）<br>
+        · 对话历史（内存 + 可选落盘）
+      </td>
+      <td class="note">
+        · 本轮**先做设置页**，这一页排在它后面<br>
+        · 不做多会话管理（只有一条对话线）<br>
+        · 不做语音输入 / 朗读<br>
+        · 不做图表（要图就去生成网页报告）
+      </td>
+    </tr>
+  </table>
+
+  <h2><span class="no">07</span>已经定了的</h2>
+
+  <table>
+    <tr><th>#</th><th>事项</th><th>结论</th></tr>
+    <tr><td class="mono">1</td><td class="note">放在哪</td><td><span class="tag ok">已定</span> <span class="dim">就放当前这个小对话框的页签里</span></td></tr>
+    <tr><td class="mono">2</td><td class="note">模式切换</td><td><span class="tag ok">已定</span> <span class="dim">一个按钮循环切三档（本地 → 模型 → Max），参照 manictime-analysis 那个按钮的写法</span></td></tr>
+    <tr><td class="mono">3</td><td class="note">模式记忆</td><td><span class="tag ok">已定</span> <span class="dim">记住上次选的档位；<strong>第一次进入用「本地」</strong></span></td></tr>
+    <tr><td class="mono">4</td><td class="note">Max 模式</td><td><span class="tag ok">已定</span> <span class="dim">除了聚合值，<strong>还发完整原始记录</strong></span></td></tr>
+    <tr><td class="mono">5</td><td class="note">多轮对话</td><td><span class="tag ok">已定</span> <span class="dim">保留历史轮次，建议上限 6 轮</span></td></tr>
+    <tr><td class="mono">6</td><td class="note">快捷提问</td><td><span class="tag ok">已定</span> <span class="dim">多备几条，<strong>每次进入随机加载 4 条</strong></span></td></tr>
+    <tr><td class="mono">7</td><td class="note">回显依据</td><td><span class="tag ok">已定</span> <span class="dim"><strong>要</strong> —— AI 气泡底部写「依据：xxx」</span></td></tr>
+  </table>
+
+  <div class="footnote">
+    <span>AI 对话页 · 设计原型 V1</span>
+    <span>确认后排期实现</span>
+  </div>
+
+</div>
+
+<script>
+/* ── 三档模式：本地规则 → 模型（带聚合值）→ Max（带完整原始记录） ── */
+var MODES = [
+  { key: 'local', label: '本地', model: '本地规则引擎 · 零网络',
+    hint: '规则引擎算的，秒回；只能答常见问法', delay: 380, cls: '' },
+  { key: 'model', label: '模型', model: '智谱 GLM · glm-4-flash · 带聚合统计值',
+    hint: '真调模型，带上算好的聚合值；几秒出结果', delay: 1300, cls: 'on' },
+  { key: 'max', label: 'Max', model: '智谱 GLM · glm-4-flash · 含完整原始记录（683 条）',
+    hint: '连原始记录一起发，最准但也最慢最贵', delay: 2100, cls: 'max' }
+];
+var MODE = 0;   /* 第一次进页面用本地 —— 跟设置页的默认口径一致；之后记住上次选的 */
+function cycleMode() {
+  MODE = (MODE + 1) % MODES.length;
+  applyMode();
+  addSys('已切到「' + MODES[MODE].label + '」模式 —— ' + MODES[MODE].hint);
+}
+function applyMode() {
+  var m = MODES[MODE];
+  var b = document.getElementById('modeBtn');
+  b.textContent = m.label;
+  b.className = 'modebtn' + (m.cls ? ' ' + m.cls : '');
+  document.getElementById('ctxModel').textContent = m.model;
+  document.getElementById('modeDot').style.background =
+    (m.key === 'max') ? 'var(--blue)' : 'var(--accent)';
+}
+function addSys(text) {
+  var m = document.getElementById('msgs');
+  var eh = document.getElementById('emptyHint');
+  if (eh) eh.style.display = 'none';
+  var d = document.createElement('div');
+  d.className = 'sysline';
+  d.textContent = text;
+  m.appendChild(d);
+  m.scrollTop = m.scrollHeight;
+}
+
+/* ── 快捷提问池：每次进来随机挑 4 条 ── */
+var CHIP_POOL = [
+  '我最近听得怎么样？',
+  '听得最多的歌手是谁',
+  '有什么歌我反复听却没听完',
+  '我的听歌习惯有什么变化',
+  '哪个时段我最爱听歌',
+  '这个月比上个月听得多吗',
+  '我有没有连续听歌的纪录',
+  '新歌我听了多少首',
+  '我听得最久的一天是哪天',
+  '我的完播率算高还是低'
+];
+function renderChips() {
+  var box = document.getElementById('chipBox');
+  if (!box) return;
+  box.innerHTML = '';
+  var pool = CHIP_POOL.slice(), picked = [];
+  for (var i = 0; i < 4 && pool.length; i++) {
+    picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  for (var k = 0; k < picked.length; k++) {
+    var s = document.createElement('span');
+    s.className = 'chip';
+    s.textContent = picked[k];
+    s.onclick = function () { ask(this); };
+    box.appendChild(s);
+  }
+}
+function onKey(e) { if (e.key === 'Enter') { e.preventDefault(); send(); } }
+function ask(el) { document.getElementById('chatInput').value = el.textContent; send(); }
+function clearChat() {
+  var m = document.getElementById('msgs');
+  m.innerHTML = '';
+  m.appendChild(document.getElementById('emptyHint'));
+  document.getElementById('emptyHint').style.display = '';
+}
+function addMsg(who, text, src) {
+  var m = document.getElementById('msgs');
+  var eh = document.getElementById('emptyHint');
+  if (eh) eh.style.display = 'none';
+  var d = document.createElement('div');
+  d.className = 'msg ' + who;
+  var b = document.createElement('div');
+  b.className = 'bubble';
+  b.textContent = text;
+  if (src) {
+    var s = document.createElement('span');
+    s.className = 'src';
+    s.textContent = '依据：' + src;
+    b.appendChild(s);
+  }
+  d.appendChild(b);
+  m.appendChild(d);
+  m.scrollTop = m.scrollHeight;
+}
+function showTyping() {
+  var m = document.getElementById('msgs');
+  var d = document.createElement('div');
+  d.className = 'msg ai';
+  d.id = 'typingRow';
+  d.innerHTML = '<div class="bubble" style="padding:0;background:#f0f0ec;"><div class="typing"><i></i><i></i><i></i></div></div>';
+  m.appendChild(d);
+  m.scrollTop = m.scrollHeight;
+}
+function hideTyping() { var t = document.getElementById('typingRow'); if (t) t.remove(); }
+
+var REPLIES = [
+  { k: ['怎么样', '最近'], a: '这段时间你一共听了 41 小时 12 分，683 次播放，涉及 218 首曲子。\n\n比上一个周期多了 3 小时（+8%），活跃了 26 天里 22 天。完播率 72%，比上个月的 61% 好不少 —— 你最近更愿意把歌听完了。', s: '总时长 / 次数 / 曲目数 / 完播率 / 环比' },
+  { k: ['歌手', '最多'], a: '周杰伦，累计 6 小时 44 分，118 次。第二名是陈奕迅（4 小时 12 分）。\n\n有意思的是你听周杰伦的时段特别集中在晚上 10 点之后，占了 71%。', s: 'Top5 歌手 / 时段分布 / 逐时段占比' },
+  { k: ['没听完', '反复'], a: '有 3 首是这样的：\n\n· 某支曲子 —— 听了 5 遍，0 次完整听完\n· 另一支 —— 听了 4 遍，0 次\n· 还有一支 —— 听了 3 遍，0 次\n\n这三首的平均停留位置都在 40% 左右，像是每次到某一段就切了。', s: '遗珠列表 / 平均跳过位置' },
+  { k: ['变化', '习惯'], a: '两个变化比较明显：\n\n一是听得更集中了 —— Top10 曲目占了 61% 的时长，上个月只有 44%。\n二是深夜听歌比例从 18% 涨到了 23%，凌晨 0-1 点的次数翻了一倍。', s: '集中度 / 深夜占比 / 时段分布环比' }
+];
+function replyOf(q) {
+  for (var i = 0; i < REPLIES.length; i++) {
+    for (var j = 0; j < REPLIES[i].k.length; j++) {
+      if (q.indexOf(REPLIES[i].k[j]) >= 0) return REPLIES[i];
+    }
+  }
+  return { a: '这段时间的数据我看过了：683 次播放、41 小时 12 分、218 首曲子。\n\n你可以问得更具体些，比如「听得最多的歌手是谁」「有没有反复听却没听完的歌」。', s: '总览指标' };
+}
+function send() {
+  var inp = document.getElementById('chatInput');
+  var txt = (inp.value || '').trim();
+  if (!txt) return;
+  addMsg('me', txt);
+  inp.value = '';
+  var m = MODES[MODE];
+  showTyping();
+  inp.disabled = true;
+  setTimeout(function () {
+    hideTyping();
+    inp.disabled = false;
+    inp.focus();
+    var r = replyOf(txt);
+    if (MODE === 0) {
+      /* 本地：只给规则能覆盖的答案，注明来源是本地算的 */
+      addMsg('ai', r.a, '本地规则引擎（无网络）');
+    } else if (MODE === 1) {
+      /* 模型：带算好的聚合值 */
+      addMsg('ai', r.a, r.s);
+    } else {
+      /* Max：连原始记录一起看，能具体到单次播放 */
+      addMsg('ai', r.a + '\n\n（Max 模式：这次连 683 条原始记录一起看了，所以能具体到某一次播放和具体时间点。）',
+        (r.s || '总览指标') + ' + 完整原始记录 683 条');
+    }
+  }, m.delay);
+}
+/* 进页面时：随机铺快捷提问 + 应用默认模式（本地） */
+renderChips();
+applyMode();
+/* 页签切换：非「AI 对话」页显示占位 */
+var tabs = document.querySelectorAll('.win-tab');
+var body = document.querySelector('.win-body');
+var chatHtml = body.innerHTML;
+for (var i = 0; i < tabs.length; i++) {
+  tabs[i].addEventListener('click', function () {
+    for (var k = 0; k < tabs.length; k++) tabs[k].classList.remove('active');
+    this.classList.add('active');
+    var n = parseInt(this.getAttribute('data-i'), 10);
+    if (n === 6) { body.innerHTML = chatHtml; }
+    else {
+      body.innerHTML = '<p class="dim" style="padding:80px 0;text-align:center;">' +
+        '（这一页是现有的列表内容，本原型只做「AI 对话」页 —— 点回来看看）</p>';
+    }
+  });
+}
+</script>
+</body>
+</html>

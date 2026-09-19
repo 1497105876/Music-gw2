@@ -5,6 +5,7 @@
 #include "StatCommon.h"
 #include "StatAnalysis.h"
 #include "StatHtmlReport.h"
+#include "AiChatView.h"
 
 // 「歌曲详细记录」页面：一个窗口、一个列表，顶部用原生页签条切换视图。
 // 职责：加载 playlog 原始日志 → 按时间范围过滤（唯一过滤点）→ 调聚合层算好快照 → 填进主列表。
@@ -88,6 +89,7 @@ protected:
     CBrush         m_ctl_bk_brush;                  // 下拉/日期控件的背景刷
     CFont          m_date_font;                     // 日期框专用字体（切到「雅黑小一号」那套才用得到）
     CEdit          m_insight_edit;                  // 洞察页的多行只读文本框（跟列表同区域、互斥显示）
+    CAiChatView    m_ai_chat;                       // AI 对话面板（自绘子窗口，跟列表同区域、互斥显示）
 
     // ── 数据 ──
     std::vector<PlayRecord> m_all_records;      // 全量记录（按播放时间倒序）
@@ -135,7 +137,6 @@ protected:
     void FillSongView();
     void FillDetailView();
     void FillInsightView();                     // 洞察页：排版好的纯文字，灌进多行文本框
-    void FillPlaceholderView(const wchar_t* text);  // 占位页（AI 对话）
     void AddOverviewRow(int group, const wchar_t* item, const std::wstring& value);
     void ShowEmptyRow(const wchar_t* text);
 
@@ -145,11 +146,18 @@ protected:
     void StopDetailBatch();                     // 停定时器并清空（m_filtered 变动前必须调）
     void InsertDetailRow(const PlayRecord& r, int index);   // 插单条明细行
 
+    // ── AI 对话页 ──
+    void CreateAiChatPanel();                   // 在主列表那块区域上建自绘面板
+    void LayoutAiChatPanel();                   // 跟着主列表的位置走（窗口缩放时同步）
+    void UpdateAiChatData();                    // 数据刷新后把最新条数告诉面板
+    AiStatSnapshot BuildAiSnapshot();           // 现取一份快照给面板（发送时才调）
+
     DECLARE_MESSAGE_MAP()
 
 public:
     virtual BOOL OnInitDialog() override;
     afx_msg void OnDestroy();
+    afx_msg void OnSize(UINT nType, int cx, int cy);
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg void OnBnClickedRefresh();
     afx_msg void OnBnClickedReport();

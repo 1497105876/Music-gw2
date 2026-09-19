@@ -6,6 +6,7 @@
 #include "CTabCtrlEx.h"
 #include "CHotKeySettingDlg.h"
 #include "MediaLibSettingDlg.h"
+#include "AiSettingDlg.h"
 #include "BaseDialog.h"
 
 // COptionsDlg 对话框
@@ -26,6 +27,7 @@ public:
 	CPlaySettingsDlg m_tab4_dlg{ this };		//“播放选项”子对话框
 	CHotKeySettingDlg m_tab5_dlg{ this };		//“全局快捷键”子对话框
 	CMediaLibSettingDlg m_media_lib_dlg{ this };		//“媒体库”子对话框
+	CAiSettingDlg m_ai_setting_dlg{ this };			//“AI 设置”子对话框
 
 	int m_tab_selected{};
 

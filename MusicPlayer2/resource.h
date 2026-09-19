@@ -1100,6 +1100,45 @@
 #define IDC_PLAYLOG_MAIN_LIST           1469
 #define IDC_PLAYLOG_VIEW_TAB            1470
 #define IDC_PLAYLOG_INSIGHT_EDIT        1471
+
+// ── AI 设置（选项设置第 7 个页签） ──
+#define IDD_AI_SETTING_DIALOG           712
+#define IDD_AI_MODEL_EDIT_DIALOG        713
+
+#define IDC_AI_ENABLE_CHECK             1472
+#define IDC_AI_CUR_MODEL_COMBO          1473
+#define IDC_AI_CONN_STATUS              1474
+#define IDC_AI_BTN_TEST                 1475
+#define IDC_AI_MODEL_LIST               1476
+#define IDC_AI_BTN_ADD                  1477
+#define IDC_AI_BTN_EDIT                 1478
+#define IDC_AI_BTN_DELETE               1479
+#define IDC_AI_STREAM_CHECK             1480
+#define IDC_AI_RETRY_EDIT               1481
+#define IDC_AI_PROXY_COMBO              1482
+#define IDC_AI_PROXY_URL                1483
+#define IDC_AI_PROMPT_EDIT              1484
+#define IDC_AI_BTN_RESET_PROMPT         1485
+#define IDC_AI_PROMPT_HIST_LIST         1486
+#define IDC_AI_LANG_COMBO               1487
+#define IDC_AI_ALLOW_META_CHECK         1488
+#define IDC_AI_SAVE_CHAT_CHECK          1489
+#define IDC_AI_CHAT_PATH_EDIT           1490
+#define IDC_AI_BTN_BROWSE               1491
+
+// ── 模型编辑对话框 ──
+#define IDC_AI_EDIT_NAME                1492
+#define IDC_AI_EDIT_PROVIDER            1493
+#define IDC_AI_EDIT_URL                 1494
+#define IDC_AI_EDIT_KEY                 1495
+#define IDC_AI_EDIT_MODEL               1496
+#define IDC_AI_BTN_FETCH                1497
+#define IDC_AI_EDIT_HINT                1498
+#define IDC_AI_EDIT_TEMP                1499
+#define IDC_AI_EDIT_MAXTOK              1500
+#define IDC_AI_EDIT_TOPP                1501
+#define IDC_AI_EDIT_TIMEOUT             1502
+#define IDC_AI_BTN_TEST_EDIT            1503
 #define ID_ORIGINAL_PITCH               33480
 #define ID_SONGS_MULTI_VERSION_ITEM_START 33481
 #define ID_SONGS_MULTI_VERSION_ITEM_MAX 33511

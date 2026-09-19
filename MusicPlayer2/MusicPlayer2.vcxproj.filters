@@ -1,6 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="对话框类\AI">
+      <UniqueIdentifier>{3f1c9a10-6d2e-4b77-9a11-2c5e8f0a0002}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="功能逻辑类\AI">
+      <UniqueIdentifier>{3f1c9a10-6d2e-4b77-9a11-2c5e8f0a0001}</UniqueIdentifier>
+    </Filter>
     <Filter Include="资源文件">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -683,6 +689,24 @@
     </ClInclude>
     <ClInclude Include="PlayLogStatisticsDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
+    </ClInclude>
+    <ClInclude Include="AiChatView.h">
+      <Filter>对话框类\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="AiModelEditDlg.h">
+      <Filter>对话框类\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="AiSettingDlg.h">
+      <Filter>对话框类\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="AiStatContext.h">
+      <Filter>功能逻辑类\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="AiClient.h">
+      <Filter>功能逻辑类\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="AiConfig.h">
+      <Filter>功能逻辑类\AI</Filter>
     </ClInclude>
     <ClInclude Include="StatCommon.h">
       <Filter>功能逻辑类\PlayStatistics</Filter>
@@ -1426,6 +1450,24 @@
     </ClCompile>
     <ClCompile Include="StatMeta.cpp">
       <Filter>功能逻辑类\PlayStatistics</Filter>
+    </ClCompile>
+    <ClCompile Include="AiChatView.cpp">
+      <Filter>对话框类\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="AiModelEditDlg.cpp">
+      <Filter>对话框类\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="AiSettingDlg.cpp">
+      <Filter>对话框类\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="AiStatContext.cpp">
+      <Filter>功能逻辑类\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="AiClient.cpp">
+      <Filter>功能逻辑类\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="AiConfig.cpp">
+      <Filter>功能逻辑类\AI</Filter>
     </ClCompile>
     <ClCompile Include="CDonateDlg.cpp">
       <Filter>对话框类\DonateDlg</Filter>

@@ -38,6 +38,7 @@
 #include "UIDialog/UITestDialog.h"
 #include "OpenUrlDlg.h"
 #include "PlayStatistics.h"
+#include "AiConfig.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -568,6 +569,9 @@ void CMusicPlayerDlg::SaveConfig()
     ini.WriteBool(L"media_lib", L"lastfm_enable_https", theApp.m_media_lib_setting_data.lastfm_enable_https);
     ini.WriteBool(L"media_lib", L"lastfm_enable_nowplaying", theApp.m_media_lib_setting_data.lastfm_enable_nowplaying);
 
+    //AI 设置
+    AiConfig::Save(ini);
+
     ini.Save();
 }
 
@@ -800,6 +804,9 @@ void CMusicPlayerDlg::LoadConfig()
     theApp.m_media_lib_setting_data.lastfm_auto_scrobble_min = min(50, max(1, theApp.m_media_lib_setting_data.lastfm_auto_scrobble_min));
     theApp.m_media_lib_setting_data.lastfm_enable_https = ini.GetBool(L"media_lib", L"lastfm_enable_https", false);
     theApp.m_media_lib_setting_data.lastfm_enable_nowplaying = ini.GetBool(L"media_lib", L"lastfm_enable_nowplaying", true);
+    //AI 设置
+    AiConfig::Load(ini);
+
     CTagLibHelper::SetWriteId3V2_3(theApp.m_media_lib_setting_data.write_id3_v2_3);
 }
 

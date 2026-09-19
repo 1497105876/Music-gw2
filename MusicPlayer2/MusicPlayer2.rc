@@ -1073,6 +1073,172 @@ BEGIN
     100, 100, 0, 0
 END
 
+
+IDD_AI_SETTING_DIALOG DIALOGEX 0, 0, 344, 500
+STYLE DS_SETFONT | WS_CHILD | WS_SYSMENU
+FONT 9, "微软雅黑", 400, 0, 0x0
+BEGIN
+    GROUPBOX        "总开关",IDC_STATIC,7,4,330,30
+    CONTROL         "启用 AI 功能（关掉后所有 AI 入口都不可用；播放统计本身不受影响）",IDC_AI_ENABLE_CHECK,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,16,315,10
+    GROUPBOX        "当前使用的模型",IDC_STATIC,7,38,330,46
+    RTEXT           "使用哪套配置",IDC_STATIC,14,51,86,8
+    COMBOBOX        IDC_AI_CUR_MODEL_COMBO,104,49,158,90,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    RTEXT           "连接状态",IDC_STATIC,14,67,86,8
+    LTEXT           "未测试",IDC_AI_CONN_STATUS,104,68,156,8,SS_ENDELLIPSIS
+    PUSHBUTTON      "测试连接",IDC_AI_BTN_TEST,264,65,66,14
+    GROUPBOX        "模型管理",IDC_STATIC,7,88,330,92
+    CONTROL         "",IDC_AI_MODEL_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,14,99,312,52
+    PUSHBUTTON      "添加模型",IDC_AI_BTN_ADD,14,156,64,14
+    PUSHBUTTON      "编辑",IDC_AI_BTN_EDIT,82,156,50,14
+    PUSHBUTTON      "删除",IDC_AI_BTN_DELETE,136,156,50,14
+    LTEXT           "同一时刻只有一套是「当前使用」",IDC_STATIC,192,159,134,8,SS_ENDELLIPSIS
+    GROUPBOX        "请求",IDC_STATIC,7,184,330,60
+    CONTROL         "流式输出（边生成边显示）",IDC_AI_STREAM_CHECK,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,196,150,10
+    RTEXT           "失败重试",IDC_STATIC,170,197,56,8
+    EDITTEXT        IDC_AI_RETRY_EDIT,230,195,36,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "次",IDC_STATIC,270,197,20,8
+    RTEXT           "网络代理",IDC_STATIC,14,215,86,8
+    COMBOBOX        IDC_AI_PROXY_COMBO,104,213,120,90,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    RTEXT           "代理地址",IDC_STATIC,14,231,86,8
+    EDITTEXT        IDC_AI_PROXY_URL,104,229,226,12,ES_AUTOHSCROLL
+    GROUPBOX        "提示词",IDC_STATIC,7,248,330,128
+    LTEXT           "系统提示词（每次对话都会带上，定 AI 的角色和口吻）",IDC_STATIC,14,259,312,8,SS_ENDELLIPSIS
+    EDITTEXT        IDC_AI_PROMPT_EDIT,14,269,312,30,ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_BORDER | WS_TABSTOP
+    PUSHBUTTON      "重置为默认",IDC_AI_BTN_RESET_PROMPT,14,303,70,14
+    RTEXT           "回答语言",IDC_STATIC,176,306,60,8
+    COMBOBOX        IDC_AI_LANG_COMBO,240,304,86,90,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "历史版本（只留最近 3 次，点一行回填到上面的框）",IDC_STATIC,14,322,312,8,SS_ENDELLIPSIS
+    CONTROL         "",IDC_AI_PROMPT_HIST_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_ALIGNLEFT | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,14,332,312,38
+    GROUPBOX        "隐私",IDC_STATIC,7,380,330,68
+    CONTROL         "允许一并发送曲目名和歌手（关掉就只有统计数字，说不出歌名）",IDC_AI_ALLOW_META_CHECK,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,392,315,10
+    LTEXT           "「只发送聚合统计值」强制开启 —— 文件路径任何情况下都不出本机",IDC_STATIC,14,405,312,8,SS_ENDELLIPSIS
+    CONTROL         "对话记录存到本地（默认关，聊完不留痕）",IDC_AI_SAVE_CHAT_CHECK,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,418,315,10
+    RTEXT           "保存位置",IDC_STATIC,14,433,86,8
+    EDITTEXT        IDC_AI_CHAT_PATH_EDIT,104,431,152,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "浏览…",IDC_AI_BTN_BROWSE,260,430,58,14
+    GROUPBOX        "用在哪",IDC_STATIC,7,452,330,44
+    LTEXT           "AI 只用在一处：歌曲详细记录的「AI 对话」页。洞察页是本地规则引擎、播放统计本身零网络 —— 只有你在 AI 对话里主动发消息，才会真正调模型。",IDC_STATIC,14,463,312,24
+END
+
+IDD_AI_SETTING_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    100, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    100, 0, 0, 0,
+    100, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    100, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 100, 0
+END
+
+IDD_AI_MODEL_EDIT_DIALOG DIALOGEX 0, 0, 300, 232
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "编辑模型"
+FONT 9, "微软雅黑", 400, 0, 0x0
+BEGIN
+    RTEXT           "备注名",IDC_STATIC,7,10,70,8
+    EDITTEXT        IDC_AI_EDIT_NAME,82,8,211,12,ES_AUTOHSCROLL
+    RTEXT           "服务商",IDC_STATIC,7,26,70,8
+    COMBOBOX        IDC_AI_EDIT_PROVIDER,82,24,211,90,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "选一个会自动填下面的地址和模型名，仍可手改",IDC_STATIC,82,40,211,8,SS_ENDELLIPSIS
+    RTEXT           "API 地址",IDC_STATIC,7,55,70,8
+    EDITTEXT        IDC_AI_EDIT_URL,82,53,211,12,ES_AUTOHSCROLL
+    RTEXT           "API Key",IDC_STATIC,7,71,70,8
+    EDITTEXT        IDC_AI_EDIT_KEY,82,69,211,12,ES_AUTOHSCROLL | ES_PASSWORD
+    LTEXT           "明文存进本地配置文件，不加密、不上传",IDC_STATIC,82,84,211,8,SS_ENDELLIPSIS
+    RTEXT           "模型名",IDC_STATIC,7,99,70,8
+    COMBOBOX        IDC_AI_EDIT_MODEL,82,97,140,90,CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "获取可用模型",IDC_AI_BTN_FETCH,226,96,67,14
+    LTEXT           "",IDC_AI_EDIT_HINT,82,113,211,8,SS_ENDELLIPSIS
+    RTEXT           "温度",IDC_STATIC,7,128,70,8
+    EDITTEXT        IDC_AI_EDIT_TEMP,82,126,50,12,ES_AUTOHSCROLL
+    LTEXT           "0 最保守、1 最放飞；润色文案建议 0.7",IDC_STATIC,136,128,157,8,SS_ENDELLIPSIS
+    RTEXT           "最大输出",IDC_STATIC,7,144,70,8
+    EDITTEXT        IDC_AI_EDIT_MAXTOK,82,142,50,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "tokens",IDC_STATIC,136,144,100,8
+    RTEXT           "Top P",IDC_STATIC,7,160,70,8
+    EDITTEXT        IDC_AI_EDIT_TOPP,82,158,50,12,ES_AUTOHSCROLL
+    LTEXT           "和温度二选一调，拿不准就留 1",IDC_STATIC,136,160,150,8,SS_ENDELLIPSIS
+    RTEXT           "超时",IDC_STATIC,7,176,70,8
+    EDITTEXT        IDC_AI_EDIT_TIMEOUT,82,174,50,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "秒",IDC_STATIC,136,176,50,8
+    PUSHBUTTON      "测试连接",IDC_AI_BTN_TEST_EDIT,7,209,60,14
+    DEFPUSHBUTTON   "确定",IDOK,143,209,50,14
+    PUSHBUTTON      "取消",IDCANCEL,199,209,50,14
+END
+
+IDD_AI_MODEL_EDIT_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0
+END
+
 IDD_MEDIA_LIB_DIALOG DIALOGEX 0, 0, 345, 212
 STYLE DS_SETFONT | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 EXSTYLE WS_EX_APPWINDOW

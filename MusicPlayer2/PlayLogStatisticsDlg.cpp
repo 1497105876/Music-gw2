@@ -150,6 +150,7 @@ void CPlayLogStatDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
     ON_WM_DESTROY()
+    ON_WM_SIZE()
     ON_WM_TIMER()
     ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_PLAYLOG_BTN_REFRESH, &CPlayLogStatDlg::OnBnClickedRefresh)
@@ -215,6 +216,9 @@ BOOL CPlayLogStatDlg::OnInitDialog()
     // 数据读完后才知道日志的真实起止日期，这里再同步一次日期控件
     SyncDateControls();
 
+    // AI 对话面板：跟主列表同区域，默认藏着
+    CreateAiChatPanel();
+
     // 播放记录写入后通知本窗口刷新；定时兜底 60 秒重读一次
     CPlayStatistics::GetInstance().SetNotifyTarget(GetSafeHwnd());
     SetTimer(TIMER_PERIODIC, 60000, nullptr);
@@ -225,10 +229,18 @@ BOOL CPlayLogStatDlg::OnInitDialog()
 void CPlayLogStatDlg::OnDestroy()
 {
     StopDetailBatch();      // 先掐掉批次，再清 NotifyTarget
+    m_ai_chat.StopAll();    // 作废在途的 AI 请求，别往已经没了的窗口回消息
     CPlayStatistics::GetInstance().SetNotifyTarget(nullptr);
     KillTimer(TIMER_PERIODIC);
     KillTimer(TIMER_DEBOUNCE);
     CBaseDialog::OnDestroy();
+}
+
+void CPlayLogStatDlg::OnSize(UINT nType, int cx, int cy)
+{
+    CBaseDialog::OnSize(nType, cx, cy);
+    if (nType != SIZE_MINIMIZED)
+        LayoutAiChatPanel();    // 自绘面板不在 rc 的布局表里，只能手动跟着主列表走
 }
 
 void CPlayLogStatDlg::OnTimer(UINT_PTR nIDEvent)
@@ -505,14 +517,20 @@ void CPlayLogStatDlg::SwitchView(PlayLogStatView view)
 
     ShowDlgCtrl(IDC_PLAYLOG_DETAIL_NOTICE, view == PlayLogStatView::Detail);
 
-    // 洞察页整页是排版好的文字，不用列表控件；跟列表同区域，这里换一下显隐
+    // 三个视图区互斥：列表 / 洞察文本框 / AI 对话面板，都占同一块地方
     const bool is_insight = (view == PlayLogStatView::Insight);
-    ShowDlgCtrl(IDC_PLAYLOG_MAIN_LIST, !is_insight);
+    const bool is_ai_chat = (view == PlayLogStatView::AiChat);
+    ShowDlgCtrl(IDC_PLAYLOG_MAIN_LIST, !is_insight && !is_ai_chat);
     ShowDlgCtrl(IDC_PLAYLOG_INSIGHT_EDIT, is_insight);
+    if (::IsWindow(m_ai_chat.GetSafeHwnd()))
+        m_ai_chat.ShowWindow(is_ai_chat ? SW_SHOW : SW_HIDE);
 
-    if (!is_insight)
+    if (!is_insight && !is_ai_chat)
         InitListColumns();      // 用列表的视图才需要重建列
     FillCurrentView();          // 立刻填当前数据
+
+    if (is_ai_chat)
+        m_ai_chat.OnPageActivated();
 }
 
 void CPlayLogStatDlg::InitListColumns()
@@ -614,9 +632,8 @@ void CPlayLogStatDlg::InitListColumns()
         break;
     }
     case PlayLogStatView::Insight:
-    case PlayLogStatView::AiChat:
     {
-        // 占位页：只有一列说明文字，宽度吃满
+        // 洞察页整页是排版好的文字，不用列表控件；这里留一列占位，切走时会被重建
         int w = rect.Width() - theApp.DPI(20) - 1;
         if (w < theApp.DPI(120)) w = theApp.DPI(120);
         m_list.InsertColumn(0, L"说明", LVCFMT_LEFT, w);
@@ -629,6 +646,13 @@ void CPlayLogStatDlg::InitListColumns()
 
 void CPlayLogStatDlg::FillCurrentView()
 {
+    // AI 对话页是自己的面板，里面在聊什么不该被数据刷新冲掉，只更新条数
+    if (m_cur_view == PlayLogStatView::AiChat)
+    {
+        UpdateAiChatData();
+        return;
+    }
+
     // 洞察页不用列表，直接往文本框里灌文字
     if (m_cur_view == PlayLogStatView::Insight)
     {
@@ -652,7 +676,6 @@ void CPlayLogStatDlg::FillCurrentView()
     case PlayLogStatView::Artist:   FillArtistView();   break;
     case PlayLogStatView::Album:    FillAlbumView();    break;
     case PlayLogStatView::Song:     FillSongView();     break;
-    case PlayLogStatView::AiChat:   FillPlaceholderView(L"「AI 对话」还在做，先留个位置"); break;
     default: break;
     }
     m_list.SetRedraw(TRUE);
@@ -1150,10 +1173,52 @@ void CPlayLogStatDlg::FillInsightView()
     m_insight_edit.SetWindowTextW(t.c_str());
 }
 
-void CPlayLogStatDlg::FillPlaceholderView(const wchar_t* text)
+// ───────────────────────── AI 对话页 ─────────────────────────
+
+void CPlayLogStatDlg::CreateAiChatPanel()
 {
-    m_list.DeleteAllItems();
-    ShowEmptyRow(text);
+    // 面板就铺在主列表那块地方，两者互斥显示
+    CRect rect;
+    GetDlgItem(IDC_PLAYLOG_MAIN_LIST)->GetWindowRect(rect);
+    ScreenToClient(rect);
+    if (!m_ai_chat.CreatePanel(this, rect))
+        return;
+    m_ai_chat.ShowWindow(SW_HIDE);
+
+    // 快照在「发送」那一刻才取，保证用的是最新的聚合值
+    m_ai_chat.SetSnapshotProvider([this]() { return BuildAiSnapshot(); });
+    UpdateAiChatData();
+}
+
+void CPlayLogStatDlg::LayoutAiChatPanel()
+{
+    if (!::IsWindow(m_ai_chat.GetSafeHwnd())) return;
+    CRect rect;
+    GetDlgItem(IDC_PLAYLOG_MAIN_LIST)->GetWindowRect(rect);
+    ScreenToClient(rect);
+    m_ai_chat.MoveWindow(rect);
+}
+
+void CPlayLogStatDlg::UpdateAiChatData()
+{
+    if (!::IsWindow(m_ai_chat.GetSafeHwnd())) return;
+    m_ai_chat.OnDataChanged(static_cast<int>(m_all_records.size()));
+}
+
+AiStatSnapshot CPlayLogStatDlg::BuildAiSnapshot()
+{
+    AiStatSnapshot s;
+    s.all_records = &m_all_records;     // AI 的上下文用「全部记录」，不受日期筛选影响
+    s.filtered = &m_filtered;
+    s.summary = &m_data.summary;
+    s.finish = &m_data.finish;
+    s.artists = &m_data.artists;
+    s.albums = &m_data.albums;
+    s.songs = &m_data.songs;
+    s.hour_hist = m_data.hour_hist;
+    s.first_ymd = m_data.first_ymd;
+    s.last_ymd = m_data.last_ymd;
+    return s;
 }
 
 // ───────────────────────── 交互 ─────────────────────────

@@ -273,6 +273,12 @@
     <ClInclude Include="StatCommon.h" />
     <ClInclude Include="PlayLogStatisticsDlg.h" />
 <ClInclude Include="StatHtmlReport.h" />
+<ClInclude Include="AiChatView.h" />
+<ClInclude Include="AiModelEditDlg.h" />
+<ClInclude Include="AiSettingDlg.h" />
+<ClInclude Include="AiStatContext.h" />
+<ClInclude Include="AiClient.h" />
+<ClInclude Include="AiConfig.h" />
     <ClInclude Include="StatMeta.h" />
     <ClInclude Include="ClosseMainWindowInqueryDlg.h" />
     <ClInclude Include="CMMNotificationClient.h" />
@@ -527,6 +533,12 @@
     <ClCompile Include="PlayLogStatisticsDlg.cpp" />
 <ClCompile Include="StatHtmlReport.cpp" />
     <ClCompile Include="StatMeta.cpp" />
+    <ClCompile Include="AiChatView.cpp" />
+    <ClCompile Include="AiModelEditDlg.cpp" />
+    <ClCompile Include="AiSettingDlg.cpp" />
+    <ClCompile Include="AiStatContext.cpp" />
+    <ClCompile Include="AiClient.cpp" />
+    <ClCompile Include="AiConfig.cpp" />
     <ClCompile Include="ClosseMainWindowInqueryDlg.cpp" />
     <ClCompile Include="CMMNotificationClient.cpp" />
     <ClCompile Include="CommonData.cpp" />
