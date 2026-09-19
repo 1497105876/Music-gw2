@@ -1105,23 +1105,6 @@ void CPlayLogStatDlg::FillInsightView()
         }
     }
 
-    // ─────────── 来源洞察 ───────────
-    {
-        const std::vector<PlaylistContribution> src = CStatAnalysis::ComputePlaylistContribution(m_filtered);
-        if (!src.empty())
-        {
-            Line(L"【来源洞察】");
-            Blank();
-            const size_t kMax = 3;
-            for (size_t i = 0; i < src.size() && i < kMax; ++i)
-            {
-                const std::wstring name = src[i].source.empty() ? L"未知来源" : src[i].source;
-                Line(L"    · " + name + L" 贡献了 " + Pct(src[i].percent) + L" 的时长");
-            }
-            Blank();
-        }
-    }
-
     // ─────────── 最近 7 天的新发现 ───────────
     {
         const std::vector<InsightSongItem> fresh = CStatAnalysis::ComputeRecentDiscoveries(m_all_records, 7);
