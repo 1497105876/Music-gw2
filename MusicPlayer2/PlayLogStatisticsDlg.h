@@ -117,7 +117,8 @@ protected:
     void ApplyFilter();                 // 过滤 + 聚合 + 重填当前视图
     void RefreshAll();                  // 读盘 + 过滤（外部调用的完整刷新）
     void UpdateWarningText();
-    void SetRangePreset(RangePreset preset);    // 切换预设并同步日期控件
+    void SetRangePreset(RangePreset preset);    // 切换预设
+    void LayoutFilterRow();             // 顶部那行控件按顺序从左往右排（不依赖 rc 里手写的 x）并同步日期控件
     void SyncDateControls();
     int  YmdFromCtrl(CDateTimeCtrl& ctrl) const;
 

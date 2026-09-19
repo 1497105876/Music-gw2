@@ -178,6 +178,9 @@ BOOL CPlayLogStatDlg::OnInitDialog()
     m_date_from.SetFormat(L"yyyy-MM-dd");
     m_date_to.SetFormat(L"yyyy-MM-dd");
 
+    // 顶部这行的控件不按 rc 里手写的坐标摆，改成从左往右顺次排（见函数注释）
+    LayoutFilterRow();
+
     // ── 主列表：扩展样式只在初始化时设一次 ──
     m_list.SetExtendedStyle(m_list.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_LABELTIP | LVS_EX_DOUBLEBUFFER);
 
@@ -346,6 +349,65 @@ void CPlayLogStatDlg::SetRangePreset(RangePreset preset)
     SyncDateControls();
     // 日期控件不禁用：改成「自定义」之外的预设时，控件里显示的是这个预设实际覆盖的区间，
     // 用户看着就知道自己在看哪一段；想改直接改，改完自动落到「自定义」，不需要把控件灰掉。
+}
+
+// 顶部这行的控件（范围标签 / 预设下拉 / 起止日期框 / 「至」/ 刷新）从左往右顺次排开。
+//
+// 为什么不用 rc 里手写的 x 坐标：手写的坐标是按「宋体 9pt」估的，而 BaseDialog 会把控件字体
+// 统一换成微软雅黑，数字和字母更宽，日期框里的「2026-09-18」就会被挤出去。
+// 这里改成按当前字体的实际文字量算宽度，再让下一个控件接着前一个的右边缘走，
+// 以后换字体、改文案、加控件都只要往 place() 里加一行，不用重算整行坐标。
+//
+// 另外这一步必须在 SetFormat 之后调：MoveWindow 会让 DTP 重新布局内部的文字区，
+// 顺手把「字体换了但内部 Edit 还按旧字体算宽度」这个坑一起填掉。
+void CPlayLogStatDlg::LayoutFilterRow()
+{
+    const int margin = theApp.DPI(7);
+    const int gap = theApp.DPI(4);
+    // 各控件的高度不同（原生 DTP 比按钮略高），用 y 让它们的垂直中心对齐在同一线上
+    const int y_label = theApp.DPI(10), h_label = theApp.DPI(8);
+    const int y_ctrl = theApp.DPI(7), h_ctrl = theApp.DPI(14);
+    const int y_date = theApp.DPI(6), h_date = theApp.DPI(16);
+
+    CClientDC dc(this);
+    CFont* p_old_font = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
+
+    int x = margin;
+    auto place = [&](UINT id, int w, int y, int h)
+    {
+        CWnd* p = GetDlgItem(id);
+        if (p == nullptr) return;
+        p->MoveWindow(x, y, w, h);
+        x += w + gap;
+    };
+
+    // 1) 「范围」标签
+    place(IDC_PLAYLOG_LABEL_RANGE, dc.GetTextExtent(L"范围").cx, y_label, h_label);
+
+    // 2) 预设下拉：按最长的一项算宽度，再加下拉箭头的位置
+    place(IDC_PLAYLOG_RANGE_PRESET, dc.GetTextExtent(L"近 30 天").cx + theApp.DPI(26), y_ctrl, h_ctrl);
+
+    // 3) 起始日期：日期文字宽 + 日历下拉按钮 + 左右内边距
+    const int date_w = dc.GetTextExtent(L"2026-09-18").cx + theApp.DPI(34);
+    place(IDC_PLAYLOG_DATE_FROM, date_w, y_date, h_date);
+
+    // 4) 「至」
+    place(IDC_PLAYLOG_LABEL_TILDE, dc.GetTextExtent(L"至").cx, y_label, h_label);
+
+    // 5) 结束日期
+    place(IDC_PLAYLOG_DATE_TO, date_w, y_date, h_date);
+
+    // 6) 刷新按钮右贴边，不参与上面的顺次排布
+    CWnd* p_refresh = GetDlgItem(IDC_PLAYLOG_BTN_REFRESH);
+    if (p_refresh != nullptr)
+    {
+        CRect rc_dlg;
+        GetClientRect(rc_dlg);
+        const int w = dc.GetTextExtent(L"刷新").cx + theApp.DPI(18);
+        p_refresh->MoveWindow(rc_dlg.Width() - margin - w, y_ctrl, w, h_ctrl);
+    }
+
+    dc.SelectObject(p_old_font);
 }
 
 void CPlayLogStatDlg::SyncDateControls()
