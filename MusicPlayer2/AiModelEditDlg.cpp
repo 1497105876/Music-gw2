@@ -142,6 +142,11 @@ void CAiModelEditDlg::OnCbnSelchangeProvider()
         m_model_combo.SetWindowTextW(presets[index].model);
         SetHint(L"");
     }
+    else
+    {
+        // 没有预置模型名的（本机 Ollama / 自定义），引导用户去拉列表，别手打猜
+        SetHint(L"点右边「获取可用模型」拉一份列表，或直接手填模型名");
+    }
 }
 
 void CAiModelEditDlg::SetHint(const std::wstring& text)
@@ -302,8 +307,10 @@ afx_msg LRESULT CAiModelEditDlg::OnModelsDone(WPARAM wParam, LPARAM lParam)
         if (current == name)
             match = m_model_combo.GetCount() - 1;
     }
-    // 用户手敲的名字不在列表里时，别把它冲掉 —— 放在最前面并选中
-    if (match < 0 && !current.empty())
+    // 用户手敲的名字不在列表里时，别把它冲掉 —— 放在最前面并选中。
+    // 但一定要说清楚：服务商那边根本没有这个名字，这多半就是连不上的原因。
+    const bool name_ok = (match >= 0);
+    if (!name_ok && !current.empty())
     {
         m_model_combo.InsertString(0, current.c_str());
         match = 0;
@@ -313,9 +320,18 @@ afx_msg LRESULT CAiModelEditDlg::OnModelsDone(WPARAM wParam, LPARAM lParam)
     else if (m_model_combo.GetCount() > 0)
         m_model_combo.SetCurSel(0);
 
-    wchar_t buf[64];
-    swprintf_s(buf, L"拉到 %d 个模型，点输入框下拉可选", static_cast<int>(result->models.size()));
-    SetHint(buf);
+    if (!current.empty() && !name_ok)
+    {
+        // 这条比「拉到几个模型」重要得多，优先说
+        const std::wstring msg = L"服务商没有「" + current + L"」这个模型，请从下拉里挑一个";
+        SetHint(msg);
+    }
+    else
+    {
+        wchar_t buf[64];
+        swprintf_s(buf, L"拉到 %d 个模型，点输入框下拉可选", static_cast<int>(result->models.size()));
+        SetHint(buf);
+    }
     return 0;
 }
 

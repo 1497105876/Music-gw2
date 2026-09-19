@@ -426,8 +426,10 @@ namespace
             else if (status == 404)
             {
                 out.kind = AiErrorKind::Protocol;
-                out.detail = L"这个地址下没有这个接口。API 地址要填服务商的 base 地址"
-                             L"（形如 https://xxx/v1），不要把 /chat/completions 也填进去";
+                out.detail = L"两种可能：① API 地址填错（要填服务商的 base 地址，"
+                             L"形如 https://xxx/v1，别把 /chat/completions 也塞进去）；"
+                             L"② 服务商那边没有这个模型（不少服务商对「没权限用的模型」"
+                             L"也回 404，而不是 401）。对照下面的服务商原话看是哪一种";
             }
             else if (status == 400 || status == 422)
             {
@@ -437,8 +439,9 @@ namespace
             else if (status >= 500)
             {
                 out.kind = AiErrorKind::Server;
-                out.detail = L"服务商那边暂时不可用（过载或维护），不是本机的问题，"
-                             L"等一会儿再试或者换个模型";
+                out.detail = L"服务商那边出错了。如果原话里提到 model / channel，"
+                             L"是这个模型在你的账号下没有可用渠道，换一个模型试试；"
+                             L"否则多半是对方过载或维护，等一会儿再试";
             }
             else
             {
@@ -447,20 +450,38 @@ namespace
             }
             if (!server_msg.empty())
             {
-                out.detail += L"。（服务商原话：" + server_msg + L"）";
+                out.detail += L"\n服务商原话：" + server_msg;
             }
-            else if (!recv.empty())
+            if (!recv.empty())
             {
-                // 出错时不少服务商返回的不是 JSON（一坨 HTML 或纯文本），
-                // 截一段出来总比什么都不给强
-                std::wstring raw = FromUtf8(recv.substr(0, 160));
+                // 原样再给一份 —— 解析出来的 message 有时候会漏掉关键信息
+                std::wstring raw = FromUtf8(recv.substr(0, 300));
                 for (auto& c : raw)
                     if (c == L'\r' || c == L'\n' || c == L'\t') c = L' ';
-                out.detail += L"。（服务商返回：" + raw + L"）";
+                out.detail += L"\n服务商原始返回：" + raw;
             }
-            // 把实际发出去的东西报出来 —— 404 这类错一眼就能分辨是地址写错还是模型不对
-            out.detail += L"［实际请求：" + verb + L" " + full_url
-                + L"，模型 " + params.model + L"］";
+
+            // 把「真正装在请求体里发出去的那个 model」原样摘出来，连长度一起报。
+            // 界面上显示的名字和发出去的字节理当一模一样，可一旦不一样
+            // （夹了空格、多带了前缀、被截断），光看界面是绝对看不出来的 ——
+            // 这一步就是为了让这种情况无处可藏。
+            std::wstring model_in_body;
+            try
+            {
+                json jb = json::parse(body);
+                if (jb.contains("model") && jb["model"].is_string())
+                    model_in_body = FromUtf8(jb["model"].get<std::string>());
+            }
+            catch (...) {}
+
+            out.detail += L"\n实际请求：" + verb + L" " + full_url;
+            out.detail += L"\n请求体里的 model=\"" + model_in_body + L"\"（"
+                + std::to_wstring(model_in_body.size()) + L" 个字符）";
+            if (model_in_body != params.model)
+            {
+                out.detail += L"\n⚠ 注意：跟配置里读出来的 \"" + params.model + L"\"（"
+                    + std::to_wstring(params.model.size()) + L" 个字符）不一致！";
+            }
             return out;
         }
 
