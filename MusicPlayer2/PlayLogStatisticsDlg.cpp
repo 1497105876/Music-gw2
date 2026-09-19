@@ -362,23 +362,19 @@ void CPlayLogStatDlg::SetRangePreset(RangePreset preset)
 // 顺手把「字体换了但内部 Edit 还按旧字体算宽度」这个坑一起填掉。
 void CPlayLogStatDlg::LayoutFilterRow()
 {
-    // ⚠️ 单位：rc 里的坐标是「对话框单位(DLU)」，而 MoveWindow 吃的是像素，
-    // 两者差一个跟对话框字体挂钩的系数（垂直方向大约 2 倍）。
-    // 所以下面统一用 MapDialogRect 把 DLU 换算成像素，**不要**直接写 theApp.DPI(数字) ——
-    // 那是把 DLU 数值当像素用，整行会等比缩水，文字下半截就被切掉。
-    auto dlu = [this](int x, int y, int w, int h)
-    {
-        CRect rc(x, y, x + w, y + h);
-        MapDialogRect(rc);
-        return rc;
-    };
+    // rc 里的坐标是「对话框单位(DLU)」，MoveWindow 吃的是像素，两者差一个跟对话框字体挂钩的系数
+    // （垂直方向约 2 倍）。所以统一过 MapDialogRect 换算。
+    // dlu_x 换横向、dlu_y 换纵向，传进去的数字就是 rc 里那个数，一一对应；
+    // 千万别用 theApp.DPI(数字) —— 那是把 DLU 数值当像素用，整行会等比缩水、文字被切。
+    auto dlu_x = [this](int v) { CRect rc(0, 0, v, 0); MapDialogRect(rc); return rc.Width(); };
+    auto dlu_y = [this](int v) { CRect rc(0, 0, 0, v); MapDialogRect(rc); return rc.Height(); };
 
-    const int margin = dlu(0, 0, 7, 0).left;
-    const int gap = dlu(0, 0, 4, 0).left;
-    // 各控件高度不同（原生 DTP 比按钮略高），用 y 让它们的垂直中心对齐在同一线上
-    const int y_label = dlu(0, 10, 0, 0).top, h_label = dlu(0, 0, 0, 8).bottom;
-    const int y_ctrl = dlu(0, 7, 0, 0).top, h_ctrl = dlu(0, 0, 0, 14).bottom;
-    const int y_date = dlu(0, 6, 0, 0).top, h_date = dlu(0, 0, 0, 16).bottom;
+    const int margin = dlu_x(7);        // 左右边距
+    const int gap = dlu_x(4);           // 相邻控件之间的横向间隙
+    // 纵向：文字 8 DLU 高；下拉框、按钮、日期框统一 14 DLU，靠 y 让中心落在同一条线上
+    const int y_label = dlu_y(10), h_label = dlu_y(8);
+    const int y_ctrl = dlu_y(7), h_ctrl = dlu_y(14);
+    const int y_date = y_ctrl, h_date = h_ctrl;
 
     CClientDC dc(this);
     CFont* p_old_font = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
@@ -396,10 +392,10 @@ void CPlayLogStatDlg::LayoutFilterRow()
     place(IDC_PLAYLOG_LABEL_RANGE, dc.GetTextExtent(L"范围").cx, y_label, h_label);
 
     // 2) 预设下拉：按最长的一项算宽度，再加下拉箭头的位置
-    place(IDC_PLAYLOG_RANGE_PRESET, dc.GetTextExtent(L"近 30 天").cx + dlu(0, 0, 26, 0).right, y_ctrl, h_ctrl);
+    place(IDC_PLAYLOG_RANGE_PRESET, dc.GetTextExtent(L"近 30 天").cx + dlu_x(26), y_ctrl, h_ctrl);
 
     // 3) 起始日期：日期文字宽 + 日历下拉按钮 + 左右内边距
-    const int date_w = dc.GetTextExtent(L"2026-09-18").cx + dlu(0, 0, 34, 0).right;
+    const int date_w = dc.GetTextExtent(L"2026-09-18").cx + dlu_x(34);
     place(IDC_PLAYLOG_DATE_FROM, date_w, y_date, h_date);
 
     // 4) 「至」
@@ -414,7 +410,7 @@ void CPlayLogStatDlg::LayoutFilterRow()
     {
         CRect rc_dlg;
         GetClientRect(rc_dlg);
-        const int w = dc.GetTextExtent(L"刷新").cx + dlu(0, 0, 18, 0).right;
+        const int w = dc.GetTextExtent(L"刷新").cx + dlu_x(18);
         p_refresh->MoveWindow(rc_dlg.Width() - margin - w, y_ctrl, w, h_ctrl);
     }
 
