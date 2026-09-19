@@ -589,6 +589,50 @@ namespace AiStatContext
     // 现在改成：**先把数据算成一堆现成的人话**（每条都带具体数字，有的还带一句判断），
     // 再按问题挑最相关的几条拼起来。好处是问什么都能答上，也不会拿无关内容硬凑。
     // 只针对 recs 这一批记录构造事实 —— 调用方可能已经把范围缩到「上周」了。
+
+    // ── 口语说法 → 标准关键词 ──
+    //
+    // 事实库里的 key 是「曲目 / 完播 / 深夜」这种书面词，可用户不会照着问 ——
+    // 他会说「听歌多吗」「我是夜猫子吗」「老切歌」。以前裸用 find(key) 匹配，
+    // 于是这些再正常不过的问法**一条都命中不了**，直接掉进兜底话术，显得很笨。
+    // 这里给每个标准词配一批人话说法，匹配时一并认。
+    const std::map<std::wstring, std::vector<std::wstring>>& SynonymMap()
+    {
+        static const std::map<std::wstring, std::vector<std::wstring>> m = {
+            { L"多少", { L"多吗", L"量大", L"量大不大", L"多少次", L"多久", L"几首", L"几次", L"总共", L"一共", L"听了多少" } },
+            { L"曲目", { L"歌", L"曲子", L"哪首", L"哪支", L"首歌", L"听歌", L"单曲" } },
+            { L"歌手", { L"谁", L"哪个歌手", L"演唱", L"什么歌手", L"艺人" } },
+            { L"专辑", { L"唱片", L"大碟", L"哪张专辑" } },
+            { L"时段", { L"几点", L"什么时候", L"哪个时间", L"习惯几点", L"一般几点" } },
+            { L"深夜", { L"夜猫子", L"熬夜", L"半夜", L"通宵", L"凌晨", L"晚上不睡", L"晚睡" } },
+            { L"周末", { L"双休", L"周六", L"周日", L"休息日", L"不上班" } },
+            { L"完播", { L"听完", L"完整", L"没听完", L"听一半", L"完整度" } },
+            { L"跳过", { L"切歌", L"切掉", L"跳掉", L"不听了", L"换歌" } },
+            { L"连续", { L"连着", L"坚持", L"断了", L"天数", L"连续听" } },
+            { L"变化", { L"比", L"趋势", L"多了", L"少了", L"涨", L"降", L"有没有变" } },
+            { L"新歌", { L"新听", L"刚听", L"最近发现", L"新发现", L"第一次听" } },
+            { L"遗珠", { L"反复", L"可惜", L"浪费", L"老是没听完" } },
+        };
+        return m;
+    }
+
+    // 问题里有没有提到这个关键词（含它的口语说法）
+    bool KeyHit(const std::wstring& question, const std::wstring& key)
+    {
+        if (question.find(key) != std::wstring::npos)
+            return true;
+        const auto& all = SynonymMap();
+        const auto it = all.find(key);
+        if (it == all.end())
+            return false;
+        for (const auto& syn : it->second)
+        {
+            if (question.find(syn) != std::wstring::npos)
+                return true;
+        }
+        return false;
+    }
+
     std::vector<LocalFact> BuildLocalFacts(const std::vector<PlayRecord>& recs, bool allow_song_meta,
         const std::wstring& question)
     {
@@ -607,6 +651,33 @@ namespace AiStatContext
                 Duration(sum.total_duration_sec) + L"，涉及 " + Num(sum.total_songs) +
                 L" 首曲子，活跃 " + Num(sum.active_days) + L" 天。";
             f.push_back({ t, { L"总", L"概", L"多少", L"统计", L"数据", L"次数", L"时长", L"整体" }, 60 });
+        }
+
+        // 听得专一还是杂食
+        //
+        // 用的是 inflation_percent（Top10 曲目占了多少次）和 one_hit_wonders ——
+        // 这两个字段早就算好了却一直没人用，正好派上「我听得专一吗 / 喜新厌旧吗」这类问法。
+        if (sum.inflation_percent > 0)
+        {
+            std::wstring judge;
+            if (sum.inflation_percent >= 60)      judge = L"你听得相当专一，主力就是那几首。";
+            else if (sum.inflation_percent >= 35) judge = L"算均衡，既有常听的，也在不断换新的。";
+            else                                  judge = L"你挺杂食的，听得很散，没什么固定主力。";
+            std::wstring t = L"最常听的 10 首占了全部播放的 " + Num(sum.inflation_percent) + L"%。" + judge;
+            if (sum.one_hit_wonders > 0)
+                t += L"另外有 " + Num(sum.one_hit_wonders) + L" 首只听过一次就再没碰过。";
+            f.push_back({ t, { L"专一", L"杂食", L"集中", L"重复", L"固定", L"喜新厌旧", L"口味", L"常听" }, 58 });
+        }
+
+        // 平均一次听多久 / 一天听几次
+        if (fin.total > 0)
+        {
+            const int avg_sec = sum.total_duration_sec / fin.total;
+            std::wstring t = L"平均每次听 " + Duration(avg_sec);
+            if (sum.active_days > 0)
+                t += L"，有听歌的日子里平均一天 " + Num(fin.total / sum.active_days) + L" 次";
+            t += L"。";
+            f.push_back({ t, { L"平均", L"每次", L"一天", L"单次", L"一般", L"通常" }, 52 });
         }
 
         // 歌手
@@ -1175,7 +1246,7 @@ namespace AiStatContext
             int sc = 0;
             for (const auto& k : x.keys)
             {
-                if (question.find(k) != std::wstring::npos)
+                if (KeyHit(question, k))        // 认口语说法，不再裸匹配
                     sc += 10;
             }
             if (sc > 0)
@@ -1233,7 +1304,9 @@ namespace AiStatContext
             for (size_t i = 0; i < by_weight.size() && i < 3; ++i)
                 a += L"\n· " + by_weight[i]->text;
         }
-        a += L"\n\n换个说法再问也行，或者直接点下面的快捷提问。";
+        a += L"\n\n（本地档只是照着数据回答，不会聊天 —— 想聊得随意点可以切到「模型」档。）";
+        a += L"\n我能答的方向：听了多少 / 最爱谁 / 哪首最常听 / 几点听歌 / 是不是夜猫子 / "
+              L"听得专一还是杂食 / 有没有连续在听 / 哪些反复听却没听完。";
         return a;
     }
 
