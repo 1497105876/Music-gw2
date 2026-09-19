@@ -37,6 +37,7 @@ public:
 
     // 在父窗口上创建这块面板（rc 用像素坐标）
     bool CreatePanel(CWnd* parent, const CRect& rect);
+    bool IsReady() const { return m_ready; }
 
     // 取数据快照的回调：只有真正要发消息时才调，保证拿到的是最新聚合值
     void SetSnapshotProvider(std::function<AiStatSnapshot()> fn) { m_snapshot_fn = std::move(fn); }
@@ -186,6 +187,10 @@ private:
     volatile bool m_cancel{ false };
     int  m_think_phase{ 0 };
     int  m_all_count{ 0 };
+    // Create() 还没返回时窗口就会收到 WM_SIZE / WM_PAINT，那时候子控件一个都还没建，
+    // 去 MoveWindow 会直接 ENSURE(::IsWindow(m_hWnd)) 弹「Debug Assertion Failed」。
+    // 建完子控件才置 true，之前所有布局/绘制一律不干活。
+    bool m_ready{ false };
     bool m_entered{ false };        // 是否进过本页面（决定快捷提问要不要重新随机）
 
     std::function<AiStatSnapshot()> m_snapshot_fn;

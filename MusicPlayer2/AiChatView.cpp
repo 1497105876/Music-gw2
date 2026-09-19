@@ -72,6 +72,10 @@ bool CAiChatView::CreatePanel(CWnd* parent, const CRect& rect)
     UpdatePalette();
     CreateChildCtrls();
     ReseedQuickQuestions();
+
+    // 子控件都建好了，从这一刻起才允许布局/绘制（见 m_ready 的注释）
+    m_ready = true;
+
     RecalcLayout();
     ScrollToBottom();
     return true;
@@ -164,7 +168,7 @@ int CAiChatView::BannerHeight() const
 
 void CAiChatView::RecalcLayout()
 {
-    if (!::IsWindow(m_hWnd)) return;
+    if (!m_ready || !::IsWindow(m_hWnd)) return;
     CRect rc;
     GetClientRect(rc);
     if (rc.Width() <= 0 || rc.Height() <= 0) return;
@@ -217,7 +221,7 @@ void CAiChatView::RecalcLayout()
 void CAiChatView::LayoutQuickChips()
 {
     m_chip_rects.clear();
-    if (!::IsWindow(m_hWnd) || m_quick_rect.Height() <= 0) return;
+    if (!m_ready || !::IsWindow(m_hWnd) || m_quick_rect.Height() <= 0) return;
 
     CClientDC dc(this);
     CFont* p_old = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
@@ -243,7 +247,7 @@ void CAiChatView::LayoutQuickChips()
 
 void CAiChatView::RelayoutBubbles()
 {
-    if (!::IsWindow(m_hWnd) || m_msg_rect.Width() <= 0) return;
+    if (!m_ready || !::IsWindow(m_hWnd) || m_msg_rect.Width() <= 0) return;
 
     CClientDC dc(this);
     CFont* p_old = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
@@ -917,7 +921,7 @@ void CAiChatView::OnPaint()
     CPaintDC dc(this);
     CRect rc;
     GetClientRect(rc);
-    if (rc.Width() <= 0 || rc.Height() <= 0) return;
+    if (!m_ready || rc.Width() <= 0 || rc.Height() <= 0) return;
 
     // 双缓冲：滚动/流式追加时才不会闪
     CDC mem;
@@ -942,6 +946,7 @@ BOOL CAiChatView::OnEraseBkgnd(CDC*)
 void CAiChatView::OnSize(UINT nType, int cx, int cy)
 {
     CWnd::OnSize(nType, cx, cy);
+    if (!m_ready) return;       // 建窗过程中的那次 WM_SIZE 直接跳过
     RecalcLayout();
     Invalidate();
 }

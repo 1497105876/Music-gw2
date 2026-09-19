@@ -9,6 +9,7 @@
 #include "AiClient.h"
 #include "Common.h"
 #include <winhttp.h>
+#include <cwctype>
 #include <memory>
 #include <nlohmann/json.hpp>
 
@@ -52,8 +53,22 @@ namespace
             return out;
         out.host.assign(uc.lpszHostName, uc.dwHostNameLength);
         out.path.assign(uc.lpszUrlPath, uc.dwUrlPathLength);
-        out.https = (uc.nScheme == INTERNET_SCHEME_HTTPS);
-        out.port = out.https ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT;
+
+        // 端口：用 CrackUrl 给的真实端口，这样 http://localhost:11434/v1 这种也能连上
+        out.port = (uc.nPort != 0) ? uc.nPort : INTERNET_DEFAULT_HTTP_PORT;
+
+        // 是不是 https 只看地址前缀，不要拿 uc.nScheme 跟 INTERNET_SCHEME_HTTPS 比。
+        // WinHTTP 自己那套编号是 http=1 / https=2，而 wininet.h 的枚举是
+        // INTERNET_SCHEME_HTTP=3 / INTERNET_SCHEME_HTTPS=4 —— 两者不是一回事。
+        // 之前就是在这里比错了：https 的地址被判成明文，端口退到 80、
+        // 请求也不带 WINHTTP_FLAG_SECURE，于是所有 https 服务商都「连不上」。
+        std::wstring head;
+        head.reserve(url.size());
+        for (wchar_t c : url)
+            head += static_cast<wchar_t>(std::towlower(c));
+        out.https = (head.rfind(L"https://", 0) == 0);
+        if (out.port == INTERNET_DEFAULT_HTTP_PORT && out.https)
+            out.port = INTERNET_DEFAULT_HTTPS_PORT;
         // 去掉结尾的斜杠，后面拼 /chat/completions 才不会变成双斜杠
         while (!out.path.empty() && out.path.back() == L'/')
             out.path.pop_back();
@@ -86,6 +101,80 @@ namespace
         std::wstring detail;        // 出错时补一句更具体的话
     };
 
+    // 三个句柄打包，任何一条出错路径都能一口气收干净
+    struct Handles
+    {
+        HINTERNET session{ NULL };
+        HINTERNET connect{ NULL };
+        HINTERNET request{ NULL };
+
+        void Close()
+        {
+            if (request != NULL) { WinHttpCloseHandle(request); request = NULL; }
+            if (connect != NULL) { WinHttpCloseHandle(connect); connect = NULL; }
+            if (session != NULL) { WinHttpCloseHandle(session); session = NULL; }
+        }
+    };
+
+    // Windows 错误码说人话，省得用户对着一个数字发呆
+    std::wstring WinHttpErrorText(DWORD err)
+    {
+        switch (err)
+        {
+        case ERROR_WINHTTP_TIMEOUT:             return L"等太久没回音";
+        case ERROR_WINHTTP_NAME_NOT_RESOLVED:   return L"地址解析不了，检查域名或网络";
+        case ERROR_WINHTTP_CANNOT_CONNECT:      return L"连不上服务器";
+        case ERROR_WINHTTP_CONNECTION_ERROR:    return L"连接被中途掐断";
+        case ERROR_WINHTTP_INVALID_URL:         return L"API 地址格式不对";
+        case 12045:                             return L"证书不受信任";         // ERROR_WINHTTP_INVALID_CA
+        case ERROR_WINHTTP_SECURE_FAILURE:      return L"HTTPS 握手失败（证书或系统时间可能有问题）";
+        case 12157:                             return L"安全通道出错";         // ERROR_WINHTTP_SECURE_CHANNEL_ERROR
+        default:                                return L"请求没发出去";
+        }
+    }
+
+    // 建好 session / connect / request。force_no_proxy 用来在「跟随系统」连不上时退回直连。
+    bool OpenHandles(const AiCallParams& params, const UrlParts& url,
+                     const std::wstring& verb, bool force_no_proxy, Handles& h)
+    {
+        DWORD access = WINHTTP_ACCESS_TYPE_DEFAULT_PROXY;   // 跟随系统
+        std::wstring manual_proxy;
+        const wchar_t* proxy_name = WINHTTP_NO_PROXY_NAME;
+        if (params.proxy_mode == AiProxyMode::None || force_no_proxy)
+        {
+            access = WINHTTP_ACCESS_TYPE_NO_PROXY;
+        }
+        else if (params.proxy_mode == AiProxyMode::Manual && !params.proxy_url.empty())
+        {
+            access = WINHTTP_ACCESS_TYPE_NAMED_PROXY;
+            manual_proxy = params.proxy_url;
+            proxy_name = manual_proxy.c_str();
+        }
+
+        h.session = WinHttpOpen(L"MusicPlayer2", access, proxy_name, WINHTTP_NO_PROXY_BYPASS, 0);
+        if (h.session == NULL)
+            return false;
+
+        DWORD timeout_ms = static_cast<DWORD>(params.timeout_sec) * 1000;
+        if (timeout_ms < 3000) timeout_ms = 3000;
+        WinHttpSetTimeouts(h.session, timeout_ms, timeout_ms, timeout_ms, timeout_ms);
+
+        h.connect = WinHttpConnect(h.session, url.host.c_str(), url.port, 0);
+        if (h.connect == NULL)
+            return false;
+
+        h.request = WinHttpOpenRequest(h.connect, verb.c_str(), url.path.c_str(),
+            nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
+            url.https ? WINHTTP_FLAG_SECURE : 0);
+        if (h.request == NULL)
+            return false;
+
+        // 让服务端可以压；老系统上这个选项不存在，忽略失败即可
+        DWORD decompress = WINHTTP_DECOMPRESSION_FLAG_GZIP | WINHTTP_DECOMPRESSION_FLAG_DEFLATE;
+        WinHttpSetOption(h.request, WINHTTP_OPTION_DECOMPRESSION, &decompress, sizeof(decompress));
+        return true;
+    }
+
     // 发一次请求。stream 打开的话每读到一段就回调，让它能边收边显示。
     RawResponse DoRequest(const AiCallParams& params,
                           const std::wstring& verb,
@@ -100,100 +189,68 @@ namespace
         if (!url.ok)
         {
             out.kind = AiErrorKind::Network;
-            out.detail = L"API 地址填得不对";
+            out.detail = L"API 地址填得不对（" + full_url + L"）";
             return out;
         }
 
-        DWORD access = WINHTTP_ACCESS_TYPE_DEFAULT_PROXY;   // 跟随系统
-        std::wstring manual_proxy;
-        const wchar_t* proxy_name = WINHTTP_NO_PROXY_NAME;
-        if (params.proxy_mode == AiProxyMode::None)
+        Handles h;
+        if (!OpenHandles(params, url, verb, false, h))
         {
-            access = WINHTTP_ACCESS_TYPE_NO_PROXY;
-        }
-        else if (params.proxy_mode == AiProxyMode::Manual && !params.proxy_url.empty())
-        {
-            access = WINHTTP_ACCESS_TYPE_NAMED_PROXY;
-            manual_proxy = params.proxy_url;
-            proxy_name = manual_proxy.c_str();
-        }
-
-        HINTERNET h_session = WinHttpOpen(L"MusicPlayer2", access, proxy_name, WINHTTP_NO_PROXY_BYPASS, 0);
-        if (h_session == NULL)
-        {
-            out.detail = L"无法初始化网络组件";
+            out.detail = L"无法建立网络请求（地址 " + full_url + L"）";
+            h.Close();
             return out;
         }
-
-        DWORD timeout_ms = static_cast<DWORD>(params.timeout_sec) * 1000;
-        if (timeout_ms < 3000) timeout_ms = 3000;
-        WinHttpSetTimeouts(h_session, timeout_ms, timeout_ms, timeout_ms, timeout_ms);
-
-        HINTERNET h_connect = WinHttpConnect(h_session, url.host.c_str(), url.port, 0);
-        if (h_connect == NULL)
-        {
-            out.detail = L"连不上服务器";
-            WinHttpCloseHandle(h_session);
-            return out;
-        }
-
-        HINTERNET h_request = WinHttpOpenRequest(h_connect, verb.c_str(), url.path.c_str(),
-            nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
-            url.https ? WINHTTP_FLAG_SECURE : 0);
-        if (h_request == NULL)
-        {
-            out.detail = L"无法创建请求";
-            WinHttpCloseHandle(h_connect);
-            WinHttpCloseHandle(h_session);
-            return out;
-        }
-
-        // 让服务端可以压；老系统上这个选项不存在，忽略失败即可
-        DWORD decompress = WINHTTP_DECOMPRESSION_FLAG_GZIP | WINHTTP_DECOMPRESSION_FLAG_DEFLATE;
-        WinHttpSetOption(h_request, WINHTTP_OPTION_DECOMPRESSION, &decompress, sizeof(decompress));
 
         std::wstring headers = L"Content-Type: application/json\r\n";
         headers += stream ? L"Accept: text/event-stream\r\n" : L"Accept: application/json\r\n";
         if (!params.api_key.empty())
             headers += L"Authorization: Bearer " + SafeHeaderValue(params.api_key) + L"\r\n";
-        WinHttpAddRequestHeaders(h_request, headers.c_str(), (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
+        WinHttpAddRequestHeaders(h.request, headers.c_str(), (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
 
         DWORD tick_begin = ::GetTickCount();
 
         BOOL sent = body.empty()
-            ? WinHttpSendRequest(h_request, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)
-            : WinHttpSendRequest(h_request, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+            ? WinHttpSendRequest(h.request, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)
+            : WinHttpSendRequest(h.request, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
                 (LPVOID)body.data(), (DWORD)body.size(), (DWORD)body.size(), 0);
 
-        if (!sent || !WinHttpReceiveResponse(h_request, NULL))
+        // 「跟随系统」的代理（含 WPAD / 系统代理）要是不可用，表现就是一直连不上。
+        // 这里不消耗用户的重试次数，直接偷偷退回直连再试一次。
+        if (!sent && params.proxy_mode == AiProxyMode::System)
+        {
+            DWORD first_err = ::GetLastError();
+            h.Close();
+            if (OpenHandles(params, url, verb, true, h))
+            {
+                WinHttpAddRequestHeaders(h.request, headers.c_str(), (DWORD)-1,
+                    WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
+                sent = body.empty()
+                    ? WinHttpSendRequest(h.request, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)
+                    : WinHttpSendRequest(h.request, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                        (LPVOID)body.data(), (DWORD)body.size(), (DWORD)body.size(), 0);
+            }
+            if (!sent)
+                ::SetLastError(first_err);      // 两次都不行，报第一次的原因
+        }
+
+        if (!sent || !WinHttpReceiveResponse(h.request, NULL))
         {
             DWORD err = ::GetLastError();
             out.elapsed_ms = static_cast<int>(::GetTickCount() - tick_begin);
-            WinHttpCloseHandle(h_request);
-            WinHttpCloseHandle(h_connect);
-            WinHttpCloseHandle(h_session);
+            h.Close();
             if (err == ERROR_WINHTTP_TIMEOUT || err == ERROR_INTERNET_TIMEOUT)
-            {
                 out.kind = AiErrorKind::Timeout;
-                out.detail = L"等了 " + std::to_wstring(params.timeout_sec) + L" 秒还没回";
-            }
-            else if (err == ERROR_WINHTTP_NAME_NOT_RESOLVED || err == ERROR_WINHTTP_CANNOT_CONNECT ||
-                     err == ERROR_WINHTTP_CONNECTION_ERROR || err == ERROR_INTERNET_CANNOT_CONNECT)
-            {
-                out.kind = AiErrorKind::Network;
-                out.detail = L"连不上服务器，看看网络或代理设置";
-            }
             else
-            {
                 out.kind = AiErrorKind::Network;
-                out.detail = L"请求没发出去（Windows 错误码 " + std::to_wstring(err) + L"）";
-            }
+            out.detail = WinHttpErrorText(err)
+                + L"（Windows 错误码 " + std::to_wstring(err)
+                + L"，地址 " + full_url + L"）";
             return out;
         }
 
         DWORD status = 0;
         DWORD status_size = sizeof(status);
-        WinHttpQueryHeaders(h_request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+        WinHttpQueryHeaders(h.request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
             WINHTTP_HEADER_NAME_BY_INDEX, &status, &status_size, WINHTTP_NO_HEADER_INDEX);
         out.status = static_cast<int>(status);
 
@@ -203,14 +260,12 @@ namespace
         std::string carry;      // 上一次没凑成一行的零头
         char buf[8192];
         DWORD bytes_read = 0;
-        while (WinHttpReadData(h_request, buf, sizeof(buf), &bytes_read) && bytes_read > 0)
+        while (WinHttpReadData(h.request, buf, sizeof(buf), &bytes_read) && bytes_read > 0)
         {
             if (cancel != nullptr && *cancel)
             {
                 out.elapsed_ms = static_cast<int>(::GetTickCount() - tick_begin);
-                WinHttpCloseHandle(h_request);
-                WinHttpCloseHandle(h_connect);
-                WinHttpCloseHandle(h_session);
+                h.Close();
                 out.kind = AiErrorKind::Cancelled;
                 out.ok = true;
                 out.detail = L"已取消";
@@ -269,9 +324,7 @@ namespace
         }
 
         out.elapsed_ms = static_cast<int>(::GetTickCount() - tick_begin);
-        WinHttpCloseHandle(h_request);
-        WinHttpCloseHandle(h_connect);
-        WinHttpCloseHandle(h_session);
+        h.Close();
 
         if (status >= 400)
         {
