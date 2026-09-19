@@ -672,9 +672,20 @@ std::wstring CAiChatView::BuildContextText(AiStatSnapshot& snap) const
     if (AiConfig::Get().chat_mode == AiChatMode::Max)
         t += AiStatContext::BuildRawRecordsText(snap, kMaxRawRows, allow_meta);
 
-    std::wstring head = L"下面是我的听歌数据汇总。\n\n";
-    std::wstring tail = L"\n\n只准使用上面给出的数据作答；数据里没有的信息不要编造。"
-        L"不要提到文件路径。\n\n我的问题：";
+    // 光说「不要编造」太弱了 —— 模型没有角色定位、不知道答多长、不敢下判断。
+    // 这里把角色、长度、判断许可、禁用项一次说清，回答质量差别很大。
+    std::wstring head =
+        L"你是内置在音乐播放器里的听歌数据助手，正在和这些数据的主人本人聊天。\n"
+        L"下面是他的真实听歌数据（已经替你算好），请据此回答他后面的问题。\n\n";
+
+    std::wstring tail =
+        L"\n\n回答要求：\n"
+        L"1. 只用上面给出的数据；数据里没有的就直说没有，**绝不编造**数字或歌名\n"
+        L"2. 说人话：口语化、简短，3~6 句为宜，重点数字直接给出来\n"
+        L"3. 可以给观察、趋势和建议，但要说清是依据上面哪一项得出的\n"
+        L"4. 不要提到文件路径，也不要把上面这些数据原文复述一遍\n"
+        L"5. 拿不准就直说拿不准，别硬答\n\n"
+        L"我的问题：";
     return head + t + tail;
 }
 

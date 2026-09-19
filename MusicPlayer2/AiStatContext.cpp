@@ -400,14 +400,16 @@ namespace AiStatContext
         {
             Line(L"最活跃时段 " + Num(peak_hour) + L":00-" + Num(peak_hour) + L":59（" +
                  Num(peak_cnt) + L" 次）");
+            // 24 小时全给（含 0 次的），不再截断 ——
+            // 以前这里超过 200 字符就 break，后面的小时直接丢了，模型看到的是**残缺分布**，
+            // 于是问「下午听得多吗」「凌晨呢」这种就只能瞎猜。
             std::wstring dist;
             for (int h = 0; h < 24; ++h)
             {
-                if (hour[h] == 0) continue;
-                dist += Num(h) + L"点" + Num(hour[h]) + L" ";
-                if (dist.size() > 200) break;
+                if (h > 0) dist += L" ";
+                dist += Num(h) + L"点" + Num(hour[h]);
             }
-            Line(L"时段分布：" + dist);
+            Line(L"时段分布（24 小时全量）：" + dist);
         }
         if (sum.night_owl_percent > 0)
             Line(L"深夜（0-6 点）占 " + Num(sum.night_owl_percent) + L"%，周末占 " +
@@ -531,6 +533,18 @@ namespace AiStatContext
         Line(L"只听过 1 次的曲子 " + Num(sum.one_hit_wonders) + L" 首，听过 5 次以上的 " +
              Num(sum.repeat_depth) + L" 首");
 
+        // 下面这几个字段以前一直闲置（算了没用），本地档已经启用，模型档也得给 ——
+        // 不给的话「我听得专一吗」「我是不是喜新厌旧」这类问题模型只能编。
+        if (sum.inflation_percent > 0)
+        {
+            Line(L"收听集中度：最常听的 10 首占全部播放 " + Num(sum.inflation_percent) +
+                 L"%（越高＝越专一，越低＝越杂食）");
+        }
+        if (sum.explore_percent > 0)
+            Line(L"探索型占比 " + Num(sum.explore_percent) + L"%（只听过一次的曲目占比）");
+        if (sum.new_songs_month > 0)
+            Line(L"本月第一次听的新曲 " + Num(sum.new_songs_month) + L" 首");
+
         return t;
     }
 
@@ -562,18 +576,19 @@ namespace AiStatContext
         return t;
     }
 
+    // 前置声明：定义在后面「事实清单」那节，带口语同义词匹配
+    bool KeyHit(const std::wstring& question, const std::wstring& key);
+
     std::wstring BuildSourceText(const AiStatSnapshot& s, const std::wstring& question)
     {
         std::wstring src;
-        bool hit_artist = question.find(L"歌手") != std::wstring::npos || question.find(L"谁") != std::wstring::npos;
-        bool hit_time = question.find(L"时段") != std::wstring::npos || question.find(L"几点") != std::wstring::npos ||
-                        question.find(L"什么时候") != std::wstring::npos || question.find(L"晚上") != std::wstring::npos ||
-                        question.find(L"深夜") != std::wstring::npos;
-        bool hit_behavior = question.find(L"跳过") != std::wstring::npos || question.find(L"切歌") != std::wstring::npos ||
-                            question.find(L"完播") != std::wstring::npos || question.find(L"没听完") != std::wstring::npos ||
-                            question.find(L"反复") != std::wstring::npos;
-        bool hit_change = question.find(L"变化") != std::wstring::npos || question.find(L"比") != std::wstring::npos ||
-                          question.find(L"趋势") != std::wstring::npos;
+        // 走 KeyHit 而不是裸 find —— 否则「夜猫子」「切歌」这类口语说法识别不出来，
+        // 依据那行就会漏掉真正用到的数据
+        bool hit_artist = KeyHit(question, L"歌手") || KeyHit(question, L"谁");
+        bool hit_time = KeyHit(question, L"时段") || KeyHit(question, L"深夜");
+        bool hit_behavior = KeyHit(question, L"跳过") || KeyHit(question, L"完播") ||
+                            KeyHit(question, L"遗珠");
+        bool hit_change = KeyHit(question, L"变化");
 
         if (hit_artist) src += L"Top5 歌手";
         if (hit_time) src += (src.empty() ? L"" : L" / ") + std::wstring(L"时段分布");
