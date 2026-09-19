@@ -145,6 +145,7 @@ void CPlayLogStatDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_PLAYLOG_DATE_TO, m_date_to);
     DDX_Control(pDX, IDC_PLAYLOG_MAIN_LIST, m_list);
     DDX_Control(pDX, IDC_PLAYLOG_VIEW_TAB, m_view_tab);
+    DDX_Control(pDX, IDC_PLAYLOG_INSIGHT_EDIT, m_insight_edit);
 }
 
 BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
@@ -203,6 +204,8 @@ BOOL CPlayLogStatDlg::OnInitDialog()
     // ── 顶部原生页签条 ──
     InitTabCtrl();
     ShowDlgCtrl(IDC_PLAYLOG_DETAIL_NOTICE, false);
+    // 洞察页用的是文本框而不是列表，两者同区域互斥，默认先把文本框藏起来
+    ShowDlgCtrl(IDC_PLAYLOG_INSIGHT_EDIT, false);
 
     InitListColumns();
 
@@ -502,8 +505,14 @@ void CPlayLogStatDlg::SwitchView(PlayLogStatView view)
 
     ShowDlgCtrl(IDC_PLAYLOG_DETAIL_NOTICE, view == PlayLogStatView::Detail);
 
-    InitListColumns();      // 删列 + 重建列
-    FillCurrentView();      // 立刻填当前数据
+    // 洞察页整页是排版好的文字，不用列表控件；跟列表同区域，这里换一下显隐
+    const bool is_insight = (view == PlayLogStatView::Insight);
+    ShowDlgCtrl(IDC_PLAYLOG_MAIN_LIST, !is_insight);
+    ShowDlgCtrl(IDC_PLAYLOG_INSIGHT_EDIT, is_insight);
+
+    if (!is_insight)
+        InitListColumns();      // 用列表的视图才需要重建列
+    FillCurrentView();          // 立刻填当前数据
 }
 
 void CPlayLogStatDlg::InitListColumns()
@@ -585,7 +594,7 @@ void CPlayLogStatDlg::InitListColumns()
     case PlayLogStatView::Detail:
     {
         int width[7];
-        width[0] = theApp.DPI(32);    // 序号（固定）
+        width[0] = theApp.DPI(40);    // 序号（固定）
         width[1] = theApp.DPI(100);   // 播放时间（固定）——去掉年份后短了一截，不用留原来那么宽
         width[4] = theApp.DPI(110);   // 专辑（固定）
         width[5] = theApp.DPI(70);    // 本次播放（固定）
@@ -620,6 +629,13 @@ void CPlayLogStatDlg::InitListColumns()
 
 void CPlayLogStatDlg::FillCurrentView()
 {
+    // 洞察页不用列表，直接往文本框里灌文字
+    if (m_cur_view == PlayLogStatView::Insight)
+    {
+        FillInsightView();
+        return;
+    }
+
     // 明细是分批插的，它自己管重绘；这里再包一层 SetRedraw 会和批次里的打架
     if (m_cur_view == PlayLogStatView::Detail)
     {
@@ -636,7 +652,6 @@ void CPlayLogStatDlg::FillCurrentView()
     case PlayLogStatView::Artist:   FillArtistView();   break;
     case PlayLogStatView::Album:    FillAlbumView();    break;
     case PlayLogStatView::Song:     FillSongView();     break;
-    case PlayLogStatView::Insight:  FillPlaceholderView(L"「洞察」还在做，先留个位置"); break;
     case PlayLogStatView::AiChat:   FillPlaceholderView(L"「AI 对话」还在做，先留个位置"); break;
     default: break;
     }
@@ -919,6 +934,237 @@ void CPlayLogStatDlg::InsertDetailRow(const PlayRecord& r, int index)
         play_sec = total_sec;
     m_list.SetItemText(row, 5, CStatAnalysis::FormatDuration(play_sec).c_str());
     m_list.SetItemText(row, 6, total_sec > 0 ? CStatAnalysis::FormatDuration(total_sec).c_str() : L"—");
+}
+
+// 洞察页：把已经算好的统计发现，排成一段段读得懂的文字，灌进那个多行文本框。
+// 这一页刻意不用列表 —— 洞察是拿来「读」的，不是拿来「查」的。
+void CPlayLogStatDlg::FillInsightView()
+{
+    std::wstring t;
+    auto Line = [&t](const std::wstring& s) { t += s; t += L"\r\n"; };
+    auto Blank = [&t]() { t += L"\r\n"; };
+    auto Num = [](int v) { return std::to_wstring(v); };
+    auto Pct = [](double v)
+    {
+        wchar_t b[32];
+        swprintf_s(b, L"%.1f%%", v);
+        return std::wstring(b);
+    };
+
+    if (!m_data.valid || m_data.records == nullptr || m_data.records->empty())
+    {
+        Line(L"这段时间里没有可统计的播放记录。");
+        Blank();
+        Line(L"把上方的范围放宽一点（比如选「全部」）再来看看。");
+        m_insight_edit.SetWindowTextW(t.c_str());
+        return;
+    }
+
+    const StatSummary& s = m_data.summary;
+    const FinishBreakdown& f = m_data.finish;
+    const int total = f.total;
+
+    // ─────────── 听歌画像 ───────────
+    {
+        std::vector<std::wstring> tags;
+        if (s.night_owl_percent >= 25)  tags.push_back(L"深夜");
+        if (s.explore_percent >= 50)    tags.push_back(L"探索型");
+        if (s.completed_rate >= 70.0)   tags.push_back(L"完整派");
+        else if (total > 0 && f.skipped * 100 / total >= 30) tags.push_back(L"快进派");
+        if (s.repeat_depth >= 10)       tags.push_back(L"循环控");
+
+        std::wstring who;
+        for (size_t i = 0; i < tags.size(); ++i)
+        {
+            if (i > 0) who += L"、";
+            who += tags[i];
+        }
+        if (who.empty()) who = L"随性";
+
+        Line(L"【听歌画像】");
+        Blank();
+        Line(L"你是个" + who + L"听众。");
+        if (!s.badges.empty())
+        {
+            Blank();
+            for (const auto& b : s.badges)
+                Line(L"    · " + b.title + L" —— " + b.text);
+        }
+        Blank();
+    }
+
+    // ─────────── 时间洞察 ───────────
+    {
+        Line(L"【时间洞察】");
+        Blank();
+
+        int peak_hour = -1, peak_cnt = 0;
+        for (int h = 0; h < 24; ++h)
+        {
+            if (m_data.hour_hist[h] > peak_cnt) { peak_cnt = m_data.hour_hist[h]; peak_hour = h; }
+        }
+        if (peak_hour >= 0)
+            Line(L"你最常在 " + Num(peak_hour) + L":00 - " + Num(peak_hour) + L":59 听歌。");
+        if (s.night_owl_percent > 0)
+            Line(L"深夜（0-6 点）占了全部时长的 " + Num(s.night_owl_percent) + L"%。");
+        if (s.weekend_percent > 0)
+            Line(L"周末贡献了 " + Num(s.weekend_percent) + L"% 的播放次数。");
+        Blank();
+
+        int top_day_sec = 0;
+        std::wstring top_day;
+        for (const auto& b : m_data.day_buckets)
+        {
+            if (b.duration_sec > top_day_sec) { top_day_sec = b.duration_sec; top_day = b.label; }
+        }
+        if (top_day_sec > 0)
+            Line(L"听得最久的一天是 " + top_day + L"，" + CStatAnalysis::FormatDuration(top_day_sec) + L"。");
+
+        Line(L"已经连续 " + Num(s.current_streak) + L" 天听歌，最长纪录 " + Num(s.longest_streak) + L" 天。");
+
+        const int miss = CStatAnalysis::ComputeStreakMiss(m_all_records);
+        if (miss > 0)
+            Line(L"另外历史上最长的一段是连续 " + Num(miss) + L" 天，后来断掉了。");
+        Blank();
+    }
+
+    // ─────────── 行为洞察 ───────────
+    {
+        Line(L"【行为洞察】");
+        Blank();
+
+        if (total > 0)
+        {
+            Line(Num(f.completed) + L" 次完整听完（" + Pct(f.completed * 100.0 / total) + L"），" +
+                 Num(f.skipped) + L" 次中途切走（" + Pct(f.skipped * 100.0 / total) + L"）。");
+        }
+        if (f.avg_skip_completion >= 0)
+            Line(L"切歌的人平均听到 " + Pct(f.avg_skip_completion) + L" 就换了。");
+
+        for (const auto& b : CStatAnalysis::ComputeSkipDistribution(m_filtered))
+        {
+            if (b.count > 0 && b.percent >= 50.0)
+            {
+                Line(L"大多数跳过发生在「" + b.label + L"」这个区间。");
+                break;
+            }
+        }
+        Blank();
+
+        if (s.repeat_depth > 0)
+            Line(L"有 " + Num(s.repeat_depth) + L" 首歌被你听了 5 遍以上。");
+
+        const std::vector<RetiredGem> gems = CStatAnalysis::ComputeRetiredGems(m_filtered, 3);
+        if (!gems.empty())
+        {
+            Blank();
+            Line(L"另外这几首你反复点开，却一次都没听完过：");
+            const size_t kMax = 5;
+            for (size_t i = 0; i < gems.size() && i < kMax; ++i)
+            {
+                const std::wstring artist = gems[i].artist.empty() ? L"未知歌手" : gems[i].artist;
+                Line(L"    · " + gems[i].title + L" —— " + artist + L"（听了 " + Num(gems[i].count) + L" 遍）");
+            }
+        }
+        Blank();
+    }
+
+    // ─────────── 变化洞察 ───────────
+    {
+        Line(L"【变化洞察】");
+        Blank();
+
+        const PeriodComparison pc = CStatAnalysis::ComputePeriodComparison(m_filtered, m_data.filter);
+        if (pc.has_previous)
+        {
+            const int delta = pc.count_delta;
+            if (delta > 0)
+                Line(L"比上一个周期多听了 " + Num(delta) + L" 次（" + Pct(pc.count_delta_percent) + L"）。");
+            else if (delta < 0)
+                Line(L"比上一个周期少听了 " + Num(-delta) + L" 次（" + Pct(pc.count_delta_percent) + L"）。");
+            else
+                Line(L"跟上一个周期听得一样多。");
+        }
+        else
+        {
+            Line(L"上一个周期还没有记录，暂时没得比。");
+        }
+        Blank();
+
+        const std::vector<PeriodBucket> news = CStatAnalysis::ComputeNewSongTrend(m_all_records);
+        if (!news.empty())
+        {
+            const PeriodBucket* best = &news.front();
+            for (const auto& b : news)
+            {
+                if (b.count > best->count) best = &b;
+            }
+            if (best->count > 0)
+                Line(L"新歌发现最多的是 " + best->label + L"，一个月新听了 " + Num(best->count) + L" 首。");
+            Blank();
+        }
+    }
+
+    // ─────────── 来源洞察 ───────────
+    {
+        const std::vector<PlaylistContribution> src = CStatAnalysis::ComputePlaylistContribution(m_filtered);
+        if (!src.empty())
+        {
+            Line(L"【来源洞察】");
+            Blank();
+            const size_t kMax = 3;
+            for (size_t i = 0; i < src.size() && i < kMax; ++i)
+            {
+                const std::wstring name = src[i].source.empty() ? L"未知来源" : src[i].source;
+                Line(L"    · " + name + L" 贡献了 " + Pct(src[i].percent) + L" 的时长");
+            }
+            Blank();
+        }
+    }
+
+    // ─────────── 最近 7 天的新发现 ───────────
+    {
+        const std::vector<InsightSongItem> fresh = CStatAnalysis::ComputeRecentDiscoveries(m_all_records, 7);
+        if (!fresh.empty())
+        {
+            Line(L"【最近 7 天的新发现】");
+            Blank();
+            Line(L"这一周第一次听的有 " + Num(static_cast<int>(fresh.size())) + L" 首：");
+            const size_t kMax = 6;
+            for (size_t i = 0; i < fresh.size() && i < kMax; ++i)
+            {
+                const std::wstring artist = fresh[i].artist.empty() ? L"未知歌手" : fresh[i].artist;
+                Line(L"    · " + fresh[i].title + L" —— " + artist +
+                     L"（" + CStatAnalysis::FormatYmd(fresh[i].ymd) + L"）");
+            }
+            if (fresh.size() > kMax)
+                Line(L"    …… 还有 " + Num(static_cast<int>(fresh.size() - kMax)) + L" 首");
+            Blank();
+        }
+    }
+
+    // ─────────── 值得重听 ───────────
+    {
+        const std::vector<InsightSongItem> replay =
+            CStatAnalysis::ComputeWorthReplaying(m_all_records, 80.0, 180, 2);
+        if (!replay.empty())
+        {
+            Line(L"【值得重听】");
+            Blank();
+            Line(L"这几首你当年听得挺完整，但已经很久没碰了：");
+            const size_t kMax = 5;
+            for (size_t i = 0; i < replay.size() && i < kMax; ++i)
+            {
+                const std::wstring artist = replay[i].artist.empty() ? L"未知歌手" : replay[i].artist;
+                Line(L"    · " + replay[i].title + L" —— " + artist +
+                     L"（最后听于 " + CStatAnalysis::FormatYmd(replay[i].ymd) +
+                     L"，完播率 " + Pct(replay[i].completion) + L"）");
+            }
+            Blank();
+        }
+    }
+
+    m_insight_edit.SetWindowTextW(t.c_str());
 }
 
 void CPlayLogStatDlg::FillPlaceholderView(const wchar_t* text)

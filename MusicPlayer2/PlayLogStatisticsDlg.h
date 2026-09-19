@@ -87,6 +87,7 @@ protected:
     CImageList     m_tab_img_list;                  // 页签图标，必须活到窗口销毁
     CBrush         m_ctl_bk_brush;                  // 下拉/日期控件的背景刷
     CFont          m_date_font;                     // 日期框专用字体（切到「雅黑小一号」那套才用得到）
+    CEdit          m_insight_edit;                  // 洞察页的多行只读文本框（跟列表同区域、互斥显示）
 
     // ── 数据 ──
     std::vector<PlayRecord> m_all_records;      // 全量记录（按播放时间倒序）
@@ -133,7 +134,8 @@ protected:
     void FillAlbumView();
     void FillSongView();
     void FillDetailView();
-    void FillPlaceholderView(const wchar_t* text);  // 洞察 / AI 对话的占位
+    void FillInsightView();                     // 洞察页：排版好的纯文字，灌进多行文本框
+    void FillPlaceholderView(const wchar_t* text);  // 占位页（AI 对话）
     void AddOverviewRow(int group, const wchar_t* item, const std::wstring& value);
     void ShowEmptyRow(const wchar_t* text);
 

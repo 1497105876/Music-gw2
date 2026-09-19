@@ -15,6 +15,7 @@ struct AlbumRankItem;
 struct ArtistRankItem;
 struct SongRankItem;
 struct RetiredGem;
+struct InsightSongItem;
 struct PlaylistContribution;
 struct RadarScore;
 struct YearReview;
@@ -115,6 +116,13 @@ public:
     static std::vector<SongRankItem> ComputeSongRank(const std::vector<PlayRecord>& records, int top_n = 200);
     static std::vector<PeriodBucket>  ComputeNewSongTrend(const std::vector<PlayRecord>& records);
     static std::vector<RetiredGem>    ComputeRetiredGems(const std::vector<PlayRecord>& records, int min_count = 3);
+
+    // ── 洞察页专用（这两条的入参请传「全量记录」，不是过滤后的）──
+    // 最近 days 天内第一次出现在听歌历史里的曲子，按首次播放日倒序
+    static std::vector<InsightSongItem> ComputeRecentDiscoveries(const std::vector<PlayRecord>& all_records, int days = 7);
+    // 完播率高、但这 idle_days 天里一次都没再听过的曲子，按最后播放日升序（最久没听的排前面）
+    static std::vector<InsightSongItem> ComputeWorthReplaying(const std::vector<PlayRecord>& all_records,
+        double min_completion = 80.0, int idle_days = 180, int min_count = 2);
     static std::vector<PlaylistContribution> ComputePlaylistContribution(const std::vector<PlayRecord>& records);
     static int                        ComputeStreakMiss(const std::vector<PlayRecord>& records);
     static RadarScore                 ComputeRadar(const StatSummary& summary);

@@ -9,6 +9,28 @@
 #include <ctime>
 #include <cmath>
 
+namespace
+{
+    // YYYYMMDD 往前推 days 天。自己算，不引 CTime —— 聚合层保持零 MFC 依赖
+    int YmdMinusDays(int ymd, int days)
+    {
+        if (ymd <= 0 || days <= 0) return ymd;
+        int y = ymd / 10000, m = (ymd / 100) % 100, d = ymd % 100;
+        while (days-- > 0)
+        {
+            if (--d == 0)
+            {
+                if (--m == 0) { m = 12; y--; }
+                static const int mdays[12] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
+                int dim = mdays[m - 1];
+                if (m == 2 && ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0)) dim = 29;
+                d = dim;
+            }
+        }
+        return y * 10000 + m * 100 + d;
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 口径判定
 // ─────────────────────────────────────────────────────────────────────────────
@@ -910,6 +932,110 @@ std::vector<RetiredGem> CStatAnalysis::ComputeRetiredGems(const std::vector<Play
     std::sort(v.begin(), v.end(),
         [](const RetiredGem& x, const RetiredGem& y) { return x.count > y.count; });
     return v;
+}
+
+// 洞察：最近 days 天内第一次听的曲子（入参必须传全量记录，否则「首次」测不准）
+std::vector<InsightSongItem> CStatAnalysis::ComputeRecentDiscoveries(const std::vector<PlayRecord>& all_records, int days)
+{
+    struct Agg { int first_ymd = 0; int count = 0; std::wstring title; std::wstring artist; };
+    std::map<std::wstring, Agg> agg;
+
+    for (const auto& r : all_records)
+    {
+        if (!IsCounted(r)) continue;
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
+
+        Agg& a = agg[r.file_path];
+        a.count++;
+        if (a.first_ymd == 0 || ymd < a.first_ymd) a.first_ymd = ymd;
+        if (!r.title.empty()) a.title = r.title;
+        if (!r.artist.empty()) a.artist = r.artist;
+    }
+
+    // 截止日取「数据里最晚的一天」，而不是系统今天 —— 日志可能是隔几天才补齐的
+    int latest_ymd = 0;
+    for (const auto& [path, a] : agg)
+    {
+        if (a.first_ymd > latest_ymd) latest_ymd = a.first_ymd;
+    }
+    if (latest_ymd == 0) return {};
+
+    const int from_ymd = YmdMinusDays(latest_ymd, days - 1);
+
+    std::vector<InsightSongItem> out;
+    for (const auto& [path, a] : agg)
+    {
+        if (a.first_ymd < from_ymd) continue;       // 之前就听过了，不算新发现
+        InsightSongItem it;
+        it.file_path = path;
+        it.title = a.title.empty() ? path : a.title;
+        it.artist = a.artist;
+        it.ymd = a.first_ymd;
+        it.count = a.count;
+        out.push_back(std::move(it));
+    }
+    std::sort(out.begin(), out.end(),
+        [](const InsightSongItem& x, const InsightSongItem& y) { return x.ymd > y.ymd; });
+    return out;
+}
+
+// 洞察：完播率高、但已经很久没再听过的曲子（入参必须传全量记录）
+std::vector<InsightSongItem> CStatAnalysis::ComputeWorthReplaying(
+    const std::vector<PlayRecord>& all_records, double min_completion, int idle_days, int min_count)
+{
+    // 完播率 = 累计收听时长 / 累计曲目总长；只统计曲长有效的那些播放，两个累计量一起加，避免虚高
+    struct Agg { int count = 0; int last_ymd = 0; int dur = 0; int len = 0; std::wstring title; std::wstring artist; };
+    std::map<std::wstring, Agg> agg;
+
+    for (const auto& r : all_records)
+    {
+        if (!IsCounted(r)) continue;
+        int ymd = YmdOf(r.played_at);
+        if (ymd == 0) continue;
+
+        Agg& a = agg[r.file_path];
+        a.count++;
+        if (ymd > a.last_ymd) a.last_ymd = ymd;
+        if (r.song_length_sec > 0)
+        {
+            a.dur += r.play_duration_sec;
+            a.len += r.song_length_sec / 1000;
+        }
+        if (!r.title.empty()) a.title = r.title;
+        if (!r.artist.empty()) a.artist = r.artist;
+    }
+
+    int latest_ymd = 0;
+    for (const auto& [path, a] : agg)
+    {
+        if (a.last_ymd > latest_ymd) latest_ymd = a.last_ymd;
+    }
+    if (latest_ymd == 0) return {};
+
+    const int idle_before = YmdMinusDays(latest_ymd, idle_days);
+
+    std::vector<InsightSongItem> out;
+    for (const auto& [path, a] : agg)
+    {
+        if (a.count < min_count) continue;          // 只听过一两次的谈不上"重听"
+        if (a.len <= 0) continue;                   // 没曲长就算不出完播率
+        const double comp = a.dur * 100.0 / a.len;
+        if (comp < min_completion) continue;        // 当年就没听完，不必推荐重听
+        if (a.last_ymd >= idle_before) continue;    // 最近还听过，不算"久违"
+        InsightSongItem it;
+        it.file_path = path;
+        it.title = a.title.empty() ? path : a.title;
+        it.artist = a.artist;
+        it.ymd = a.last_ymd;
+        it.count = a.count;
+        it.completion = comp;
+        out.push_back(std::move(it));
+    }
+    // 最久没听的排前面
+    std::sort(out.begin(), out.end(),
+        [](const InsightSongItem& x, const InsightSongItem& y) { return x.ymd < y.ymd; });
+    return out;
 }
 
 // 歌单/来源贡献（按 playlist_source 聚合时长占比）

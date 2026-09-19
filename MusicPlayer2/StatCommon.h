@@ -121,6 +121,18 @@ struct RetiredGem
     int          count{ 0 };        // 播放次数
 };
 
+// 洞察用：带日期的曲子条目（「本周新发现」和「值得重听」共用）
+// 注意：这两条都要基于全量记录算 —— 「首次播放」「很久没听」在过滤后的集合里测不准
+struct InsightSongItem
+{
+    std::wstring file_path;
+    std::wstring title;
+    std::wstring artist;
+    int          ymd{ 0 };          // 新发现填「首次播放日」，值得重听填「最后播放日」
+    int          count{ 0 };        // 播放次数
+    double       completion{ 0.0 }; // 完播率（0~100）
+};
+
 // 歌单/来源贡献
 struct PlaylistContribution
 {
