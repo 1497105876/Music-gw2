@@ -525,7 +525,7 @@ void CPlayLogStatDlg::InitListColumns()
     case PlayLogStatView::Overview:
     {
         int width[2];
-        width[0] = theApp.DPI(150);                                 // 统计项（固定）
+        width[0] = theApp.DPI(200);                                 // 统计项（固定）
         width[1] = rect.Width() - width[0] - theApp.DPI(20) - 1;    // 数值（主列，吃剩余）
         if (width[1] < theApp.DPI(120)) width[1] = theApp.DPI(120);
         m_list.InsertColumn(0, L"统计项", LVCFMT_LEFT, width[0]);
@@ -535,10 +535,10 @@ void CPlayLogStatDlg::InitListColumns()
     case PlayLogStatView::Artist:
     {
         int width[5];
-        width[0] = theApp.DPI(40);   // 名次（固定）
-        width[2] = theApp.DPI(90);   // 播放时长（固定）
-        width[3] = theApp.DPI(60);   // 次数（固定）
-        width[4] = theApp.DPI(70);   // 曲目数（固定）
+        width[0] = theApp.DPI(48);   // 名次（固定）
+        width[2] = theApp.DPI(140);   // 播放时长（固定）
+        width[3] = theApp.DPI(72);   // 次数（固定）
+        width[4] = theApp.DPI(72);   // 曲目数（固定）
         width[1] = rect.Width() - width[0] - width[2] - width[3] - width[4] - theApp.DPI(20) - 1;   // 歌手（主列）
         if (width[1] < theApp.DPI(80)) width[1] = theApp.DPI(80);
         m_list.InsertColumn(0, L"名次", LVCFMT_LEFT, width[0]);
@@ -551,9 +551,9 @@ void CPlayLogStatDlg::InitListColumns()
     case PlayLogStatView::Album:
     {
         int width[4];
-        width[0] = theApp.DPI(40);   // 名次（固定）
-        width[2] = theApp.DPI(90);   // 播放时长（固定）
-        width[3] = theApp.DPI(60);   // 次数（固定）
+        width[0] = theApp.DPI(48);   // 名次（固定）
+        width[2] = theApp.DPI(140);   // 播放时长（固定）
+        width[3] = theApp.DPI(72);   // 次数（固定）
         width[1] = rect.Width() - width[0] - width[2] - width[3] - theApp.DPI(20) - 1;   // 专辑（主列）
         if (width[1] < theApp.DPI(80)) width[1] = theApp.DPI(80);
         m_list.InsertColumn(0, L"名次", LVCFMT_LEFT, width[0]);
@@ -567,8 +567,8 @@ void CPlayLogStatDlg::InitListColumns()
         int width[6];
         width[0] = theApp.DPI(40);   // 名次（固定）
         width[3] = theApp.DPI(50);   // 次数（固定）
-        width[4] = theApp.DPI(90);   // 累计时长（固定）
-        width[5] = theApp.DPI(80);   // 最后播放（固定）
+        width[4] = theApp.DPI(104);   // 累计时长（固定）
+        width[5] = theApp.DPI(100);   // 最后播放（固定）
         int rest = rect.Width() - width[0] - width[3] - width[4] - width[5] - theApp.DPI(20) - 1;
         width[1] = rest * 5 / 8;     // 标题（主列）
         width[2] = rest * 3 / 8;     // 歌手
@@ -584,15 +584,13 @@ void CPlayLogStatDlg::InitListColumns()
     }
     case PlayLogStatView::Detail:
     {
-        int width[9];
-        width[0] = theApp.DPI(40);    // 序号（固定）
-        width[1] = theApp.DPI(110);   // 播放时间（固定）
+        int width[7];
+        width[0] = theApp.DPI(32);    // 序号（固定）
+        width[1] = theApp.DPI(100);   // 播放时间（固定）——去掉年份后短了一截，不用留原来那么宽
         width[4] = theApp.DPI(110);   // 专辑（固定）
         width[5] = theApp.DPI(70);    // 本次播放（固定）
         width[6] = theApp.DPI(70);    // 曲目总长（固定）
-        width[7] = theApp.DPI(45);    // 结果（固定）
-        width[8] = theApp.DPI(50);    // 计入统计（固定）
-        int rest = rect.Width() - width[0] - width[1] - width[4] - width[5] - width[6] - width[7] - width[8] - theApp.DPI(20) - 1;
+        int rest = rect.Width() - width[0] - width[1] - width[4] - width[5] - width[6] - theApp.DPI(20) - 1;
         width[2] = rest * 5 / 8;      // 标题（主列）
         width[3] = rest * 3 / 8;      // 歌手
         if (width[2] < theApp.DPI(80)) width[2] = theApp.DPI(80);
@@ -604,8 +602,6 @@ void CPlayLogStatDlg::InitListColumns()
         m_list.InsertColumn(4, L"专辑", LVCFMT_LEFT, width[4]);
         m_list.InsertColumn(5, L"本次播放", LVCFMT_LEFT, width[5]);
         m_list.InsertColumn(6, L"曲目总长", LVCFMT_LEFT, width[6]);
-        m_list.InsertColumn(7, L"结果", LVCFMT_LEFT, width[7]);
-        m_list.InsertColumn(8, L"计入统计", LVCFMT_LEFT, width[8]);
         break;
     }
     case PlayLogStatView::Insight:
@@ -906,25 +902,23 @@ void CPlayLogStatDlg::InsertDetailRow(const PlayRecord& r, int index)
     int row = m_list.InsertItem(index, std::to_wstring(index + 1).c_str());
     if (row < 0) return;
 
+    // 播放时间去掉年份：2026-09-18T12:34:56 -> 09-18 12:34:56
     std::wstring time_text = r.played_at;
     if (time_text.size() >= 10 && time_text[10] == L'T') time_text[10] = L' ';
+    if (time_text.size() > 5 && time_text[4] == L'-') time_text.erase(0, 5);
     m_list.SetItemText(row, 1, time_text.c_str());
     m_list.SetItemText(row, 2, r.title.empty() ? L"未知标题" : r.title.c_str());
     m_list.SetItemText(row, 3, r.artist.empty() ? L"未知歌手" : r.artist.c_str());
     m_list.SetItemText(row, 4, r.album.empty() ? L"未知专辑" : r.album.c_str());
-    m_list.SetItemText(row, 5, CStatAnalysis::FormatDuration(r.play_duration_sec).c_str());
-    m_list.SetItemText(row, 6, r.song_length_sec > 0 ? CStatAnalysis::FormatDuration(r.song_length_sec / 1000).c_str() : L"—");
 
-    const wchar_t* reason = L"播完";
-    switch (r.finish_reason)
-    {
-    case PlayRecord::FinishReason::SKIPPED:    reason = L"跳过"; break;
-    case PlayRecord::FinishReason::STOPPED:    reason = L"停止"; break;
-    case PlayRecord::FinishReason::PLAY_ERROR: reason = L"出错"; break;
-    default: break;
-    }
-    m_list.SetItemText(row, 7, reason);
-    m_list.SetItemText(row, 8, CStatAnalysis::IsCounted(r) ? L"是" : L"否");
+    // 曲目总长（song_length_sec 是毫秒）
+    const int total_sec = r.song_length_sec > 0 ? r.song_length_sec / 1000 : 0;
+    // 本次播放时长理论上不会超过曲目总长，真超了说明时长字段有异常，按曲目总长显示
+    int play_sec = r.play_duration_sec;
+    if (total_sec > 0 && play_sec > total_sec)
+        play_sec = total_sec;
+    m_list.SetItemText(row, 5, CStatAnalysis::FormatDuration(play_sec).c_str());
+    m_list.SetItemText(row, 6, total_sec > 0 ? CStatAnalysis::FormatDuration(total_sec).c_str() : L"—");
 }
 
 void CPlayLogStatDlg::FillPlaceholderView(const wchar_t* text)
