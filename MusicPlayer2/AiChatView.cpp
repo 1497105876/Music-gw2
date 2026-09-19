@@ -158,12 +158,13 @@ void CAiChatView::UpdatePalette()
 
 // ───────────────────────── 布局 ─────────────────────────
 
-int CAiChatView::TopBarHeight() const { return theApp.DPI(34); }
-int CAiChatView::QuickHeight() const { return theApp.DPI(40); }
-int CAiChatView::InputHeight() const { return theApp.DPI(58); }
+// 三条横带的高度都压得比较紧：这块面板实际只有主列表那么大
+// （rc 里是 326x138 DLU，约 489x276 像素），固定带多占一点，气泡就少看一行。
+int CAiChatView::TopBarHeight() const { return theApp.DPI(30); }
+int CAiChatView::InputHeight() const { return theApp.DPI(48); }
 int CAiChatView::BannerHeight() const
 {
-    return (m_banner_kind == BannerKind::None) ? 0 : theApp.DPI(30);
+    return (m_banner_kind == BannerKind::None) ? 0 : theApp.DPI(28);
 }
 
 void CAiChatView::RecalcLayout()
@@ -173,75 +174,151 @@ void CAiChatView::RecalcLayout()
     GetClientRect(rc);
     if (rc.Width() <= 0 || rc.Height() <= 0) return;
 
+    const int pad = theApp.DPI(6);
+
+    // ① 顶部条
     int y = 0;
     m_top_rect = CRect(0, 0, rc.Width(), TopBarHeight());
     y = m_top_rect.bottom;
 
+    // ② 提示横幅（没有就不占地方）
     const int ban_h = BannerHeight();
     m_banner_rect = CRect(0, y, rc.Width(), y + ban_h);
     y = m_banner_rect.bottom;
 
-    const int bottom_h = QuickHeight() + InputHeight();
-    m_msg_rect = CRect(0, y, rc.Width(), rc.Height() - bottom_h);
-    if (m_msg_rect.Height() < 0) m_msg_rect.bottom = m_msg_rect.top;
-    m_quick_rect = CRect(0, m_msg_rect.bottom, rc.Width(), m_msg_rect.bottom + QuickHeight());
-    m_input_rect = CRect(0, m_quick_rect.bottom, rc.Width(), rc.Height());
+    // ③ 输入区贴着底边先定下来
+    m_input_rect = CRect(0, rc.Height() - InputHeight(), rc.Width(), rc.Height());
+    if (m_input_rect.top < y) m_input_rect.top = y;      // 窗口实在太矮，别压到横幅上
+
+    // ④ 消息区吃剩下的全部
+    m_msg_rect = CRect(0, y, rc.Width(), m_input_rect.top);
+    if (m_msg_rect.bottom < m_msg_rect.top) m_msg_rect.bottom = m_msg_rect.top;
 
     // 顶部条里的两个按钮
-    const int pad = theApp.DPI(6);
-    int mode_w = theApp.DPI(104);
-    int btn_h = theApp.DPI(24);
-    int btn_y = (m_top_rect.Height() - btn_h) / 2;
+    int mode_w = theApp.DPI(100);
+    int btn_h = theApp.DPI(22);
+    int btn_y = m_top_rect.top + (m_top_rect.Height() - btn_h) / 2;
     m_mode_btn.MoveWindow(pad, btn_y, mode_w, btn_h);
-    int clear_w = theApp.DPI(64);
+    int clear_w = theApp.DPI(60);
     m_clear_btn.MoveWindow(m_top_rect.right - pad - clear_w, btn_y, clear_w, btn_h);
 
     // 横幅右侧的「重试」
     if (ban_h > 0)
     {
-        int rb_w = theApp.DPI(52);
-        int rb_h = theApp.DPI(22);
+        int rb_w = theApp.DPI(50);
+        int rb_h = theApp.DPI(20);
         m_retry_btn.MoveWindow(m_banner_rect.right - pad - rb_w,
             m_banner_rect.top + (ban_h - rb_h) / 2, rb_w, rb_h);
     }
 
-    // 输入行：输入框吃满剩余，发送按钮贴右边
-    int send_w = theApp.DPI(64);
-    int send_h = theApp.DPI(26);
-    int inp_h = theApp.DPI(44);
-    int inp_y = m_input_rect.top + theApp.DPI(6);
-    m_input.MoveWindow(pad, inp_y, m_input_rect.Width() - pad * 2 - send_w - pad, inp_h);
-    m_send_btn.MoveWindow(m_input_rect.right - pad - send_w, inp_y + (inp_h - send_h) / 2, send_w, send_h);
+    // 输入行：输入框吃满剩余宽度，发送按钮贴右边
+    int send_w = theApp.DPI(60);
+    int send_h = theApp.DPI(24);
+    int inp_h = InputHeight() - theApp.DPI(12);
+    if (inp_h < theApp.DPI(28)) inp_h = theApp.DPI(28);
+    int inp_y = m_input_rect.top + (InputHeight() - inp_h) / 2;
+    int inp_w = m_input_rect.Width() - pad * 2 - send_w - pad;
+    if (inp_w < theApp.DPI(80)) inp_w = theApp.DPI(80);
+    m_input.MoveWindow(pad, inp_y, inp_w, inp_h);
+    m_send_btn.MoveWindow(m_input_rect.right - pad - send_w,
+        inp_y + (inp_h - send_h) / 2, send_w, send_h);
 
-    LayoutQuickChips();
-    RelayoutBubbles();
+    RelayoutBubbles();      // 里面会顺带把空态位置也算好
     ScrollToBottom();
 }
 
-void CAiChatView::LayoutQuickChips()
+std::wstring CAiChatView::EmptyHintText() const
+{
+    if (AiConfig::Get().chat_mode == AiChatMode::Local)
+        return L"现在这套是「本地」档，什么都不往外发，答案由本机自己算。";
+    return L"发出去的内容只有统计数字 —— 文件路径、歌词、封面都不会离开这台电脑。";
+}
+
+// 空态整块（标题 / 说明 / 快捷提问）在消息区里居中摆放。
+// chips 必须按顺序填进 m_chip_rects，点击时靠下标去 m_chips 取原文。
+void CAiChatView::LayoutEmptyState()
 {
     m_chip_rects.clear();
-    if (!m_ready || !::IsWindow(m_hWnd) || m_quick_rect.Height() <= 0) return;
+    m_empty_title_rect.SetRectEmpty();
+    m_empty_text_rect.SetRectEmpty();
+
+    if (!m_ready || !::IsWindow(m_hWnd)) return;
+    if (!m_messages.empty()) return;        // 聊过天了就不再显示空态
+    if (m_msg_rect.Width() < theApp.DPI(120) || m_msg_rect.Height() < theApp.DPI(48)) return;
 
     CClientDC dc(this);
     CFont* p_old = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
 
-    const int pad = theApp.DPI(8);
-    const int inner = theApp.DPI(10);
-    const int chip_h = theApp.DPI(26);
-    const int gap = theApp.DPI(8);
-    int x = pad;
-    int y = m_quick_rect.top + (m_quick_rect.Height() - chip_h) / 2;
+    const int side = theApp.DPI(14);
+    const int text_w = (std::max)(m_msg_rect.Width() - side * 2, theApp.DPI(80));
+    const std::wstring title = L"想问点什么？";
+    const std::wstring hint = EmptyHintText();
+    const int title_h = MeasureTextHeight(dc, title, text_w);
+    const int hint_h = MeasureTextHeight(dc, hint, text_w);
 
+    const int chip_h = theApp.DPI(24);
+    const int gap_x = theApp.DPI(7);
+    const int gap_y = theApp.DPI(7);
+    const int inner = theApp.DPI(11);
+
+    std::vector<int> widths;
+    widths.reserve(m_chips.size());
     for (const auto& q : m_chips)
     {
         CSize sz = dc.GetTextExtent(q.c_str(), static_cast<int>(q.size()));
         int w = sz.cx + inner * 2;
-        if (w < theApp.DPI(60)) w = theApp.DPI(60);
-        if (x + w > m_quick_rect.right - pad) break;    // 放不下就不放了
-        m_chip_rects.push_back(CRect(x, y, x + w, y + chip_h));
-        x += w + gap;
+        if (w < theApp.DPI(56)) w = theApp.DPI(56);
+        if (w > text_w) w = text_w;
+        widths.push_back(w);
     }
+
+    // 按可用宽度分行
+    std::vector<std::vector<size_t>> rows;
+    std::vector<size_t> cur;
+    int cur_w = 0;
+    for (size_t i = 0; i < widths.size(); i++)
+    {
+        if (!cur.empty() && cur_w + gap_x + widths[i] > text_w)
+        {
+            rows.push_back(cur);        // 这一行放不下了，换个行
+            cur.clear();
+            cur_w = 0;
+        }
+        cur_w += (cur.empty() ? 0 : gap_x) + widths[i];
+        cur.push_back(i);
+    }
+    if (!cur.empty()) rows.push_back(cur);
+
+    const int chips_h = rows.empty() ? 0
+        : (static_cast<int>(rows.size()) * chip_h + (static_cast<int>(rows.size()) - 1) * gap_y);
+
+    const int gap_title_hint = theApp.DPI(6);
+    const int gap_hint_chips = (chips_h > 0) ? theApp.DPI(12) : 0;
+    const int block_h = title_h + gap_title_hint + hint_h + gap_hint_chips + chips_h;
+
+    int top = m_msg_rect.top + (m_msg_rect.Height() - block_h) / 2;
+    if (top < m_msg_rect.top + theApp.DPI(6))
+        top = m_msg_rect.top + theApp.DPI(6);
+
+    m_empty_title_rect = CRect(m_msg_rect.left + side, top, m_msg_rect.right - side, top + title_h);
+    int y = m_empty_title_rect.bottom + gap_title_hint;
+    m_empty_text_rect = CRect(m_msg_rect.left + side, y, m_msg_rect.right - side, y + hint_h);
+    y = m_empty_text_rect.bottom + gap_hint_chips;
+
+    for (const auto& row : rows)
+    {
+        int row_w = 0;
+        for (size_t k = 0; k < row.size(); k++)
+            row_w += widths[row[k]] + (k == 0 ? 0 : gap_x);
+        int x = m_msg_rect.left + (m_msg_rect.Width() - row_w) / 2;
+        for (size_t k = 0; k < row.size(); k++)
+        {
+            m_chip_rects.push_back(CRect(x, y, x + widths[row[k]], y + chip_h));
+            x += widths[row[k]] + gap_x;
+        }
+        y += chip_h + gap_y;
+    }
+
     if (p_old != nullptr) dc.SelectObject(p_old);
 }
 
@@ -252,21 +329,22 @@ void CAiChatView::RelayoutBubbles()
     CClientDC dc(this);
     CFont* p_old = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
 
-    const int pad = theApp.DPI(10);     // 气泡内边距
-    const int gap = theApp.DPI(10);     // 气泡间距
+    const int pad_x = theApp.DPI(12);   // 气泡内边距（左右）
+    const int pad_y = theApp.DPI(8);    // 气泡内边距（上下）
+    const int gap = theApp.DPI(12);     // 气泡间距
     const int margin = theApp.DPI(12);  // 气泡离左右边
     int max_w = m_msg_rect.Width() - margin * 2 - theApp.DPI(14);
-    if (max_w > static_cast<int>(m_msg_rect.Width() * 0.78))
-        max_w = static_cast<int>(m_msg_rect.Width() * 0.78);
-    if (max_w < theApp.DPI(120)) max_w = theApp.DPI(120);
+    if (max_w > static_cast<int>(m_msg_rect.Width() * 0.84))
+        max_w = static_cast<int>(m_msg_rect.Width() * 0.84);    // 同原型的 max-width: 84%
+    if (max_w < theApp.DPI(100)) max_w = theApp.DPI(100);
 
-    int y = pad;
+    int y = pad_y;
     for (auto& b : m_messages)
     {
         if (b.thinking)
         {
-            b.width = theApp.DPI(70);
-            b.height = pad * 2 + theApp.DPI(14);
+            b.width = theApp.DPI(64);
+            b.height = pad_y * 2 + theApp.DPI(14);
         }
         else
         {
@@ -275,22 +353,29 @@ void CAiChatView::RelayoutBubbles()
             if (!src_line.empty())
                 full = (std::max)(full, MeasureTextWidth(dc, src_line));
 
-            int want = full + pad * 2;
+            int want = full + pad_x * 2;
             if (want > max_w) want = max_w;
+            if (want < theApp.DPI(40)) want = theApp.DPI(40);
             b.width = want;
 
-            int text_w = want - pad * 2;
+            int text_w = want - pad_x * 2;
+            if (text_w < theApp.DPI(20)) text_w = theApp.DPI(20);
             int h = MeasureTextHeight(dc, b.text, text_w);
             if (!src_line.empty())
-                h += theApp.DPI(4) + MeasureTextHeight(dc, src_line, text_w);
-            b.height = h + pad * 2;
+                h += theApp.DPI(6) + theApp.DPI(6) + MeasureTextHeight(dc, src_line, text_w);   // 分隔线上下各留 6
+            b.height = h + pad_y * 2;
         }
         b.top = y;
         y += b.height + gap;
     }
-    m_content_h = y + pad;
+    m_content_h = y - gap + pad_y;      // 最后一条下面不留间距，只留一点底部内边距
+    if (m_content_h < 0) m_content_h = 0;
 
     if (p_old != nullptr) dc.SelectObject(p_old);
+
+    // 空态的那些位置跟着消息数量走：没消息才摆，有消息就清掉。
+    // 放这儿是为了让所有「动了 m_messages」的地方都不用额外记得调一次。
+    LayoutEmptyState();
 }
 
 int CAiChatView::MeasureTextHeight(CDC& dc, const std::wstring& text, int width)
@@ -321,10 +406,11 @@ void CAiChatView::DrawAll(CDC& dc, const CRect& client)
 
     DrawTopBar(dc);
     if (m_banner_kind != BannerKind::None) DrawBanner(dc);
-    DrawMessages(dc);
-    if (m_messages.empty()) DrawEmptyHint(dc);
+    if (m_messages.empty())
+        DrawEmptyHint(dc);      // 空态自己把快捷提问一起画了
+    else
+        DrawMessages(dc);
     DrawScrollbar(dc);
-    DrawQuickChips(dc);
 }
 
 void CAiChatView::DrawTopBar(CDC& dc)
@@ -410,29 +496,35 @@ void CAiChatView::DrawMessages(CDC& dc)
 void CAiChatView::DrawOneBubble(CDC& dc, const Bubble& b)
 {
     const int margin = theApp.DPI(12);
-    const int pad = theApp.DPI(10);
+    const int pad_x = theApp.DPI(12);
+    const int pad_y = theApp.DPI(8);
     int x = b.mine ? (m_msg_rect.right - margin - b.width) : (m_msg_rect.left + margin);
     CRect rc(x, b.top, x + b.width, b.top + b.height);
+    if (rc.right > m_msg_rect.right) { rc.right = m_msg_rect.right; rc.left = rc.right - b.width; }
 
     CBrush br(b.mine ? m_pal.bubble_me : m_pal.bubble_ai);
     CPen pen(PS_SOLID, 1, m_pal.bubble_border);
     CBrush* p_old_br = dc.SelectObject(&br);
     CPen* p_old_pen = dc.SelectObject(&pen);
-    POINT round{ theApp.DPI(10), theApp.DPI(10) };
+    POINT round{ theApp.DPI(9), theApp.DPI(9) };
     dc.RoundRect(rc, round);
     dc.SelectObject(p_old_br);
     dc.SelectObject(p_old_pen);
-
     dc.SetBkMode(TRANSPARENT);
+
     CRect tr = rc;
-    tr.DeflateRect(pad, pad);
+    tr.DeflateRect(pad_x, pad_y);
+    if (tr.Width() < theApp.DPI(16)) tr.right = tr.left + theApp.DPI(16);
 
     if (b.thinking)
     {
-        // 三个跳动的点
+        if (tr.Height() <= 0) return;
+        // 三个跳动的点（原型是 6px 圆点、间隔 4px）
         const int r = theApp.DPI(3);
-        const int gap = theApp.DPI(8);
-        int cx = tr.left + r;
+        const int gap = theApp.DPI(4);
+        const int dot_w = r * 2 + gap;
+        int cx = tr.left + r + (tr.Width() - dot_w * 3 + gap) / 2;
+        if (cx < tr.left + r) cx = tr.left + r;
         int cy = tr.top + tr.Height() / 2;
         for (int i = 0; i < 3; i++)
         {
@@ -443,7 +535,7 @@ void CAiChatView::DrawOneBubble(CDC& dc, const Bubble& b)
             CBrush* p_old = dc.SelectObject(&dot);
             dc.Ellipse(cx - r, cy - r, cx + r, cy + r);
             dc.SelectObject(p_old);
-            cx += gap + r * 2;
+            cx += dot_w;
         }
         return;
     }
@@ -455,9 +547,19 @@ void CAiChatView::DrawOneBubble(CDC& dc, const Bubble& b)
 
     if (!b.source.empty())
     {
+        const int line_y = tr.top + used + theApp.DPI(6);
+        // 跟原型一样，「依据」上面拉一条细线把它跟正文分开
+        if (line_y < rc.bottom - pad_y)
+        {
+            CPen sep(PS_SOLID, 1, m_pal.bubble_border);
+            CPen* p_old_sep = dc.SelectObject(&sep);
+            dc.MoveTo(tr.left, line_y);
+            dc.LineTo(tr.right, line_y);
+            dc.SelectObject(p_old_sep);
+        }
         CRect sr = tr;
-        sr.top += used + theApp.DPI(4);
-        sr.bottom = rc.bottom - pad;
+        sr.top = line_y + (line_y < rc.bottom - pad_y ? theApp.DPI(6) : theApp.DPI(2));
+        sr.bottom = rc.bottom - pad_y;
         dc.SetTextColor(m_pal.text_dim);
         std::wstring src_line = L"依据：" + b.source;
         dc.DrawText(src_line.c_str(), static_cast<int>(src_line.size()), &sr,
@@ -503,7 +605,7 @@ void CAiChatView::DrawQuickChips(CDC& dc)
         CPen pen(PS_SOLID, 1, m_pal.chip_border);
         CBrush* p_old_br = dc.SelectObject(&br);
         CPen* p_old_pen = dc.SelectObject(&pen);
-        POINT round{ theApp.DPI(13), theApp.DPI(13) };
+        POINT round{ theApp.DPI(12), theApp.DPI(12) };      // 高 24，圆角给一半就是胶囊形
         dc.RoundRect(m_chip_rects[i], round);
         dc.SelectObject(p_old_br);
         dc.SelectObject(p_old_pen);
@@ -518,19 +620,32 @@ void CAiChatView::DrawQuickChips(CDC& dc)
 void CAiChatView::DrawEmptyHint(CDC& dc)
 {
     if (m_busy) return;
-    CRect r = m_msg_rect;
-    r.DeflateRect(theApp.DPI(20), theApp.DPI(16));
-    if (r.Height() <= 0) return;
+    if (m_msg_rect.Width() <= 0 || m_msg_rect.Height() <= 0) return;
 
+    // 空态只画在消息区里，别溢出到顶栏/输入区上
+    CRgn rgn;
+    rgn.CreateRectRgnIndirect(m_msg_rect);
+    dc.SelectClipRgn(&rgn);
     dc.SetBkMode(TRANSPARENT);
-    dc.SetTextColor(m_pal.text_dim);
-    std::wstring t = L"想问点什么？下面这几条可以先点一下，也可以直接在下面打字。\n"
-        L"现在这套是「本地」档：什么都不往外发，答案由本机算出来。";
-    if (AiConfig::Get().chat_mode != AiChatMode::Local)
-        t = L"想问点什么？下面这几条可以先点一下，也可以直接在下面打字。\n"
-        L"发给模型的内容只有统计数字，文件路径、歌词、封面都不会离开这台电脑。";
-    dc.DrawText(t.c_str(), static_cast<int>(t.size()), &r,
-        DT_WORDBREAK | DT_NOPREFIX | DT_CENTER);
+
+    if (!m_empty_title_rect.IsRectEmpty())
+    {
+        dc.SetTextColor(m_pal.text);
+        CRect r = m_empty_title_rect;
+        dc.DrawText(L"想问点什么？", -1, &r,
+            DT_SINGLELINE | DT_NOPREFIX | DT_CENTER | DT_END_ELLIPSIS);
+    }
+    if (!m_empty_text_rect.IsRectEmpty())
+    {
+        dc.SetTextColor(m_pal.text_dim);
+        CRect r = m_empty_text_rect;
+        const std::wstring t = EmptyHintText();
+        dc.DrawText(t.c_str(), static_cast<int>(t.size()), &r,
+            DT_WORDBREAK | DT_NOPREFIX | DT_CENTER);
+    }
+    DrawQuickChips(dc);
+
+    dc.SelectClipRgn(nullptr);
 }
 
 // ───────────────────────── 收发 ─────────────────────────
@@ -874,8 +989,8 @@ void CAiChatView::OnPageActivated()
     if (m_messages.empty())
     {
         ReseedQuickQuestions();
-        LayoutQuickChips();
-        InvalidateRect(m_quick_rect, FALSE);
+        LayoutEmptyState();
+        InvalidateRect(m_msg_rect, FALSE);
     }
 
     if (m_banner_kind != BannerKind::None) return;
@@ -1054,7 +1169,7 @@ void CAiChatView::OnMouseMove(UINT nFlags, CPoint point)
     if (hover != m_hover_chip)
     {
         m_hover_chip = hover;
-        InvalidateRect(m_quick_rect, FALSE);
+        InvalidateRect(m_msg_rect, FALSE);
     }
     CWnd::OnMouseMove(nFlags, point);
 }

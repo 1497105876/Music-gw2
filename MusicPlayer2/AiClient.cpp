@@ -42,11 +42,37 @@ namespace
         return s.substr(b, e - b);
     }
 
-    // 拼请求地址：base 可能是「https://a.com/v1」「https://a.com/v1/」「https://a.com/」，
-    // 一律先去空白、再去结尾斜杠，拼出来的才是 /v1/chat/completions 而不是 /v1//chat/completions。
+    // 很多人会把「完整端点」直接填进 API 地址，比如
+    //     https://ollama.com/v1/chat/completions
+    // 这时候再拼一次 /chat/completions 就成了 .../chat/completions/chat/completions，
+    // 服务端只会回一个 404。这里先把尾巴摘掉，只留 base。
+    std::wstring StripEndpoint(const std::wstring& b)
+    {
+        static const wchar_t* kEnds[] = { L"/chat/completions", L"/completions", L"/responses" };
+        std::wstring lower;
+        lower.reserve(b.size());
+        for (wchar_t c : b)
+            lower += static_cast<wchar_t>(std::towlower(c));
+        for (const wchar_t* e : kEnds)
+        {
+            const size_t n = std::wstring(e).size();
+            if (lower.size() >= n && lower.compare(lower.size() - n, n, e) == 0)
+                return b.substr(0, b.size() - n);
+        }
+        return b;
+    }
+
+    // 拼请求地址：base 允许写成
+    //     https://a.com/v1                     -> https://a.com/v1/chat/completions
+    //     https://a.com/v1/                    -> 同上（结尾斜杠去掉）
+    //     https://a.com/v1/chat/completions    -> 同上（重复的端点尾巴先摘掉）
     std::wstring JoinUrl(const std::wstring& base, const wchar_t* tail)
     {
         std::wstring b = Trim(base);
+        while (!b.empty() && (b.back() == L'/' || b.back() == L'\\'))
+            b.pop_back();
+        if (!b.empty())
+            b = StripEndpoint(b);
         while (!b.empty() && (b.back() == L'/' || b.back() == L'\\'))
             b.pop_back();
         if (b.empty())
@@ -397,15 +423,22 @@ namespace
                 out.kind = AiErrorKind::RateLimit;
                 out.detail = L"请求太密了，等一会儿再试";
             }
-            else if (status == 400 || status == 404 || status == 422)
+            else if (status == 404)
             {
                 out.kind = AiErrorKind::Protocol;
-                out.detail = L"请求被拒绝，检查模型名对不对";
+                out.detail = L"这个地址下没有这个接口。API 地址要填服务商的 base 地址"
+                             L"（形如 https://xxx/v1），不要把 /chat/completions 也填进去";
+            }
+            else if (status == 400 || status == 422)
+            {
+                out.kind = AiErrorKind::Protocol;
+                out.detail = L"请求被拒绝，多半是模型名不对，或者服务商不接受某个参数";
             }
             else if (status >= 500)
             {
                 out.kind = AiErrorKind::Server;
-                out.detail = L"服务商那边出问题了";
+                out.detail = L"服务商那边暂时不可用（过载或维护），不是本机的问题，"
+                             L"等一会儿再试或者换个模型";
             }
             else
             {
@@ -413,7 +446,21 @@ namespace
                 out.detail = L"请求没成功";
             }
             if (!server_msg.empty())
-                out.detail += L"（" + server_msg + L"）";
+            {
+                out.detail += L"。（服务商原话：" + server_msg + L"）";
+            }
+            else if (!recv.empty())
+            {
+                // 出错时不少服务商返回的不是 JSON（一坨 HTML 或纯文本），
+                // 截一段出来总比什么都不给强
+                std::wstring raw = FromUtf8(recv.substr(0, 160));
+                for (auto& c : raw)
+                    if (c == L'\r' || c == L'\n' || c == L'\t') c = L' ';
+                out.detail += L"。（服务商返回：" + raw + L"）";
+            }
+            // 把实际发出去的东西报出来 —— 404 这类错一眼就能分辨是地址写错还是模型不对
+            out.detail += L"［实际请求：" + verb + L" " + full_url
+                + L"，模型 " + params.model + L"］";
             return out;
         }
 

@@ -102,12 +102,14 @@ private:
     void UpdatePalette();
 
     // ── 布局 ──
-    void RecalcLayout();        // 算出五块的矩形，并摆放子控件
+    // 整块面板只有三条横带：顶部条 / 消息区（吃剩余）/ 输入区。
+    // 快捷提问不是单独一条带 —— 它跟空态文案一起居中放在消息区里（跟原型一致），
+    // 这样能省下 40px 留给气泡，不然在「歌曲详细记录」这块不大的地方根本不够看。
+    void RecalcLayout();        // 算出三块的矩形，并摆放子控件
     void RelayoutBubbles();     // 量每条气泡的高度，算出内容总高
-    void LayoutQuickChips();
+    void LayoutEmptyState();    // 空态：标题 + 说明 + 快捷提问，整块居中
     int  TopBarHeight() const;
     int  BannerHeight() const;
-    int  QuickHeight() const;
     int  InputHeight() const;
 
     // ── 绘制 ──
@@ -119,6 +121,7 @@ private:
     void DrawScrollbar(CDC& dc);
     void DrawQuickChips(CDC& dc);
     void DrawEmptyHint(CDC& dc);
+    std::wstring EmptyHintText() const;     // 空态那句说明，布局和绘制两处共用
     int  MeasureTextHeight(CDC& dc, const std::wstring& text, int width);
     int  MeasureTextWidth(CDC& dc, const std::wstring& text);
 
@@ -160,10 +163,11 @@ private:
     CRect m_top_rect;
     CRect m_banner_rect;
     CRect m_msg_rect;
-    CRect m_quick_rect;
     CRect m_input_rect;
     CRect m_scroll_track;
     CRect m_scroll_thumb;
+    CRect m_empty_title_rect;               // 空态标题
+    CRect m_empty_text_rect;                // 空态说明
     std::vector<CRect> m_chip_rects;
 
     // ── 内容 ──

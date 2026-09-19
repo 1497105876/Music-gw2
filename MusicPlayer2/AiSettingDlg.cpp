@@ -444,6 +444,9 @@ afx_msg LRESULT CAiSettingDlg::OnTestDone(WPARAM wParam, LPARAM lParam)
     {
         std::wstring text = L"测试失败：" + result->error;
         SetDlgItemTextW(IDC_AI_CONN_STATUS, text.c_str());
+        // 状态栏是个单行 Static，这么长的诊断会被截掉一半（用户只能看到
+        // 「服务商那边出..」这种半截话）。单独弹一次把完整信息给他，也方便复制。
+        MessageBox(result->error.c_str(), L"测试连接失败", MB_ICONWARNING);
     }
     return 0;
 }

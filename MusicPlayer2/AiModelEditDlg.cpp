@@ -366,7 +366,9 @@ afx_msg LRESULT CAiModelEditDlg::OnTestDone(WPARAM wParam, LPARAM lParam)
     }
     else
     {
-        SetHint(result->error);
+        // hint 也是个单行 Static，长诊断会被截断，完整信息走弹窗
+        SetHint(L"测试失败（详见弹窗）");
+        MessageBox(result->error.c_str(), L"测试连接失败", MB_ICONWARNING);
     }
     return 0;
 }
