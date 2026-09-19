@@ -254,7 +254,8 @@ StatSummary CStatAnalysis::ComputeSummary(const std::vector<PlayRecord>& records
             // 歌曲完成度：播了多长 / 歌曲全长
             if (r.song_length_sec > 0)
             {
-                double ratio = min(1.0, (double)r.play_duration_sec / r.song_length_sec);
+                // song_length_sec 是毫秒，必须换成秒再除（以前秒除毫秒，比值恒为真实值的千分之一）
+                double ratio = min(1.0, (double)r.play_duration_sec / r.SongLengthSec());
                 s.avg_completion += ratio;
             }
 
@@ -635,7 +636,7 @@ std::vector<SkipBucket> CStatAnalysis::ComputeSkipDistribution(const std::vector
         if (!IsCounted(r)) continue;                                    // 与其它指标一致的口径
         if (r.finish_reason != PlayRecord::FinishReason::SKIPPED) continue;
         if (r.song_length_sec <= 0) continue;
-        double ratio = (double)r.play_duration_sec / (double)r.song_length_sec;
+        double ratio = (double)r.play_duration_sec / r.SongLengthSec();    // 毫秒 -> 秒
         if (ratio < 0.0) ratio = 0.0;
         if (ratio > 1.0) ratio = 1.0;
         int idx = (ratio < 0.25) ? 0 : (ratio < 0.50) ? 1 : (ratio < 0.75) ? 2 : 3;

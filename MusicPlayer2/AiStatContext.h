@@ -38,6 +38,14 @@ namespace AiStatContext
     std::wstring BuildRawRecordsText(const AiStatSnapshot& s, int max_rows, bool allow_song_meta);
 
     // 「本地」档：规则引擎直接给答案（零网络）
+    // 本地档用：一条「已经写成一句人话」的事实（带数字、带简单判断）
+    struct LocalFact
+    {
+        std::wstring text;                  // 现成的一句话
+        std::vector<std::wstring> keys;     // 问题里出现这些词就算命中
+        int weight{ 0 };                    // 一条都没命中时按它挑最重要的
+    };
+    std::vector<LocalFact> BuildLocalFacts(const AiStatSnapshot& s, bool allow_song_meta);
     std::wstring BuildLocalAnswer(const AiStatSnapshot& s, const std::wstring& question, bool allow_song_meta);
 
     // 这次回答用到了哪些数字（气泡底部那行「依据：…」）

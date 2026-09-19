@@ -229,155 +229,229 @@ namespace AiStatContext
         return src;
     }
 
-    std::wstring BuildLocalAnswer(const AiStatSnapshot& s, const std::wstring& question, bool allow_song_meta)
+    // ── 本地档的「事实清单」 ──
+    //
+    // 以前本地档是「关键词命中就返回某一条、一条都没命中就甩总览」，所以动不动就答非所问。
+    // 现在改成：**先把数据算成一堆现成的人话**（每条都带具体数字，有的还带一句判断），
+    // 再按问题挑最相关的几条拼起来。好处是问什么都能答上，也不会拿无关内容硬凑。
+    std::vector<LocalFact> BuildLocalFacts(const AiStatSnapshot& s, bool allow_song_meta)
     {
-        if (!s.Valid() || s.all_records == nullptr || s.all_records->empty())
-            return L"这段时间里还没有可统计的播放记录。先去听几首歌，回来再问。";
+        std::vector<LocalFact> f;
 
         StatSummary sum;
         FinishBreakdown fin;
         int hour[24]{};
         EnsureAggregates(s, sum, fin, hour);
 
-        auto Has = [&question](const wchar_t* k) { return question.find(k) != std::wstring::npos; };
-
-        std::wstring a;
-
-        // ── 听得最多的歌手 / 专辑 / 曲目 ──
-        if (Has(L"歌手") || Has(L"谁") || (Has(L"最爱") && !Has(L"专辑") && !Has(L"曲目")))
+        // 总览
         {
-            std::vector<ArtistRankItem> rank = CStatAnalysis::ComputeArtistRank(*s.all_records, 3);
-            if (!rank.empty())
-            {
-                a = L"听得最多的歌手是 " + ArtistLabel(rank[0].artist, allow_song_meta) +
-                    L"，累计 " + Duration(rank[0].duration_sec) + L"，" + Num(rank[0].count) + L" 次。";
-                if (rank.size() > 1)
-                    a += L"\n\n第二名是 " + ArtistLabel(rank[1].artist, allow_song_meta) +
-                         L"（" + Duration(rank[1].duration_sec) + L"）。";
-            }
-            if (!a.empty()) return a;
+            std::wstring t = L"这段时间一共听了 " + Num(fin.total) + L" 次、" +
+                Duration(sum.total_duration_sec) + L"，涉及 " + Num(sum.total_songs) +
+                L" 首曲子，活跃 " + Num(sum.active_days) + L" 天。";
+            f.push_back({ t, { L"总", L"概", L"多少", L"统计", L"数据", L"次数", L"时长", L"整体" }, 60 });
         }
-        if (Has(L"专辑"))
+
+        // 歌手
         {
-            std::vector<AlbumRankItem> rank = CStatAnalysis::ComputeAlbumRank(*s.all_records, 3);
-            if (!rank.empty())
+            std::vector<ArtistRankItem> r = CStatAnalysis::ComputeArtistRank(*s.all_records, 3);
+            if (!r.empty())
             {
-                a = L"听得最多的是专辑《" + (allow_song_meta ? rank[0].album : L"已隐藏") +
-                    L"》，" + Duration(rank[0].duration_sec) + L"，" + Num(rank[0].count) + L" 次。";
-                return a;
-            }
-        }
-        if (Has(L"曲目") || Has(L"哪首") || Has(L"歌名") || (Has(L"最多") && Has(L"首")))
-        {
-            std::vector<SongRankItem> rank = CStatAnalysis::ComputeSongRank(*s.all_records, 3);
-            if (!rank.empty())
-            {
-                a = L"播得最多的是《" + SongLabel(rank[0].title, allow_song_meta) +
-                    L"》，" + Num(rank[0].count) + L" 次，累计 " + Duration(rank[0].duration_sec) + L"。";
-                return a;
+                std::wstring t = L"听得最多的歌手是 " + ArtistLabel(r[0].artist, allow_song_meta) +
+                    L"，" + Num(r[0].count) + L" 次、" + Duration(r[0].duration_sec) + L"。";
+                if (r.size() > 1 && r[1].count > 0)
+                {
+                    if (r[0].count >= r[1].count * 2)
+                        t += L"比第二名「" + ArtistLabel(r[1].artist, allow_song_meta) +
+                             L"」多出一倍还多，听得相当集中。";
+                    else
+                        t += L"第二名是 " + ArtistLabel(r[1].artist, allow_song_meta) +
+                             L"（" + Num(r[1].count) + L" 次），咬得挺紧。";
+                }
+                f.push_back({ t, { L"歌手", L"谁", L"最爱", L"喜欢", L"唱" }, 85 });
             }
         }
 
-        // ── 时段 ──
-        if (Has(L"时段") || Has(L"几点") || Has(L"什么时候") || Has(L"晚上") || Has(L"深夜") || Has(L"凌晨"))
+        // 专辑
+        {
+            std::vector<AlbumRankItem> r = CStatAnalysis::ComputeAlbumRank(*s.all_records, 3);
+            if (!r.empty())
+            {
+                std::wstring t = L"听得最多的专辑是《" + (allow_song_meta ? r[0].album : L"已隐藏") +
+                    L"》，" + Num(r[0].count) + L" 次、" + Duration(r[0].duration_sec) + L"。";
+                f.push_back({ t, { L"专辑", L"唱片" }, 70 });
+            }
+        }
+
+        // 曲目
+        {
+            std::vector<SongRankItem> r = CStatAnalysis::ComputeSongRank(*s.all_records, 3);
+            if (!r.empty())
+            {
+                std::wstring t = L"播得最多的是《" + SongLabel(r[0].title, allow_song_meta) +
+                    L"》，" + Num(r[0].count) + L" 次、" + Duration(r[0].duration_sec) + L"。";
+                if (r.size() > 1)
+                    t += L"紧随其后的是《" + SongLabel(r[1].title, allow_song_meta) +
+                         L"》（" + Num(r[1].count) + L" 次）。";
+                f.push_back({ t, { L"曲目", L"哪首", L"歌名", L"单曲", L"最常听", L"最多" }, 80 });
+            }
+        }
+
+        // 时段
         {
             int peak = -1, peak_cnt = 0;
             for (int h = 0; h < 24; ++h)
-            {
                 if (hour[h] > peak_cnt) { peak_cnt = hour[h]; peak = h; }
-            }
-            if (peak >= 0)
+            if (peak >= 0 && peak_cnt > 0)
             {
-                a = L"你最常在 " + Num(peak) + L":00-" + Num(peak) + L":59 听歌，这段时间一共 " + Num(peak_cnt) + L" 次。";
+                std::wstring t = L"最常在 " + Num(peak) + L":00-" + Num(peak) + L":59 听，这一段有 " +
+                    Num(peak_cnt) + L" 次。";
                 if (sum.night_owl_percent > 0)
-                    a += L"\n\n深夜（0-6 点）占了全部时长的 " + Num(sum.night_owl_percent) + L"%。";
+                    t += L"深夜（0-6 点）占了全部时长的 " + Pct(sum.night_owl_percent) + L"。";
                 if (sum.weekend_percent > 0)
-                    a += L"\n\n周末贡献了 " + Num(sum.weekend_percent) + L"% 的播放次数。";
-                return a;
+                    t += L"周末贡献了 " + Pct(sum.weekend_percent) + L" 的播放次数。";
+                f.push_back({ t, { L"时段", L"几点", L"什么时候", L"晚上", L"深夜", L"凌晨", L"周末", L"白天" }, 75 });
             }
         }
 
-        // ── 完播 / 跳过 / 遗珠 ──
-        if (Has(L"完播") || Has(L"跳过") || Has(L"切歌") || Has(L"没听完") || Has(L"反复") || Has(L"遗珠"))
+        // 完播 / 跳过
         {
             if (fin.total > 0)
             {
-                a = Num(fin.completed) + L" 次完整听完（" + Pct(fin.completed * 100.0 / fin.total) + L"），" +
-                    Num(fin.skipped) + L" 次中途切走（" + Pct(fin.skipped * 100.0 / fin.total) + L"）。";
+                std::wstring t = L"完整听完 " + Num(fin.completed) + L" 次（" +
+                    Pct(fin.completed * 100.0 / fin.total) + L"），中途切走 " + Num(fin.skipped) +
+                    L" 次（" + Pct(fin.skipped * 100.0 / fin.total) + L"）。";
+                if (sum.completed_rate >= 70.0)
+                    t += L"完播率挺高，听歌不怎么跳。";
+                else if (sum.skip_rate >= 40.0)
+                    t += L"跳过偏多，歌单里可能有几首不太合口味。";
+                f.push_back({ t, { L"完播", L"跳过", L"切歌", L"没听完", L"听完整", L"听完" }, 70 });
             }
-            std::vector<RetiredGem> gems = CStatAnalysis::ComputeRetiredGems(*s.all_records, 3);
-            if (!gems.empty())
-            {
-                a += L"\n\n这几首你反复点开，却一次都没听完：";
-                for (size_t i = 0; i < gems.size() && i < 5; ++i)
-                {
-                    a += L"\n· " + SongLabel(gems[i].title, allow_song_meta) +
-                         L"（听了 " + Num(gems[i].count) + L" 遍）";
-                }
-            }
-            if (!a.empty()) return a;
         }
 
-        // ── 连续 / 纪录 ──
-        if (Has(L"连续") || Has(L"纪录") || Has(L"记录") || Has(L"天数"))
+        // 遗珠
         {
-            a = L"已经连续 " + Num(sum.current_streak) + L" 天听歌，最长纪录是 " + Num(sum.longest_streak) + L" 天。";
+            std::vector<RetiredGem> g = CStatAnalysis::ComputeRetiredGems(*s.all_records, 3);
+            if (!g.empty())
+            {
+                std::wstring t = L"有 " + Num(static_cast<int>(g.size())) +
+                    L" 首是反复点开、却一次都没听完的：";
+                for (size_t i = 0; i < g.size() && i < 5; ++i)
+                    t += L"\n· " + SongLabel(g[i].title, allow_song_meta) + L"（点开 " +
+                         Num(g[i].count) + L" 遍）";
+                f.push_back({ t, { L"遗珠", L"没听完", L"反复", L"可惜", L"浪费" }, 65 });
+            }
+        }
+
+        // 连续天数
+        {
+            std::wstring t = L"已经连续 " + Num(sum.current_streak) + L" 天听歌，最长纪录 " +
+                Num(sum.longest_streak) + L" 天。";
             const int miss = CStatAnalysis::ComputeStreakMiss(*s.all_records);
             if (miss > 0)
-                a += L"\n\n历史上最长的一段是连续 " + Num(miss) + L" 天，后来断掉了。";
-            return a;
+                t += L"中间断过最长的一段是 " + Num(miss) + L" 天。";
+            f.push_back({ t, { L"连续", L"纪录", L"记录", L"天数", L"坚持", L"断了" }, 65 });
         }
 
-        // ── 变化 / 对比 ──
-        if (Has(L"变化") || Has(L"比") || Has(L"趋势") || Has(L"新歌"))
+        // 周期对比
         {
             StatFilter all_filter;
             all_filter.preset = RangePreset::All;
             PeriodComparison pc = CStatAnalysis::ComputePeriodComparison(*s.all_records, all_filter);
             if (pc.has_previous)
             {
-                const int delta = pc.count_delta;
-                if (delta > 0)
-                    a = L"比上一个周期多听了 " + Num(delta) + L" 次（" + Pct(pc.count_delta_percent) + L"）。";
-                else if (delta < 0)
-                    a = L"比上一个周期少听了 " + Num(-delta) + L" 次（" + Pct(pc.count_delta_percent) + L"）。";
+                std::wstring t;
+                if (pc.count_delta > 0)
+                    t = L"比上一个周期多听了 " + Num(pc.count_delta) + L" 次（" +
+                        Pct(pc.count_delta_percent) + L"）。";
+                else if (pc.count_delta < 0)
+                    t = L"比上一个周期少听了 " + Num(-pc.count_delta) + L" 次（" +
+                        Pct(pc.count_delta_percent) + L"）。";
                 else
-                    a = L"跟上一个周期听得一样多。";
+                    t = L"跟上一个周期听得一样多。";
+                f.push_back({ t, { L"变化", L"比", L"趋势", L"多了", L"少了", L"对比", L"最近" }, 60 });
             }
-            else
-            {
-                a = L"上一个周期还没有记录，暂时没得比。";
-            }
+        }
+
+        // 新歌发现
+        {
             std::vector<PeriodBucket> news = CStatAnalysis::ComputeNewSongTrend(*s.all_records);
             if (!news.empty())
             {
                 const PeriodBucket* best = &news.front();
                 for (const auto& b : news)
-                {
                     if (b.count > best->count) best = &b;
-                }
                 if (best->count > 0)
-                    a += L"\n\n新歌发现最多的是 " + best->label + L"，那个月新听了 " + Num(best->count) + L" 首。";
+                {
+                    std::wstring t = L"新歌听得最多的是 " + best->label + L"，那个月新听了 " +
+                        Num(best->count) + L" 首。";
+                    f.push_back({ t, { L"新歌", L"新听", L"刚听", L"发现" }, 55 });
+                }
+            }
+        }
+
+        return f;
+    }
+
+    std::wstring BuildLocalAnswer(const AiStatSnapshot& s, const std::wstring& question, bool allow_song_meta)
+    {
+        if (!s.Valid() || s.all_records == nullptr || s.all_records->empty())
+            return L"这段时间里还没有可统计的播放记录。先去听几首歌，回来再问。";
+
+        const std::vector<LocalFact> facts = BuildLocalFacts(s, allow_song_meta);
+        if (facts.empty())
+            return L"数据还太少，暂时没什么可说的。多听几首再来问。";
+
+        // 按问题里的关键词打分：命中词越多分越高，同分时重要的排前面
+        struct Scored
+        {
+            const LocalFact* f{ nullptr };
+            int score{ 0 };
+        };
+        std::vector<Scored> hits;
+        hits.reserve(facts.size());
+        for (const auto& x : facts)
+        {
+            int sc = 0;
+            for (const auto& k : x.keys)
+            {
+                if (question.find(k) != std::wstring::npos)
+                    sc += 10;
+            }
+            if (sc > 0)
+                sc += x.weight / 10;
+            hits.push_back({ &x, sc });
+        }
+        std::stable_sort(hits.begin(), hits.end(),
+            [](const Scored& a, const Scored& b) { return a.score > b.score; });
+
+        if (hits[0].score > 0)
+        {
+            // 命中了：把最相关的几条（最多 3 条）连起来说，信息量比单条大
+            std::wstring a;
+            for (size_t i = 0; i < hits.size() && i < 3; ++i)
+            {
+                if (hits[i].score <= 0)
+                    break;
+                if (!a.empty())
+                    a += L"\n\n";
+                a += hits[i].f->text;
             }
             return a;
         }
 
-        // ── 兜底：一句话都没对上任何维度 ──
-        // 以前这里直接甩一段总览，用户问的是 A、回答的是 B，观感就是「答非所问」。
-        // 改成先**承认没对上**，再说清能问什么 —— 人和人说话就是这么处理的。
-        a = L"这句话我没找到能对上的数据维度。";
-        if (fin.total > 0)
+        // 一条都没命中：别硬塞无关内容，先说清没对上，再给最有价值的几条
+        std::wstring a = L"这句话我没找到能对上的角度，先把最要紧的几条给你：";
         {
-            a += L"\n\n顺手报个总量：一共 " + Num(fin.total) + L" 次播放、" +
-                 Duration(sum.total_duration_sec) + L"，涉及 " + Num(sum.total_songs) + L" 首曲子。";
+            std::vector<const LocalFact*> by_weight;
+            by_weight.reserve(facts.size());
+            for (const auto& x : facts)
+                by_weight.push_back(&x);
+            std::stable_sort(by_weight.begin(), by_weight.end(),
+                [](const LocalFact* x, const LocalFact* y) { return x->weight > y->weight; });
+            for (size_t i = 0; i < by_weight.size() && i < 3; ++i)
+                a += L"\n· " + by_weight[i]->text;
         }
-        a += L"\n\n我能回答这些方面：\n"
-             L"· 听得最多的歌手 / 专辑 / 曲目\n"
-             L"· 常听的时段，深夜和周末各占多少\n"
-             L"· 完播率、跳过率，有没有反复点开却没听完的歌\n"
-             L"· 连续听了多少天、最长纪录\n"
-             L"· 跟上一个周期比有什么变化、哪个月新歌最多\n"
-             L"\n换个说法再问，或者直接点下面的快捷提问。";
+        a += L"\n\n换个说法再问也行，或者直接点下面的快捷提问。";
         return a;
     }
 

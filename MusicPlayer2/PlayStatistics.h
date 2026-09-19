@@ -16,7 +16,14 @@ struct PlayRecord
     // ── 时间相关 ──
     std::wstring played_at;         // 播放开始时间 ISO 8601 (2026-07-04T13:25:00)
     int play_duration_sec{};        // 实际播放时长（秒）
-    int song_length_sec{};          // 歌曲总长度（秒）
+    int song_length_sec{};          // 歌曲总长度（毫秒！名字骗人，见 SongLengthSec()）
+
+    // 歌曲总长度（秒）。凡是要跟 play_duration_sec（真·秒）比，都走这个。
+    // 落盘的 song_length_sec 存的是毫秒（历史原因），直接相除会差 1000 倍。
+    double SongLengthSec() const
+    {
+        return static_cast<double>(song_length_sec) / 1000.0;
+    }
 
     // ── 播放结果 ──
     enum class FinishReason : int {

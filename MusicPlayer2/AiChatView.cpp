@@ -9,6 +9,7 @@
 #include "stdafx.h"
 #include "MusicPlayer2.h"
 #include "AiChatView.h"
+#include "AiProtocol.h"     // CleanMarkdown：模型爱写 Markdown，气泡是纯文本绘制的
 #include "StatAnalysis.h"
 #include <algorithm>
 #include <random>
@@ -890,7 +891,7 @@ void CAiChatView::PushAi(const std::wstring& text, const std::wstring& source)
     PopThinking();
     Bubble b;
     b.mine = false;
-    b.text = text;
+    b.text = AiProtocol::CleanMarkdown(text);
     b.source = source;
     m_messages.push_back(b);
 
@@ -1190,6 +1191,12 @@ void CAiChatView::OnDataChanged(int all_count)
 void CAiChatView::OnPageActivated()
 {
     UpdatePalette();
+
+    // 每次进来都从「本地」档开始：这一档不联网、不需要任何配置，是稳妥的默认值；
+    // 想发给模型，自己在下拉里切一下就行。
+    if (AiConfig::Get().chat_mode != AiChatMode::Local)
+        AiConfig::Get().chat_mode = AiChatMode::Local;
+
     UpdateModeCombo();
     RecalcLayout();
 
@@ -1652,7 +1659,7 @@ LRESULT CAiChatView::OnChatDelta(WPARAM wParam, LPARAM lParam)
         Bubble& b = m_messages.back();
         b.thinking = false;
         b.streamed = true;      // 收尾时就地补「依据」，不再 push 一条（否则会重复显示）
-        b.text = m_stream_text;
+        b.text = AiProtocol::CleanMarkdown(m_stream_text);
     }
     RelayoutBubbles();
     FollowBottomIfNeeded();     // 用户正往上翻的话别把他拽回来
@@ -1684,7 +1691,7 @@ LRESULT CAiChatView::OnChatDone(WPARAM wParam, LPARAM lParam)
             Bubble& last = m_messages.back();
             if (last.streamed && !last.mine)
             {
-                last.text = text;
+                last.text = AiProtocol::CleanMarkdown(text);
                 last.source = p->source;
                 last.streamed = false;
                 filled_inline = true;

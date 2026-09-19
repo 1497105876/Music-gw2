@@ -90,6 +90,125 @@ namespace AiProtocol
         return s.substr(b, e - b);
     }
 
+    // 把 Markdown 标记清掉，只留文字和基本结构。
+    //
+    // 气泡是纯文本自绘的（DrawText），`**` `###` 这些记号会原样露在脸上，很难看。
+    // 这里不追求完整解析，只做「去记号、留结构」：
+    //   · 行首 #/##/### 标题记号 → 去掉
+    //   · 行首 - / * / + 列表记号 → 「· 」
+    //   · **粗体** __粗体__ → 去掉成对记号，文字留着
+    //   · ` 行内代码 ` 与 ``` 代码块围栏 → 去掉
+    //   · [文字](网址) → 只留文字
+    //   · |---|---| 表格分隔行 → 整行丢掉
+    // 单个的 * 或 _ 不动（可能真是乘号或下划线）。
+    inline std::wstring CleanMarkdown(const std::wstring& in)
+    {
+        std::wstring out;
+        out.reserve(in.size());
+        size_t i = 0;
+        bool line_start = true;
+        while (i < in.size())
+        {
+            const wchar_t c = in[i];
+
+            if (c == L'\n')
+            {
+                out += c;
+                ++i;
+                line_start = true;
+                continue;
+            }
+
+            // 行首标题记号 ###
+            if (line_start && c == L'#')
+            {
+                size_t j = i;
+                while (j < in.size() && in[j] == L'#') ++j;
+                if (j < in.size() && in[j] == L' ')
+                {
+                    i = j + 1;
+                    continue;
+                }
+            }
+
+            // 行首列表记号 - / * / + → ·
+            if (line_start && (c == L'-' || c == L'*' || c == L'+')
+                && i + 1 < in.size() && in[i + 1] == L' ')
+            {
+                out += L"· ";
+                i += 2;
+                line_start = false;
+                continue;
+            }
+
+            // 成对的粗体记号 ** 与 __（单个的留着）
+            if (c == L'*' || c == L'_')
+            {
+                size_t j = i;
+                while (j < in.size() && in[j] == c) ++j;
+                if (j - i >= 2)
+                {
+                    i = j;
+                    continue;
+                }
+            }
+
+            // 行内代码 / 代码块围栏
+            if (c == L'`')
+            {
+                size_t j = i;
+                while (j < in.size() && in[j] == L'`') ++j;
+                i = j;
+                continue;
+            }
+
+            // [文字](网址) → 文字
+            if (c == L'[')
+            {
+                size_t rb = in.find(L']', i + 1);
+                if (rb != std::wstring::npos && rb + 1 < in.size() && in[rb + 1] == L'(')
+                {
+                    size_t rp = in.find(L')', rb + 2);
+                    if (rp != std::wstring::npos)
+                    {
+                        out.append(in, i + 1, rb - i - 1);
+                        i = rp + 1;
+                        line_start = false;
+                        continue;
+                    }
+                }
+            }
+
+            // |---|---| 这种表格分隔行整行丢掉
+            if (line_start && c == L'|')
+            {
+                size_t nl = in.find(L'\n', i);
+                const std::wstring row = (nl == std::wstring::npos)
+                    ? in.substr(i) : in.substr(i, nl - i);
+                bool sep = !row.empty();
+                for (wchar_t rc2 : row)
+                {
+                    if (rc2 != L'|' && rc2 != L'-' && rc2 != L':' && rc2 != L' ')
+                    {
+                        sep = false;
+                        break;
+                    }
+                }
+                if (sep)
+                {
+                    i = (nl == std::wstring::npos) ? in.size() : nl + 1;
+                    continue;
+                }
+            }
+
+            if (c != L' ' && c != L'\t')
+                line_start = false;
+            out += c;
+            ++i;
+        }
+        return out;
+    }
+
     // ------------------------------------------------------------------ URL
 
     // 很多人会把「完整端点」直接填进 API 地址，比如

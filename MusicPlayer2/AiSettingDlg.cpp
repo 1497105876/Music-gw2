@@ -138,15 +138,24 @@ BOOL CAiSettingDlg::OnInitDialog()
 
 void CAiSettingDlg::InitModelList()
 {
-    CRect rect;
-    m_model_list.GetWindowRect(rect);
-    const int total = rect.Width();
+    // 用**客户区**算，而不是窗口矩形 —— 窗口矩形没扣掉边框和垂直滚动条，
+    // 四列加起来就超出客户区宽度，列表右下角会冒出横向滚动条（用户报的就是这个）。
+    CRect rc;
+    m_model_list.GetClientRect(rc);
+    int total = rc.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - theApp.DPI(4);
+    if (total < theApp.DPI(160)) total = theApp.DPI(160);
+
     int w[4];
-    w[kColProvider] = theApp.DPI(70);
-    w[kColStatus] = theApp.DPI(70);
-    w[kColModel] = theApp.DPI(96);
-    w[kColName] = total - w[kColProvider] - w[kColModel] - w[kColStatus] - theApp.DPI(8);
-    if (w[kColName] < theApp.DPI(60)) w[kColName] = theApp.DPI(60);
+    w[kColStatus]   = theApp.DPI(52);
+    w[kColProvider] = theApp.DPI(64);
+    w[kColModel]    = total * 32 / 100;                     // 模型名通常最长
+    w[kColName]     = total - w[kColStatus] - w[kColProvider] - w[kColModel];
+    if (w[kColName] < theApp.DPI(56))                       // 备注名不能被挤没
+    {
+        w[kColName] = theApp.DPI(56);
+        w[kColModel] = total - w[kColName] - w[kColProvider] - w[kColStatus];
+        if (w[kColModel] < theApp.DPI(56)) w[kColModel] = theApp.DPI(56);
+    }
 
     m_model_list.InsertColumn(kColName, L"备注名", LVCFMT_LEFT, w[kColName]);
     m_model_list.InsertColumn(kColProvider, L"服务商", LVCFMT_LEFT, w[kColProvider]);
@@ -209,10 +218,11 @@ void CAiSettingDlg::InitProxyCombo()
 
 void CAiSettingDlg::InitPromptHistoryList()
 {
-    CRect rect;
-    m_hist_list.GetWindowRect(rect);
-    int w_time = theApp.DPI(96);
-    int w_text = rect.Width() - w_time - theApp.DPI(8);
+    // 同上：留出垂直滚动条和一点余量，免得出现横向滚动条
+    CRect rc;
+    m_hist_list.GetClientRect(rc);
+    int w_time = theApp.DPI(90);
+    int w_text = rc.Width() - w_time - ::GetSystemMetrics(SM_CXVSCROLL) - theApp.DPI(4);
     if (w_text < theApp.DPI(80)) w_text = theApp.DPI(80);
     m_hist_list.InsertColumn(0, L"时间", LVCFMT_LEFT, w_time);
     m_hist_list.InsertColumn(1, L"内容", LVCFMT_LEFT, w_text);
