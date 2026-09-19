@@ -105,7 +105,11 @@ BOOL CAiModelEditDlg::OnInitDialog()
     swprintf_s(buf, L"%d", m_model.timeout_sec);
     SetDlgItemTextW(IDC_AI_EDIT_TIMEOUT, buf);
 
-    SetHint(L"");
+    // 模型名各家更新得比程序还快（例：DeepSeek 已改 deepseek-flash、Kimi 已改 kimi-k3、
+    // 智谱免费款已换到 GLM-4.7-Flash），预置名只能算个起点。这里点明一句，
+    // 免得用户看到「模型不存在」以为是自己的配置错了。
+    // 文案要短 —— 这是个单行 Static，太长会被截掉（这个坑踩过）。
+    SetHint(L"模型名各家更新快，请以「获取可用模型」为准");
     return TRUE;
 }
 

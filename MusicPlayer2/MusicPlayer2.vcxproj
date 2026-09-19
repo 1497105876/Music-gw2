@@ -273,6 +273,7 @@
     <ClInclude Include="StatCommon.h" />
     <ClInclude Include="PlayLogStatisticsDlg.h" />
 <ClInclude Include="StatHtmlReport.h" />
+<ClInclude Include="AiProtocol.h" />
 <ClInclude Include="AiChatView.h" />
 <ClInclude Include="AiModelEditDlg.h" />
 <ClInclude Include="AiSettingDlg.h" />

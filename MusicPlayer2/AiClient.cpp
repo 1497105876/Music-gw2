@@ -8,10 +8,13 @@
 #include "stdafx.h"
 #include "MusicPlayer2.h"       // 诊断日志要用 theApp.m_appdata_dir
 #include "AiClient.h"
+#include "AiProtocol.h"         // 协议层的纯逻辑（可被独立测试程序编译验证）
 #include "Common.h"
 #include <winhttp.h>
 #include <cwctype>
 #include <memory>
+#include <mutex>
+#include <set>
 #include <nlohmann/json.hpp>
 
 #pragma comment(lib, "winhttp.lib")
@@ -20,19 +23,29 @@ namespace
 {
     using json = nlohmann::json;
 
+    // 「请求体长什么样 / 别人家的响应怎么解析」这些决定兼容性的逻辑，现在统一放在
+    // AiProtocol.h —— 那边不依赖 MFC，能用独立测试程序真编译真跑（见 .scratch/test_ai_protocol.cpp）。
+    // 这里拉进来用，调用点保持原样。
+    using AiProtocol::Trim;
+    using AiProtocol::JoinUrl;
+    using AiProtocol::StripBom;
+    using AiProtocol::PickContent;
+    using AiProtocol::PickErrorMessage;
+
     std::string ToUtf8(const std::wstring& s)
     {
-        // ⚠ 必须用 UTF8_NO_BOM。
-        // CodeType::UTF8 会在结果最前面塞 3 字节 BOM（0xEF 0xBB 0xBF）—— 那是给
-        // ini / 文本文件用的。而这里是往 JSON 里塞字符串，BOM 会实打实成为内容的一部分：
-        // 模型名就变成 "\uFEFFgpt-oss:120b"，服务商一律回 "model not found"（404/503），
-        // 而界面上和日志里因为 BOM 不可见，看起来完全正常，极难发现。
-        return CCommon::UnicodeToStr(s, CodeType::UTF8_NO_BOM);
+        // ⚠ 一律走 WideCharToMultiByte，它天然不写 BOM。
+        // 这里曾经用 CCommon::UnicodeToStr(s, CodeType::UTF8) —— 那个是给 ini/文本文件用的，
+        // 会主动在结果最前面塞 3 字节 BOM（0xEF 0xBB 0xBF）。而这里是往 JSON 里塞字符串，
+        // BOM 会实打实成为内容的一部分：模型名变成 "\uFEFFgpt-oss:120b"，
+        // 服务商一律回 "model not found"（404/503），而界面上和日志里因为 BOM 不可见，
+        // 看起来完全正常，极难发现。
+        return AiProtocol::WideToUtf8(s);
     }
 
     std::wstring FromUtf8(const std::string& s)
     {
-        return CCommon::StrToUnicode(s, CodeType::UTF8);
+        return AiProtocol::Utf8ToWide(s);
     }
 
     // 诊断日志：把这次请求真正发出去的 URL / 头 / body、以及收到的状态码记下来。
@@ -62,80 +75,45 @@ namespace
         LogRequest(ToUtf8(line));
     }
 
-    // 从一段 message / delta 里取可显示的文字。
-    //
-    // 只认 content 是不够的：ollama 的 gpt-oss 这类模型会先把「思考过程」放在
-    // reasoning / reasoning_content / thinking 里，正文要等思考结束才开始写。
-    // 「最大输出」偏小的时候 token 全被思考吃掉，content 会是一个空串 ——
-    // 这时候如果只认 content，一次正常的 HTTP 200 就会被误报成
-    // 「服务商没返回内容」。所以按优先级依次兜底。
-    std::wstring PickContent(const json& obj)
+    // 取正文 / 取错误话术的实现都在 AiProtocol.h —— 那边是纯逻辑、不依赖 MFC，
+    // 可以用 .scratch/test_ai_protocol.cpp 真编译真跑来验证各家协议变体。
+    // 这里靠上面的 using 声明引入，调用点写法不变。
+
+    // 记一下「哪个服务商不吃标准参数」。
+    // 新版 OpenAI 的 o 系列只认 max_completion_tokens，Kimi 也明确把 max_tokens 标成「已弃用」，
+    // 这类服务商头一次会回 400，程序退到保守参数就通了。但每次对话都先白撞一次 400 太亏，
+    // 还会把对方的失败率统计弄脏 —— 所以成功一次之后就记住，往后直接用保守参数。
+    std::mutex& SlimLock()
     {
-        if (!obj.is_object())
-            return std::wstring();
-        static const char* kKeys[] = { "content", "reasoning_content", "reasoning", "thinking" };
-        for (const char* key : kKeys)
-        {
-            auto it = obj.find(key);
-            if (it == obj.end() || !it->is_string())
-                continue;
-            std::wstring s = FromUtf8(it->get<std::string>());
-            if (!s.empty())
-                return s;
-        }
-        return std::wstring();
+        static std::mutex m;
+        return m;
     }
 
-    // 去掉首尾空白。地址和 Key 常常是粘贴来的，前后带空格是很常见的事，
-    // 不处理的话「 https://xxx 」会被判成「地址要以 http:// 开头」，看着莫名其妙。
-    std::wstring Trim(const std::wstring& s)
+    std::set<std::wstring>& SlimSet()
     {
-        size_t b = 0;
-        size_t e = s.size();
-        while (b < e && (s[b] == L' ' || s[b] == L'\t' || s[b] == L'\r' || s[b] == L'\n'))
-            ++b;
-        while (e > b && (s[e - 1] == L' ' || s[e - 1] == L'\t' || s[e - 1] == L'\r' || s[e - 1] == L'\n'))
-            --e;
-        return s.substr(b, e - b);
+        static std::set<std::wstring> s;
+        return s;
     }
 
-    // 很多人会把「完整端点」直接填进 API 地址，比如
-    //     https://ollama.com/v1/chat/completions
-    // 这时候再拼一次 /chat/completions 就成了 .../chat/completions/chat/completions，
-    // 服务端只会回一个 404。这里先把尾巴摘掉，只留 base。
-    std::wstring StripEndpoint(const std::wstring& b)
+    std::wstring SlimKey(const AiCallParams& p)
     {
-        static const wchar_t* kEnds[] = { L"/chat/completions", L"/completions", L"/responses" };
-        std::wstring lower;
-        lower.reserve(b.size());
-        for (wchar_t c : b)
-            lower += static_cast<wchar_t>(std::towlower(c));
-        for (const wchar_t* e : kEnds)
-        {
-            const size_t n = std::wstring(e).size();
-            if (lower.size() >= n && lower.compare(lower.size() - n, n, e) == 0)
-                return b.substr(0, b.size() - n);
-        }
-        return b;
+        return p.base_url + L"|" + p.model;
     }
 
-    // 拼请求地址：base 允许写成
-    //     https://a.com/v1                     -> https://a.com/v1/chat/completions
-    //     https://a.com/v1/                    -> 同上（结尾斜杠去掉）
-    //     https://a.com/v1/chat/completions    -> 同上（重复的端点尾巴先摘掉）
-    std::wstring JoinUrl(const std::wstring& base, const wchar_t* tail)
+    bool SlimKnown(const AiCallParams& p)
     {
-        std::wstring b = Trim(base);
-        while (!b.empty() && (b.back() == L'/' || b.back() == L'\\'))
-            b.pop_back();
-        if (!b.empty())
-            b = StripEndpoint(b);
-        while (!b.empty() && (b.back() == L'/' || b.back() == L'\\'))
-            b.pop_back();
-        if (b.empty())
-            return std::wstring(tail);
-        return b + tail;
+        std::lock_guard<std::mutex> guard(SlimLock());
+        return SlimSet().count(SlimKey(p)) != 0;
     }
+
+    void SlimRemember(const AiCallParams& p)
+    {
+        std::lock_guard<std::mutex> guard(SlimLock());
+        SlimSet().insert(SlimKey(p));
+    }
+
+    // Trim / StripEndpoint / JoinUrl 的实现都在 AiProtocol.h（上面 using 引入了）。
+    // 地址处理的规矩：去首尾空白 → 摘掉误填的 /chat/completions 尾巴 → 去结尾斜杠 → 再拼端点。
 
     struct UrlParts
     {
@@ -425,37 +403,18 @@ namespace
                     pos = nl + 1;
                     if (!line.empty() && line.back() == '\r')
                         line.pop_back();
-                    // 规范写法是 "data: xxx"，但确实有服务商不带那个空格
-                    if (line.size() < 5 || line.compare(0, 5, "data:") != 0)
-                        continue;
-                    std::string payload = line.substr(5);
-                    if (!payload.empty() && payload[0] == ' ')
-                        payload.erase(0, 1);
-                    if (payload == "[DONE]")
-                        continue;
-                    try
+                    // 这一行怎么解析（data: 前缀带不带空格、[DONE]、delta 还是 message、
+                    // content 还是 reasoning）全交给 AiProtocol::ParseSseLine ——
+                    // 那份逻辑能被独立测试程序直接跑，不用靠读代码来相信它。
+                    std::wstring delta;
+                    bool sse_done = false;
+                    const bool got_delta = AiProtocol::ParseSseLine(line, delta, sse_done);
+                    (void)sse_done;     // 收到 [DONE] 也只是继续读，不做额外动作
+                    if (got_delta)
                     {
-                        json j = json::parse(payload);
-                        if (j.contains("choices") && j["choices"].is_array() && !j["choices"].empty())
-                        {
-                            const json& ch = j["choices"][0];
-                            if (ch.contains("delta"))
-                            {
-                                // 同样要兼容 reasoning：会「先思考」的模型在流式下
-                                // 头一段 delta 里只有 reasoning，content 还是空的
-                                std::wstring delta = PickContent(ch["delta"]);
-                                if (!delta.empty())
-                                {
-                                    full += delta;
-                                    if (on_delta)
-                                        on_delta(delta);
-                                }
-                            }
-                        }
-                    }
-                    catch (...)
-                    {
-                        // 半行或奇奇怪怪的片段，跳过就是了
+                        full += delta;
+                        if (on_delta)
+                            on_delta(delta);
                     }
                 }
                 if (pos < carry.size())
@@ -485,9 +444,9 @@ namespace
             std::wstring server_msg;
             try
             {
-                json j = json::parse(recv);
-                if (j.contains("error") && j["error"].contains("message") && j["error"]["message"].is_string())
-                    server_msg = FromUtf8(j["error"]["message"].get<std::string>());
+                // 有些服务端返回的 JSON 前面带着 UTF-8 BOM，直接 parse 会抛异常，
+                // 结果就是「服务商原话」这一栏空着。先摘掉 BOM。
+                server_msg = PickErrorMessage(json::parse(StripBom(recv)));
             }
             catch (...) {}
 
@@ -807,25 +766,34 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
         return result;
     }
 
-    // 请求体
+    std::wstring url = JoinUrl(params.base_url, L"/chat/completions");
+
+    // 请求体的拼法在 AiProtocol::BuildChatBody 里（同样是可被独立测试的那份实现）。
+    // 这里只是把 AiCallParams / AiChatMessage 喂进去。
+    //
+    // 参数挑剔的服务商（新版 OpenAI 的 o 系列 / gpt-5 只认 max_completion_tokens、
+    // 且不收 temperature；Kimi 也把 max_tokens 标成已弃用）会直接回 400。
+    // 遇到 400 就退到「保守参数」再试一次：去掉 temperature / top_p，
+    // max_tokens 换成 max_completion_tokens。这几个字段本来就可选，
+    // 不传等于用服务商默认值，对宽松的服务商没有任何副作用。
+    AiProtocol::ChatRequest req;
+    req.model = params.model;
+    req.temperature = params.temperature;
+    req.top_p = params.top_p;
+    req.max_tokens = params.max_tokens;
+    req.stream = params.stream;
+    req.messages.reserve(messages.size());
+    for (const auto& m : messages)
+        req.messages.push_back({ m.role, m.content });
+
+    // 这家要是以前就因为参数被挑过刺，直接上保守参数，省掉一次白撞的 400
+    bool slim = SlimKnown(params);
+    int net_retry = 0;              // 网络类重试已经用掉几次
+
     std::string body;
     try
     {
-        json j;
-        j["model"] = ToUtf8(params.model);
-        j["messages"] = json::array();
-        for (const auto& m : messages)
-        {
-            json item;
-            item["role"] = ToUtf8(m.role);
-            item["content"] = ToUtf8(m.content);
-            j["messages"].push_back(item);
-        }
-        j["temperature"] = params.temperature;
-        j["top_p"] = params.top_p;
-        j["max_tokens"] = params.max_tokens;
-        j["stream"] = params.stream;
-        body = j.dump();
+        body = AiProtocol::BuildChatBody(req, slim);
     }
     catch (...)
     {
@@ -833,10 +801,8 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
         return result;
     }
 
-    std::wstring url = JoinUrl(params.base_url, L"/chat/completions");
-
     const int attempts = params.retry + 1;
-    for (int i = 0; i < attempts; ++i)
+    while (true)
     {
         if (cancel != nullptr && *cancel)
         {
@@ -855,11 +821,26 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
         }
         if (!raw.ok)
         {
-            if (i + 1 < attempts && WorthRetry(raw.kind))
+            // 参数被挑刺 → 换保守参数再来一次。只做一次，且不占用户设的重试次数
+            if (!slim && raw.kind == AiErrorKind::Protocol &&
+                (raw.status == 400 || raw.status == 422))
+            {
+                slim = true;
+                body = AiProtocol::BuildChatBody(req, true);
                 continue;
+            }
+            if (net_retry + 1 < attempts && WorthRetry(raw.kind))
+            {
+                ++net_retry;
+                continue;
+            }
             result.SetError(raw.kind, ErrorText(raw.kind, raw.status, raw.detail));
             return result;
         }
+
+        // 走到这里说明这次成功了。用的是保守参数就记下来，下次直接用，省掉那次白撞的 400
+        if (slim)
+            SlimRemember(params);
 
         // 流式的内容已经在回调里攒过了，这里直接用
         if (params.stream)
@@ -872,25 +853,26 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
         }
 
         std::wstring text;
+        bool server_said_error = false;
+        std::wstring server_error;
         try
         {
-            json j = json::parse(raw.body);
-            if (j.contains("choices") && j["choices"].is_array() && !j["choices"].empty())
-            {
-                const json& ch = j["choices"][0];
-                if (ch.contains("message"))
-                    text = PickContent(ch["message"]);
-            }
-            if (text.empty() && j.contains("error") && j["error"].contains("message"))
-            {
-                result.SetError(AiErrorKind::Protocol,
-                    L"服务商返回了错误：" + FromUtf8(j["error"]["message"].get<std::string>()));
-                return result;
-            }
+            // 解析规则（choices[0].message 还是 .text、正文空时去看 error）在
+            // AiProtocol::ParseChatResponse 里，跟独立测试程序跑的是同一份。
+            AiProtocol::ChatParseResult pr = AiProtocol::ParseChatResponse(raw.body);
+            text = pr.text;
+            server_said_error = pr.server_error;
+            server_error = pr.error;
         }
         catch (...)
         {
             result.SetError(AiErrorKind::Protocol, L"返回的内容不是预期的 JSON");
+            return result;
+        }
+
+        if (text.empty() && server_said_error)
+        {
+            result.SetError(AiErrorKind::Protocol, L"服务商返回了错误：" + server_error);
             return result;
         }
 
@@ -937,22 +919,12 @@ bool AiHttpClient::FetchModels(const AiCallParams& params,
 
     try
     {
-        json j = json::parse(raw.body);
-        if (!j.contains("data") || !j["data"].is_array())
+        // 各种壳子（data / models / result / 顶层数组，元素是 id / name / model / 纯字符串）
+        // 的识别规则全在 AiProtocol::ParseModelList 里 —— 独立测试程序跑的就是这一份。
+        if (!AiProtocol::ParseModelList(raw.body, out_models))
         {
             error = L"这个服务商没返回模型列表，请手填模型名";
             return false;
-        }
-        for (const auto& item : j["data"])
-        {
-            if (item.is_string())
-            {
-                out_models.push_back(FromUtf8(item.get<std::string>()));
-            }
-            else if (item.is_object() && item.contains("id") && item["id"].is_string())
-            {
-                out_models.push_back(FromUtf8(item["id"].get<std::string>()));
-            }
         }
     }
     catch (...)

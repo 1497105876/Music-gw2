@@ -14,10 +14,15 @@ namespace
 {
     // 服务商预置表。顺序即下拉里的顺序，「自定义」放最后。
     // 国内直连的排前面，境外可能连不上的排后面。
+    // 预置只是「起点」：把地址和服务商常推的入门模型填好，省得用户自己去翻文档。
+    // 模型名各家更新很快，随时可能退役，所以每个都只是尽力而为 —— 拿到 400/404 时
+    // 界面上会引导用户点「获取可用模型」拉实际列表。核对时间：2026-09-19。
+    // 地址本身已用「不带 Key 探一次」的方式逐个验过：都会回 401（= 路径正确、只差身份），
+    // 只有 OpenAI 在国内连不上（超时），与设计原型里的说明一致。
     const AiProviderPreset kPresets[] = {
-        { L"zhipu",    L"智谱 GLM",       L"https://open.bigmodel.cn/api/paas/v4",              L"glm-4-flash" },
-        { L"deepseek", L"DeepSeek",       L"https://api.deepseek.com/v1",                       L"deepseek-chat" },
-        { L"kimi",     L"月之暗面 Kimi",  L"https://api.moonshot.cn/v1",                        L"moonshot-v1-8k" },
+        { L"zhipu",    L"智谱 GLM",       L"https://open.bigmodel.cn/api/paas/v4",              L"glm-4.7-flash" },
+        { L"deepseek", L"DeepSeek",       L"https://api.deepseek.com/v1",                       L"deepseek-flash" },
+        { L"kimi",     L"月之暗面 Kimi",  L"https://api.moonshot.cn/v1",                        L"kimi-k3" },
         { L"qwen",     L"通义千问",       L"https://dashscope.aliyuncs.com/compatible-mode/v1", L"qwen-plus" },
         { L"agnes",    L"Agnes AI",       L"https://apihub.agnes-ai.com/v1",                    L"agnes-3.0-flash" },
         { L"ollama",   L"Ollama",         L"https://ollama.com/v1",                             L"gpt-oss:120b" },

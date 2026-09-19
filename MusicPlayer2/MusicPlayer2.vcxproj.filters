@@ -690,6 +690,9 @@
     <ClInclude Include="PlayLogStatisticsDlg.h">
       <Filter>对话框类\PlayStatisticsDlg</Filter>
     </ClInclude>
+    <ClInclude Include="AiProtocol.h">
+      <Filter>功能逻辑类\AI</Filter>
+    </ClInclude>
     <ClInclude Include="AiChatView.h">
       <Filter>对话框类\AI</Filter>
     </ClInclude>
