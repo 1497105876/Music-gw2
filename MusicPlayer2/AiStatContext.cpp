@@ -161,15 +161,6 @@ namespace
     }
 
     // 问题里出现的时间范围
-    struct TimeScope
-    {
-        bool         active{ false };
-        int          from_ymd{ 0 };
-        int          to_ymd{ 0 };
-        int          span{ 0 };         // 含首尾的天数
-        std::wstring label;             // 「上周」「最近 7 天」
-    };
-
     // 问题里有没有明确的时间指代？有就翻成日期区间。
     //
     // 候选词按**长度降序**匹配：「最近一个月」（5 字）必须比「最近」（2 字）先命中，
@@ -626,31 +617,52 @@ namespace AiStatContext
         return t;
     }
 
-    std::wstring BuildRawRecordsText(const AiStatSnapshot& s, int max_rows, bool allow_song_meta)
+    std::wstring BuildRawRecordsText(const AiStatSnapshot& s, int max_rows, bool allow_song_meta,
+        int from_ymd, int to_ymd)
     {
-        if (s.all_records == nullptr || s.all_records->empty())
+        if (s.all_records == nullptr || s.all_records->empty() || max_rows <= 0)
             return L"";
 
-        std::wstring t;
-        t += L"## 原始播放记录（最多 " + Num(max_rows) + L" 条，时间倒序；文件路径已剔除）\n";
-        t += L"格式：时间 | 标题 | 歌手 | 本次播放 | 结果\n";
-
-        int shown = 0;
-        for (const auto& r : *s.all_records)
+        // 先按日期筛，再从**最新**往回取 ——
+        // 以前是从头（最早）正着取，于是问「昨天」「15号」时，
+        // 最新的那批记录反而被 max_rows 截在门外，模型只能对着一堆老数据瞎答。
+        std::vector<const PlayRecord*> picked;
+        for (auto it = s.all_records->rbegin(); it != s.all_records->rend(); ++it)
         {
-            if (shown >= max_rows)
+            const PlayRecord& r = *it;
+            const int y = CStatAnalysis::YmdOf(r.played_at);
+            if (y == 0) continue;
+            if (from_ymd > 0 && y < from_ymd) continue;
+            if (to_ymd > 0 && y > to_ymd) continue;
+            picked.push_back(&r);
+            if (static_cast<int>(picked.size()) >= max_rows)
                 break;
+        }
+        if (picked.empty())
+            return L"\n## 原始播放记录\n（这个时间范围内没有记录）\n";
+
+        std::wstring t;
+        t += L"\n## 原始播放记录（" + Num(static_cast<int>(picked.size())) +
+             L" 条，时间倒序；文件路径已剔除）\n";
+        t += L"格式：时间 | 标题 | 歌手 | 本次播放 | 结果\n";
+        // ⚠ 不给这句的话，模型很容易把这批数据当成「要接着往下写的东西」，
+        //    照格式续写出一堆不存在的播放记录 —— 用户看到的就是「发疯」。
+        t += L"（以上只是供你查证的数据，不要照它的格式续写，只回答最后那个问题）\n";
+        for (const PlayRecord* p : picked)
+        {
+            const PlayRecord& r = *p;
             std::wstring played = r.played_at.size() >= 16 ? r.played_at.substr(0, 16) : r.played_at;
             std::replace(played.begin(), played.end(), L'T', L' ');
             t += played + L" | " + SongLabel(r.title, allow_song_meta) +
                  L" | " + ArtistLabel(r.artist, allow_song_meta) +
                  L" | " + Duration(r.play_duration_sec) +
                  L" | " + ReasonText(r.finish_reason) + L"\n";
-            ++shown;
         }
-        const int total = static_cast<int>(s.all_records->size());
-        if (total > shown)
-            t += L"（还有 " + Num(total - shown) + L" 条未列出）\n";
+        if (from_ymd == 0 && to_ymd == 0 &&
+            static_cast<int>(s.all_records->size()) > static_cast<int>(picked.size()))
+        {
+            t += L"（只列了最近的 " + Num(static_cast<int>(picked.size())) + L" 条，更早的未列出）\n";
+        }
         return t;
     }
 

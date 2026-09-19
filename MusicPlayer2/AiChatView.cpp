@@ -44,7 +44,7 @@ namespace
     // 多轮对话最多留几轮（一轮 = 一问一答）
     constexpr int kMaxHistoryRounds = 6;
     // Max 档最多带多少条原始记录出门
-    constexpr int kMaxRawRows = 500;
+    constexpr int kMaxRawRows = 200;   // 500 条会把模型带偏 + token 爆表；有日期切片后 200 足够
 
     std::wstring Trim(const std::wstring& s)
     {
@@ -665,12 +665,29 @@ std::wstring CAiChatView::LanguageInstruction() const
     }
 }
 
-std::wstring CAiChatView::BuildContextText(AiStatSnapshot& snap) const
+std::wstring CAiChatView::BuildContextText(AiStatSnapshot& snap, const std::wstring& question) const
 {
     const bool allow_meta = AiConfig::Get().privacy.allow_song_meta;
     std::wstring t = AiStatContext::BuildSummaryText(snap, allow_meta);
     if (AiConfig::Get().chat_mode == AiChatMode::Max)
-        t += AiStatContext::BuildRawRecordsText(snap, kMaxRawRows, allow_meta);
+    {
+        // ⚠ 别一上来就倒几百行「时间|标题|歌手|…」——
+        //   那堆表格会把模型带偏（它容易照格式续写），token 也爆表。
+        //   问题里点名了日期就只给那一段的记录：又快、又准、又省。
+        const const TimeScope scope = ParseTimeScope(question);
+        if (scope.active)
+        {
+            t += L"\n（本次按你问的「" + scope.label + L"」筛过：" +
+                 CStatAnalysis::FormatYmd(scope.from_ymd) + L" ~ " +
+                 CStatAnalysis::FormatYmd(scope.to_ymd) + L"）\n";
+            t += AiStatContext::BuildRawRecordsText(snap, kMaxRawRows, allow_meta,
+                scope.from_ymd, scope.to_ymd);
+        }
+        else
+        {
+            t += AiStatContext::BuildRawRecordsText(snap, kMaxRawRows, allow_meta);
+        }
+    }
 
     // 光说「不要编造」太弱了 —— 模型没有角色定位、不知道答多长、不敢下判断。
     // 这里把角色、长度、判断许可、禁用项一次说清，回答质量差别很大。
@@ -851,7 +868,7 @@ bool CAiChatView::DoSend(const std::wstring& question, bool push_user_bubble,
 
     AiChatMessage user;
     user.role = L"user";
-    user.content = BuildContextText(snap) + question;
+    user.content = BuildContextText(snap, question) + question;
     msgs.push_back(user);
 
     std::wstring source = AiStatContext::BuildSourceText(snap, question);

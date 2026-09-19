@@ -29,13 +29,30 @@ struct AiStatSnapshot
     bool Valid() const { return summary != nullptr && all_records != nullptr && finish != nullptr; }
 };
 
+// 问题里的时间指代（「昨天」「上周」「15号」）翻成的日期区间。
+// ⚠ 放在 namespace 外：cpp 里 ParseTimeScope 等辅助函数定义在全局作用域
+//    （AiStatContext 那个 namespace 在文件后半段才开），声明必须跟它对上。
+struct TimeScope
+{
+    bool         active{ false };
+    int          from_ymd{ 0 };
+    int          to_ymd{ 0 };
+    int          span{ 0 };         // 含首尾的天数
+    std::wstring label;             // 「上周」「最近 7 天」
+};
+// 解析问题里的时间指代；没提到就返回 active=false
+TimeScope ParseTimeScope(const std::wstring& question);
+
 namespace AiStatContext
 {
     // 「模型」档：一段 600~900 token 的聚合值文字
     std::wstring BuildSummaryText(const AiStatSnapshot& s, bool allow_song_meta);
 
-    // 「Max」档：在聚合值后面追加逐条原始记录
-    std::wstring BuildRawRecordsText(const AiStatSnapshot& s, int max_rows, bool allow_song_meta);
+    // 「Max」档：在聚合值后面追加逐条原始记录。
+    // from/to_ymd 非 0 时**只取该日期区间内**的记录 —— 问「15号听了什么」就只发 15 号那批，
+    // 而不是把几千条一股脑倒进去。
+    std::wstring BuildRawRecordsText(const AiStatSnapshot& s, int max_rows, bool allow_song_meta,
+        int from_ymd = 0, int to_ymd = 0);
 
     // 「本地」档：规则引擎直接给答案（零网络）
     // 本地档用：一条「已经写成一句人话」的事实（带数字、带简单判断）

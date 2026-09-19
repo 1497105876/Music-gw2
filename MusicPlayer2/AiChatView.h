@@ -163,7 +163,7 @@ private:
     void OnRetryClick();
     bool RerunQuestionFor(int ai_bubble_index);    // 「重新回答」：找到对应的问题重发
     bool RefillQuestionFor(int bubble_index);      // 把对应的问题放回输入框（可编辑后再发）
-    std::wstring BuildContextText(AiStatSnapshot& snap) const;
+    std::wstring BuildContextText(AiStatSnapshot& snap, const std::wstring& question) const;
     std::wstring LanguageInstruction() const;
     void PushUser(const std::wstring& text);
     void PushThinking();
