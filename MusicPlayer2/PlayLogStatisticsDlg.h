@@ -86,6 +86,7 @@ protected:
     CTabCtrl       m_view_tab;                      // 顶部原生页签条（只作切换器）
     CImageList     m_tab_img_list;                  // 页签图标，必须活到窗口销毁
     CBrush         m_ctl_bk_brush;                  // 下拉/日期控件的背景刷
+    CFont          m_date_font;                     // 日期框专用字体（切到「雅黑小一号」那套才用得到）
 
     // ── 数据 ──
     std::vector<PlayRecord> m_all_records;      // 全量记录（按播放时间倒序）

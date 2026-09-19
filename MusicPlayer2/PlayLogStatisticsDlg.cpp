@@ -178,6 +178,22 @@ BOOL CPlayLogStatDlg::OnInitDialog()
     m_date_from.SetFormat(L"yyyy-MM-dd");
     m_date_to.SetFormat(L"yyyy-MM-dd");
 
+    // 日期框的字体：DTP 内部的年/月/日字段宽度是从字体度量算出来的，
+    // 这个控件没有「字段间距」或「文字内边距」这类接口，换字体就是它唯一的「间距旋钮」。
+    // 微软雅黑偏宽，字段会互相压、第一个数字被左边框吃掉一点。
+    //
+    // 下面两种写法二选一（后设的覆盖先设的，别两个都留）：
+    //   ① 系统 GUI 字体：最窄，绝对不会挤；代价是风格偏老式
+    //   ② 微软雅黑 8pt：风格跟旁边控件统一，字号小一号所以更窄（想更窄就调成 75）
+    CFont* p_date_gui_font = CFont::FromHandle((HFONT)::GetStockObject(DEFAULT_GUI_FONT));
+    m_date_from.SetFont(p_date_gui_font);
+    m_date_to.SetFont(p_date_gui_font);
+
+    // ② 想换成雅黑小一号的话，把上面三行注释掉、下面三行放开：
+    // m_date_font.CreatePointFont(80, L"微软雅黑");
+    // m_date_from.SetFont(&m_date_font);
+    // m_date_to.SetFont(&m_date_font);
+
     // 顶部这行的控件不按 rc 里手写的坐标摆，改成从左往右顺次排（见函数注释）
     LayoutFilterRow();
 
@@ -372,9 +388,9 @@ void CPlayLogStatDlg::LayoutFilterRow()
     const int margin = dlu_x(7);        // 左右边距
     const int gap = dlu_x(4);           // 相邻控件之间的横向间隙
     // 纵向：文字 8 DLU 高；下拉框、按钮、日期框统一 14 DLU，靠 y 让中心落在同一条线上
-    const int y_label = dlu_y(10), h_label = dlu_y(8);
+    const int y_label = dlu_y(8), h_label = dlu_y(14);
     const int y_ctrl = dlu_y(7), h_ctrl = dlu_y(14);
-    const int y_date = y_ctrl, h_date = h_ctrl;
+    const int y_date = y_ctrl, h_date = dlu_y(9);
 
     CClientDC dc(this);
     CFont* p_old_font = dc.SelectObject(&theApp.m_font_set.dlg.GetFont());
@@ -403,6 +419,7 @@ void CPlayLogStatDlg::LayoutFilterRow()
 
     // 5) 结束日期
     place(IDC_PLAYLOG_DATE_TO, date_w, y_date, h_date);
+
 
     // 6) 刷新按钮右贴边，不参与上面的顺次排布
     CWnd* p_refresh = GetDlgItem(IDC_PLAYLOG_BTN_REFRESH);
