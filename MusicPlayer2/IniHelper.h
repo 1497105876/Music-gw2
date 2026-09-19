@@ -35,6 +35,8 @@ public:
 
     // 获取带有指定前缀的所有AppName（不含前缀）
     vector<wstring> GetAllAppName(const wstring& prefix) const;
+    // 删除一个AppName（连同它下面所有的键）。用于清理已经不用的段，比如删掉的模型配置。
+    void DeleteAppName(const wstring& AppName);
     // 获取一个AppName下所有键值对
     void GetAllKeyValues(const wstring& AppName, std::map<wstring, wstring>& map) const;
 

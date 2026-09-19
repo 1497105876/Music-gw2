@@ -211,6 +211,32 @@ vector<wstring> CIniHelper::GetAllAppName(const wstring& prefix) const
     return list;
 }
 
+void CIniHelper::DeleteAppName(const wstring& AppName)
+{
+    if (AppName.empty())
+        return;
+    wstring app_str{ L"[" };
+    app_str.append(AppName).append(L"]");
+
+    size_t app_pos{};
+    // 必须整行匹配：跳过那些只是「恰好包含这段文本」的位置（比如某个值里带了方括号）
+    while ((app_pos = m_ini_str.find(app_str, app_pos)) != wstring::npos)
+    {
+        if (app_pos == 0 || m_ini_str[app_pos - 1] == L'\n')
+            break;
+        app_pos += app_str.size();
+    }
+    if (app_pos == wstring::npos)
+        return;
+
+    // 段的内容一直到下一个段标题前面那个换行为止；后面没有段了就删到文件尾
+    size_t app_end_pos = m_ini_str.find(L"\n[", app_pos + 1);
+    if (app_end_pos == wstring::npos)
+        m_ini_str.erase(app_pos);
+    else
+        m_ini_str.erase(app_pos, app_end_pos + 1 - app_pos);
+}
+
 void CIniHelper::GetAllKeyValues(const wstring& AppName, std::map<wstring,wstring>& map) const
 {
     wstring app_str{ L"[" };

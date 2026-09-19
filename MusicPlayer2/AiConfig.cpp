@@ -195,6 +195,8 @@ namespace AiConfig
         s.models.clear();
         for (const auto& id : ids)
         {
+            if (id.empty() || s.IndexOf(id) >= 0)
+                continue;       // 手改过 ini 可能出现重复 id，只认第一次出现的
             std::wstring app = kModelPrefix + id;
             AiModelConfig m;
             m.id = id;
@@ -279,6 +281,18 @@ namespace AiConfig
             ini.WriteDouble(app.c_str(), L"top_p", m.top_p);
             ini.WriteInt(app.c_str(), L"max_tokens", m.max_tokens);
             ini.WriteInt(app.c_str(), L"timeout_sec", m.timeout_sec);
+        }
+
+        // 删掉的模型在 ini 里会留下一个没人认领的 [ai_model_xxx] 段，
+        // 越攒越多不说，手动翻配置文件时还容易看错。这里把不在列表里的段清掉。
+        {
+            std::vector<std::wstring> stale = ini.GetAllAppName(kModelPrefix);
+            for (const auto& id : stale)
+            {
+                if (s.IndexOf(id) >= 0)
+                    continue;
+                ini.DeleteAppName(kModelPrefix + id);
+            }
         }
 
         ini.WriteBool(kSectionRequest, L"stream", s.request.stream);

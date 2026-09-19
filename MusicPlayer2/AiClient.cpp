@@ -29,6 +29,31 @@ namespace
         return CCommon::StrToUnicode(s, CodeType::UTF8);
     }
 
+    // 去掉首尾空白。地址和 Key 常常是粘贴来的，前后带空格是很常见的事，
+    // 不处理的话「 https://xxx 」会被判成「地址要以 http:// 开头」，看着莫名其妙。
+    std::wstring Trim(const std::wstring& s)
+    {
+        size_t b = 0;
+        size_t e = s.size();
+        while (b < e && (s[b] == L' ' || s[b] == L'\t' || s[b] == L'\r' || s[b] == L'\n'))
+            ++b;
+        while (e > b && (s[e - 1] == L' ' || s[e - 1] == L'\t' || s[e - 1] == L'\r' || s[e - 1] == L'\n'))
+            --e;
+        return s.substr(b, e - b);
+    }
+
+    // 拼请求地址：base 可能是「https://a.com/v1」「https://a.com/v1/」「https://a.com/」，
+    // 一律先去空白、再去结尾斜杠，拼出来的才是 /v1/chat/completions 而不是 /v1//chat/completions。
+    std::wstring JoinUrl(const std::wstring& base, const wchar_t* tail)
+    {
+        std::wstring b = Trim(base);
+        while (!b.empty() && (b.back() == L'/' || b.back() == L'\\'))
+            b.pop_back();
+        if (b.empty())
+            return std::wstring(tail);
+        return b + tail;
+    }
+
     struct UrlParts
     {
         bool ok{ false };
@@ -72,16 +97,20 @@ namespace
         // 去掉结尾的斜杠，后面拼 /chat/completions 才不会变成双斜杠
         while (!out.path.empty() && out.path.back() == L'/')
             out.path.pop_back();
+        // 地址只写到域名（比如 http://127.0.0.1:8080）时 CrackUrl 给的路径是空的，
+        // 空路径交给 WinHttpOpenRequest 会请求失败，补一个根路径
+        if (out.path.empty())
+            out.path = L"/";
         out.ok = !out.host.empty();
         return out;
     }
 
-    // 请求头里不能有回车换行，key 是从 ini 读来的，防一手
+    // 请求头里不能有回车换行，key 是从界面/ini 来的，顺手也把首尾空白去了
     std::wstring SafeHeaderValue(const std::wstring& s)
     {
         std::wstring out;
         out.reserve(s.size());
-        for (wchar_t c : s)
+        for (wchar_t c : Trim(s))
         {
             if (c == L'\r' || c == L'\n' || c == L'\0')
                 continue;
@@ -205,7 +234,13 @@ namespace
         headers += stream ? L"Accept: text/event-stream\r\n" : L"Accept: application/json\r\n";
         if (!params.api_key.empty())
             headers += L"Authorization: Bearer " + SafeHeaderValue(params.api_key) + L"\r\n";
-        WinHttpAddRequestHeaders(h.request, headers.c_str(), (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
+        if (!WinHttpAddRequestHeaders(h.request, headers.c_str(), (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE))
+        {
+            // 头没加上就别发了，否则服务端只会回一句看不懂的 400
+            out.detail = L"请求头没组装成功（Windows 错误码 " + std::to_wstring(::GetLastError()) + L"）";
+            h.Close();
+            return out;
+        }
 
         DWORD tick_begin = ::GetTickCount();
 
@@ -272,8 +307,11 @@ namespace
                 return out;
             }
 
-            if (stream && on_delta)
+            // 流式：边收边把新内容攒起来（有没有回调都要攒，回调只是顺手递出去）
+            if (stream)
             {
+                if (status >= 400)
+                    recv.append(buf, bytes_read);       // 出错时留一份原文，好在提示里带上服务端的话
                 carry.append(buf, bytes_read);
                 size_t pos = 0;
                 while (pos < carry.size())
@@ -285,9 +323,12 @@ namespace
                     pos = nl + 1;
                     if (!line.empty() && line.back() == '\r')
                         line.pop_back();
-                    if (line.size() < 6 || line.compare(0, 6, "data: ") != 0)
+                    // 规范写法是 "data: xxx"，但确实有服务商不带那个空格
+                    if (line.size() < 5 || line.compare(0, 5, "data:") != 0)
                         continue;
-                    std::string payload = line.substr(6);
+                    std::string payload = line.substr(5);
+                    if (!payload.empty() && payload[0] == ' ')
+                        payload.erase(0, 1);
                     if (payload == "[DONE]")
                         continue;
                     try
@@ -302,7 +343,8 @@ namespace
                                 if (!delta.empty())
                                 {
                                     full += delta;
-                                    on_delta(delta);
+                                    if (on_delta)
+                                        on_delta(delta);
                                 }
                             }
                         }
@@ -325,6 +367,14 @@ namespace
 
         out.elapsed_ms = static_cast<int>(::GetTickCount() - tick_begin);
         h.Close();
+
+        if (status == 0)
+        {
+            // 连上了却读不到状态码 —— 不能当成功，否则界面上会显示一条空回答
+            out.kind = AiErrorKind::Network;
+            out.detail = L"服务器没返回 HTTP 状态码（地址 " + full_url + L"）";
+            return out;
+        }
 
         if (status >= 400)
         {
@@ -556,9 +606,11 @@ void AiStartFetchModelsJob(HWND hwnd, int gen, const AiCallParams& params)
 AiCallParams AiCallParams::FromModel(const AiModelConfig& m, const AiRequestConfig& req)
 {
     AiCallParams p;
-    p.base_url = m.base_url;
-    p.api_key = m.api_key;
-    p.model = m.model;
+    // 三个关键字段都是从界面/ini 来的，去一遍首尾空白：
+    // 「 https://a.com/v1 」这种看着没毛病，不 trim 会被判成地址格式不对
+    p.base_url = Trim(m.base_url);
+    p.api_key = Trim(m.api_key);
+    p.model = Trim(m.model);
     p.temperature = m.temperature;
     p.top_p = m.top_p;
     p.max_tokens = m.max_tokens;
@@ -572,17 +624,19 @@ AiCallParams AiCallParams::FromModel(const AiModelConfig& m, const AiRequestConf
 
 bool AiCallParams::Valid(std::wstring& why) const
 {
-    if (base_url.empty())
+    const std::wstring url = Trim(base_url);
+    const std::wstring name = Trim(model);
+    if (url.empty())
     {
         why = L"API 地址是空的";
         return false;
     }
-    if (base_url.find(L"http://") != 0 && base_url.find(L"https://") != 0)
+    if (url.find(L"http://") != 0 && url.find(L"https://") != 0)
     {
         why = L"API 地址要以 http:// 或 https:// 开头";
         return false;
     }
-    if (model.empty())
+    if (name.empty())
     {
         why = L"模型名是空的";
         return false;
@@ -632,7 +686,7 @@ AiCallResult AiHttpClient::Chat(const AiCallParams& params,
         return result;
     }
 
-    std::wstring url = params.base_url + L"/chat/completions";
+    std::wstring url = JoinUrl(params.base_url, L"/chat/completions");
 
     const int attempts = params.retry + 1;
     for (int i = 0; i < attempts; ++i)
@@ -724,7 +778,7 @@ bool AiHttpClient::FetchModels(const AiCallParams& params,
         return false;
     }
 
-    std::wstring url = params.base_url + L"/models";
+    std::wstring url = JoinUrl(params.base_url, L"/models");
     RawResponse raw = DoRequest(params, L"GET", url, std::string(), false, nullptr, nullptr);
     if (!raw.ok)
     {

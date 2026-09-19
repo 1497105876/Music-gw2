@@ -121,7 +121,10 @@ BOOL CAiSettingDlg::OnInitDialog()
     // ── 隐私 ──
     CheckDlgButton(IDC_AI_ALLOW_META_CHECK, m_data.privacy.allow_song_meta ? BST_CHECKED : BST_UNCHECKED);
     CheckDlgButton(IDC_AI_SAVE_CHAT_CHECK, m_data.privacy.save_chat_history ? BST_CHECKED : BST_UNCHECKED);
-    SetDlgItemTextW(IDC_AI_CHAT_PATH_EDIT, m_data.ChatHistoryDir().c_str());
+    // 「保存位置」没配过时框里显示的是默认目录。记住它：点确定的时候要靠它判断
+    // 用户究竟是改了目录，还是只是原样把默认值收了回去（不该写死进配置）。
+    m_default_chat_dir = m_data.ChatHistoryDir();
+    SetDlgItemTextW(IDC_AI_CHAT_PATH_EDIT, m_default_chat_dir.c_str());
 
     m_cur_model_combo.SetMouseWheelEnable(false);
     m_proxy_combo.SetMouseWheelEnable(false);
@@ -242,6 +245,10 @@ void CAiSettingDlg::UpdateEnabledState()
     };
     for (int id : ids)
     {
+        // 正在测试的那个按钮别碰：m_testing 期间它必须保持灰着，
+        // 否则用户拨一下总开关就能在请求还在跑的时候再点一次
+        if (id == IDC_AI_BTN_TEST && m_testing)
+            continue;
         if (CWnd* pWnd = GetDlgItem(id))
             pWnd->EnableWindow(on);
     }
@@ -259,6 +266,22 @@ int CAiSettingDlg::SelectedModelIndex() const
     if (pos == NULL)
         return -1;
     return m_model_list.GetNextSelectedItem(pos);
+}
+
+void CAiSettingDlg::ResetConnStatus()
+{
+    // 换了一套模型 / 改了配置，之前那一发的结论就不算数了：
+    // 代号 +1，迟到的结果会被 OnTestDone 丢掉。
+    m_gen++;
+    SetDlgItemTextW(IDC_AI_CONN_STATUS, L"未测试");
+}
+
+void CAiSettingDlg::FinishTesting()
+{
+    m_testing = false;
+    if (CWnd* pBtn = GetDlgItem(IDC_AI_BTN_TEST))
+        pBtn->EnableWindow(TRUE);
+    SetDlgItemTextW(IDC_AI_BTN_TEST, L"测试连接");
 }
 
 // ───────────────────────── 交互 ─────────────────────────
@@ -280,7 +303,7 @@ void CAiSettingDlg::OnCbnSelchangeCurModel()
         return;
     m_data.current_model_id = m_data.models[index].id;
     FillModelList();
-    SetDlgItemTextW(IDC_AI_CONN_STATUS, L"未测试");
+    ResetConnStatus();
 }
 
 void CAiSettingDlg::OnBnClickedAdd()
@@ -300,6 +323,11 @@ void CAiSettingDlg::OnBnClickedAdd()
             m_data.current_model_id = m_data.models.back().id;
         FillModelList();
         FillCurrentModelCombo();
+        ResetConnStatus();
+        // 顺手把新加的那行选上，接着就能直接点「编辑」
+        int row = static_cast<int>(m_data.models.size()) - 1;
+        m_model_list.SetItemState(row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        m_model_list.EnsureVisible(row, FALSE);
     }
 }
 
@@ -317,7 +345,8 @@ void CAiSettingDlg::OnBnClickedEdit()
         m_data.models[index] = dlg.GetModel();
         FillModelList();
         FillCurrentModelCombo();
-        SetDlgItemTextW(IDC_AI_CONN_STATUS, L"未测试");
+        ResetConnStatus();
+        m_model_list.SetItemState(index, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
     }
 }
 
@@ -336,13 +365,17 @@ void CAiSettingDlg::OnBnClickedDelete()
     const std::wstring removed_id = m_data.models[index].id;
     m_data.models.erase(m_data.models.begin() + index);
     if (m_data.current_model_id == removed_id)
-    {
         m_data.current_model_id = m_data.models.empty() ? L"" : m_data.models.front().id;
-        m_gen++;        // 让正在跑的测试作废
-        SetDlgItemTextW(IDC_AI_CONN_STATUS, L"未测试");
-    }
     FillModelList();
     FillCurrentModelCombo();
+    // 不管删的是不是当前那套，之前那次测试结论都不作数了
+    ResetConnStatus();
+    // 选中相邻的一行，省得用户再点一次
+    if (!m_data.models.empty())
+    {
+        int row = index < static_cast<int>(m_data.models.size()) ? index : static_cast<int>(m_data.models.size()) - 1;
+        m_model_list.SetItemState(row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+    }
 }
 
 void CAiSettingDlg::OnModelListDblClk(NMHDR* pNMHDR, LRESULT* pResult)
@@ -355,7 +388,7 @@ void CAiSettingDlg::OnModelListDblClk(NMHDR* pNMHDR, LRESULT* pResult)
     m_data.current_model_id = m_data.models[index].id;
     FillModelList();
     FillCurrentModelCombo();
-    SetDlgItemTextW(IDC_AI_CONN_STATUS, L"未测试");
+    ResetConnStatus();
 }
 
 void CAiSettingDlg::OnBnClickedTest()
@@ -378,7 +411,8 @@ void CAiSettingDlg::OnBnClickedTest()
     }
 
     m_testing = true;
-    GetDlgItem(IDC_AI_BTN_TEST)->EnableWindow(FALSE);
+    if (CWnd* pBtn = GetDlgItem(IDC_AI_BTN_TEST))
+        pBtn->EnableWindow(FALSE);
     SetDlgItemTextW(IDC_AI_BTN_TEST, L"测试中…");
     SetDlgItemTextW(IDC_AI_CONN_STATUS, L"正在发一次最小请求…");
     m_gen++;
@@ -388,12 +422,17 @@ void CAiSettingDlg::OnBnClickedTest()
 afx_msg LRESULT CAiSettingDlg::OnTestDone(WPARAM wParam, LPARAM lParam)
 {
     std::unique_ptr<AiCallResult> result(reinterpret_cast<AiCallResult*>(lParam));
-    if (static_cast<int>(wParam) != m_gen)
-        return 0;
+    // 按钮一定要先恢复：在途那一发是唯一的，无论它的结论还算不算数，
+    // 界面都得回到能再点一次的状态。以前这里「代号不对就直接 return」，
+    // 结果用户在测试途中删了模型，按钮就永远卡在「测试中…」上。
+    FinishTesting();
 
-    m_testing = false;
-    GetDlgItem(IDC_AI_BTN_TEST)->EnableWindow(TRUE);
-    SetDlgItemTextW(IDC_AI_BTN_TEST, L"测试连接");
+    if (static_cast<int>(wParam) != m_gen || result == nullptr)
+    {
+        // 迟到的结果：模型已经换过或删掉了，结论作废
+        SetDlgItemTextW(IDC_AI_CONN_STATUS, L"未测试");
+        return 0;
+    }
 
     if (result->ok)
     {
@@ -469,7 +508,11 @@ void CAiSettingDlg::GetDataFromUi()
     if (retry < 0) retry = 0;
     if (retry > 5) retry = 5;
     m_data.request.retry = retry;
-    m_data.request.proxy_mode = static_cast<AiProxyMode>(m_proxy_combo.GetCurSel());
+    // 下拉万一没选中（GetCurSel 返回 -1），不能把 -1 直接塞进枚举里
+    int proxy_sel = m_proxy_combo.GetCurSel();
+    if (proxy_sel < 0 || proxy_sel > static_cast<int>(AiProxyMode::Manual))
+        proxy_sel = static_cast<int>(AiProxyMode::System);
+    m_data.request.proxy_mode = static_cast<AiProxyMode>(proxy_sel);
     GetDlgItemTextW(IDC_AI_PROXY_URL, tmp);
     m_data.request.proxy_url = tmp.GetString();
 
@@ -477,17 +520,30 @@ void CAiSettingDlg::GetDataFromUi()
     CString prompt_text;
     m_prompt_edit.GetWindowTextW(prompt_text);
     std::wstring new_prompt = prompt_text.GetString();
+    // 清空了就当用回默认的 —— 存一个空提示词进去，读回来又变成默认，前后对不上
+    if (new_prompt.empty())
+        new_prompt = AiConfig::DefaultSystemPrompt();
     if (new_prompt != m_initial_prompt)
         PushPromptHistory(m_initial_prompt);
     m_data.prompt.system = new_prompt;
     m_initial_prompt = new_prompt;
-    m_data.prompt.language = static_cast<AiAnswerLanguage>(m_lang_combo.GetCurSel());
+    int lang_sel = m_lang_combo.GetCurSel();
+    if (lang_sel < 0 || lang_sel > static_cast<int>(AiAnswerLanguage::English))
+        lang_sel = static_cast<int>(AiAnswerLanguage::Ui);
+    m_data.prompt.language = static_cast<AiAnswerLanguage>(lang_sel);
     FillPromptHistory();
 
     m_data.privacy.allow_song_meta = (IsDlgButtonChecked(IDC_AI_ALLOW_META_CHECK) != 0);
     m_data.privacy.save_chat_history = (IsDlgButtonChecked(IDC_AI_SAVE_CHAT_CHECK) != 0);
     GetDlgItemTextW(IDC_AI_CHAT_PATH_EDIT, tmp);
-    m_data.privacy.chat_history_dir = tmp.GetString();
+    std::wstring chat_dir = tmp.GetString();
+    // 框里一开始填的是默认目录；用户没动过就别把它写死进配置，
+    // 否则「留空跟着默认目录走」这条规则从此失效（换了 appdata 目录也不跟了）。
+    if (chat_dir == m_default_chat_dir)
+        chat_dir.clear();
+    if (!chat_dir.empty() && chat_dir.back() != L'\\' && chat_dir.back() != L'/')
+        chat_dir.push_back(L'\\');
+    m_data.privacy.chat_history_dir = chat_dir;
 
     // 只有点「确定 / 应用」才真正写回全局
     AiConfig::Get() = m_data;

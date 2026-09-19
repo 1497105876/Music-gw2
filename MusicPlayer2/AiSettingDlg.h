@@ -36,12 +36,15 @@ protected:
     void FillPrivacyPart();
     void UpdateEnabledState();          // 开关联动：关掉总开关就全灰；没勾保存就灰掉路径
     int  SelectedModelIndex() const;    // 列表里选中的那套，-1 表示没选
+    void ResetConnStatus();             // 换模型 / 改模型后把「连接状态」打回未测试，并作废在途结果
+    void FinishTesting();               // 把「测试连接」按钮从「测试中…」恢复回来
 
     // ── 提示词历史 ──
     void PushPromptHistory(const std::wstring& text);
 
     AiSettings m_data;                  // 本页的工作副本
     std::wstring m_initial_prompt;      // 进来时的系统提示词，用来判断要不要进历史
+    std::wstring m_default_chat_dir;    // 「保存位置」没填时回显的默认目录，用来判断用户到底改没改
     int m_gen{ 0 };                     // 代号：作废迟到的网络结果
     bool m_testing{ false };
 
