@@ -174,6 +174,44 @@ namespace
     //
     // 候选词按**长度降序**匹配：「最近一个月」（5 字）必须比「最近」（2 字）先命中，
     // 「上个星期」（4 字）也必须先于「上星期」「上周」，否则会被从中间截断。
+    // 「9月15号」「09月15日」→ 月、日。「号 / 日」都认
+    bool ParseMonthDay(const std::wstring& q, int& m, int& d)
+    {
+        const size_t p = q.find(L"月");
+        if (p == std::wstring::npos || p == 0) return false;
+        size_t i = p;
+        while (i > 0 && q[i - 1] >= L'0' && q[i - 1] <= L'9') --i;
+        if (i == p) return false;
+        const int mm = _wtoi(q.substr(i, p - i).c_str());
+        size_t j = p + 1;
+        while (j < q.size() && q[j] != L'号' && q[j] != L'日' &&
+               (q[j] < L'0' || q[j] > L'9')) ++j;
+        if (j >= q.size() || q[j] == L'月') return false;
+        const int dd = _wtoi(q.c_str() + j);
+        if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return false;
+        m = mm;
+        d = dd;
+        return true;
+    }
+
+    // 「15号」「15日」→ 日（前面紧挨着数字才算，免得「星期日」误触）
+    bool ParseDayOnly(const std::wstring& q, int& d)
+    {
+        for (size_t k = 1; k < q.size(); ++k)
+        {
+            if ((q[k] == L'号' || q[k] == L'日') &&
+                q[k - 1] >= L'0' && q[k - 1] <= L'9')
+            {
+                size_t i = k;
+                while (i > 0 && q[i - 1] >= L'0' && q[i - 1] <= L'9') --i;
+                const int dd = _wtoi(q.substr(i, k - i).c_str());
+                if (dd >= 1 && dd <= 31) { d = dd; return true; }
+                return false;
+            }
+        }
+        return false;
+    }
+
     TimeScope ParseTimeScope(const std::wstring& q)
     {
         TimeScope none;
@@ -241,6 +279,35 @@ namespace
         push(L"上年",       last_year_first, last_year_last, L"去年");
         push(L"今年",       year_first, today, L"今年");
         push(L"本年",       year_first, today, L"今年");
+
+        // ── 具体日期：「9月15号」「15号都听过什么歌」 ──
+        //
+        // 以前完全解析不了这类问法，直接掉进兜底，用户看到的就是一句没头没脑的短回答。
+        // 「N号」= 最近过去的那个 N 号（当月还没到就算上个月的）；
+        // 「X月N号」先算今年，还没到的算去年。
+        {
+            int m = 0, d = 0;
+            if (ParseMonthDay(q, m, d))
+            {
+                const int y = today / 10000;
+                int ymd = y * 10000 + m * 100 + d;
+                if (ymd > today)
+                    ymd = (y - 1) * 10000 + m * 100 + d;
+                push(L"__specific_md", ymd, ymd, ShortDate(ymd).c_str());
+            }
+            else if (ParseDayOnly(q, d))
+            {
+                int yy = today / 10000;
+                int mm = (today / 100) % 100;
+                int ymd = yy * 10000 + mm * 100 + d;
+                if (ymd > today)
+                {
+                    if (--mm < 1) { mm = 12; --yy; }
+                    ymd = yy * 10000 + mm * 100 + d;
+                }
+                push(L"__specific_d", ymd, ymd, ShortDate(ymd).c_str());
+            }
+        }
 
         std::stable_sort(cands.begin(), cands.end(),
             [](const Cand& a, const Cand& b) { return a.key.size() > b.key.size(); });
@@ -374,8 +441,19 @@ namespace AiStatContext
             if (s.last_ymd > 0)
                 head += L"，数据记到 " + CStatAnalysis::FormatYmd(s.last_ymd);
             Line(head);
-            Line(L"用户问「上周」「昨天」「这个月」时，请按上面的日期自己推算区间，"
-                 L"下面的逐日/逐周数字可以对照");
+
+            // ⚠ 别让模型自己推算日期 —— 实测它会推错（把「昨天」算成四天前）。
+            // 常用区间直接给对照表，它照抄就行。
+            const int wd = WeekdayOf(today);
+            const int monday = AddDays(today, -((wd + 6) % 7));
+            Line(L"日期对照：昨天 " + CStatAnalysis::FormatYmd(AddDays(today, -1)) +
+                 L"，前天 " + CStatAnalysis::FormatYmd(AddDays(today, -2)) +
+                 L"，本周一 " + CStatAnalysis::FormatYmd(monday) +
+                 L"，上周 " + CStatAnalysis::FormatYmd(monday - 7) +
+                 L" ~ " + CStatAnalysis::FormatYmd(monday - 1));
+            if (s.last_ymd > 0 && s.last_ymd < today)
+                Line(L"注意：数据只记到 " + CStatAnalysis::FormatYmd(s.last_ymd) +
+                     L"，之后的日期还没有记录，被问到就直说，别拿别的日子硬凑");
         }
 
         // ⚠ 口径必须写出来，否则模型会按自己的理解解释这些比率
@@ -1239,6 +1317,30 @@ namespace AiStatContext
             }
             else
             {
+                // 这段有记录，但可能一条满 15 秒的都没有 —— 那样后面的事实全是 0，
+                // 用户看到一排「0 次(0 秒)」比看到解释更懵，先说清楚。
+                int counted = 0;
+                for (const auto& r : sliced)
+                {
+                    if (CStatAnalysis::IsCounted(r)) ++counted;
+                }
+                if (counted == 0)
+                {
+                    std::wstring a = scope.label + L"（" + ShortDate(scope.from_ymd) + L" ~ " +
+                        ShortDate(scope.to_ymd) + L"）有 " + Num(static_cast<int>(sliced.size())) +
+                        L" 条播放记录，但没有一条满 15 秒，所以都没计入统计。";
+                    a += L"\n可能是开了播放器没真正听，也可能是记录没写全。";
+                    int last = 0;
+                    for (const auto& r : *s.all_records)
+                    {
+                        if (!CStatAnalysis::IsCounted(r)) continue;
+                        const int y = CStatAnalysis::YmdOf(r.played_at);
+                        if (y > last) last = y;
+                    }
+                    if (last > 0)
+                        a += L"\n有有效时长的记录最晚到 " + ShortDate(last) + L"。";
+                    return a;
+                }
                 src = &sliced;
                 scoped = true;
             }
