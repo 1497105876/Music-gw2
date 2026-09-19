@@ -22,7 +22,12 @@ namespace
 
     std::string ToUtf8(const std::wstring& s)
     {
-        return CCommon::UnicodeToStr(s, CodeType::UTF8);
+        // ⚠ 必须用 UTF8_NO_BOM。
+        // CodeType::UTF8 会在结果最前面塞 3 字节 BOM（0xEF 0xBB 0xBF）—— 那是给
+        // ini / 文本文件用的。而这里是往 JSON 里塞字符串，BOM 会实打实成为内容的一部分：
+        // 模型名就变成 "\uFEFFgpt-oss:120b"，服务商一律回 "model not found"（404/503），
+        // 而界面上和日志里因为 BOM 不可见，看起来完全正常，极难发现。
+        return CCommon::UnicodeToStr(s, CodeType::UTF8_NO_BOM);
     }
 
     std::wstring FromUtf8(const std::string& s)
