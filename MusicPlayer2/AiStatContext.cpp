@@ -1272,6 +1272,48 @@ namespace AiStatContext
             }
         }
 
+        // 【点名】问题里提到了具体曲名 —— 「搁浅是谁唱的」「演员听了多少次」。
+        //
+        // 这类问法以前会被泛化的「歌手」事实接走（问题里那个「唱」字命中了它），
+        // 于是问「搁浅是谁唱的」，得到的是「你听得最多的歌手是薛之谦」—— 纯答非所问。
+        // 这里把问到的曲名认出来，直接给这首歌的歌手和次数。
+        {
+            struct TitleAgg
+            {
+                std::wstring artist;
+                int count{ 0 };
+                int duration_sec{ 0 };
+            };
+            std::map<std::wstring, TitleAgg> by_title;
+            for (const auto& r : recs)
+            {
+                if (r.title.empty()) continue;
+                TitleAgg& a = by_title[r.title];
+                if (a.artist.empty() && !r.artist.empty()) a.artist = r.artist;
+                a.count++;
+                a.duration_sec += r.play_duration_sec;
+            }
+
+            // 取最长匹配：免得「演员」这种短曲名把「演员的自我修养」抢走
+            const std::wstring* hit = nullptr;
+            for (const auto& kv : by_title)
+            {
+                if (kv.first.size() < 2) continue;      // 单字曲名太容易误触发
+                if (question.find(kv.first) == std::wstring::npos) continue;
+                if (hit == nullptr || kv.first.size() > hit->size())
+                    hit = &kv.first;
+            }
+            if (hit != nullptr)
+            {
+                const TitleAgg& a = by_title[*hit];
+                const std::wstring artist = a.artist.empty() ? L"未知歌手" : a.artist;
+                std::wstring t = L"《" + *hit + L"》是 " + ArtistLabel(artist, allow_song_meta) +
+                    L" 的，记录里放了 " + Num(a.count) + L" 次、共 " + Duration(a.duration_sec) + L"。";
+                // 曲名本身当 key：问题里提到就必然命中；exclusive 独占回答，不再拼别的事实
+                f.push_back({ t, { *hit }, 110, true });
+            }
+        }
+
         return f;
     }
 
