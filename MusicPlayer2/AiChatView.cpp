@@ -703,7 +703,10 @@ std::wstring CAiChatView::BuildContextText(AiStatSnapshot& snap, const std::wstr
         L"4. 不要提到文件路径，也不要把上面这些数据原文复述一遍\n"
         L"5. 拿不准就直说拿不准，别硬答\n"
         L"6. 用户问某一天具体听过哪些歌时，聚合数据答不了 —— 让他把上方的模式切到「Max」再问，"
-        L"那里有逐条播放记录；不要让他去别的软件里翻\n\n"
+        L"那里有逐条播放记录；不要让他去别的软件里翻\n"
+        L"7. 直接给最终答案，不要输出思考过程：不要用 \"We need to\"、\"Let me think\"、"
+        L"\"Let's scan\"、\"Actually\"、\"From data:\" 这类自语开头，也不要边想边写、"
+        L"不要重复罗列你已经说过的内容\n\n"
         L"我的问题：";
     return head + t + tail;
 }

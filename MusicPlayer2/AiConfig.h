@@ -38,7 +38,7 @@ struct AiModelConfig
 
     double temperature{ 0.7 };
     double top_p{ 1.0 };
-    int max_tokens{ 1024 };
+    int max_tokens{ 2048 };         // 思考型模型会把大量 token 花在推理上，1024 常把正文截在半截
     int timeout_sec{ 30 };
 
     std::wstring DisplayName() const;       // 备注名；没填就回退到服务商名
