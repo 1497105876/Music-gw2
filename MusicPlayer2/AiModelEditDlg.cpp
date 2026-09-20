@@ -74,6 +74,10 @@ BEGIN_MESSAGE_MAP(CAiModelEditDlg, CBaseDialog)
     ON_BN_CLICKED(IDC_AI_BTN_TEST_EDIT, &CAiModelEditDlg::OnBnClickedTest)
     ON_MESSAGE(WM_AI_MODELS_DONE, &CAiModelEditDlg::OnModelsDone)
     ON_MESSAGE(WM_AI_TEST_DONE, &CAiModelEditDlg::OnTestDone)
+    // 「关闭」按钮用 IDCLOSE：CBaseDialog 会把它翻成 TXT_CLOSE（关闭 / Close），
+    // 而 IDCANCEL 会被强制翻成 TXT_CANCEL（取消）。IDCLOSE 不是 MFC 默认的关闭键，
+    // 得自己接到 OnCancel 上；ESC 键走的仍是 IDCANCEL，行为不变。
+    ON_BN_CLICKED(IDCLOSE, &CAiModelEditDlg::OnCancel)
 END_MESSAGE_MAP()
 
 BOOL CAiModelEditDlg::OnInitDialog()
