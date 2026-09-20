@@ -160,6 +160,11 @@ BEGIN_MESSAGE_MAP(CPlayLogStatDlg, CBaseDialog)
     ON_NOTIFY(DTN_DATETIMECHANGE, IDC_PLAYLOG_DATE_TO, &CPlayLogStatDlg::OnDatetimeChange)
     ON_NOTIFY(TCN_SELCHANGE, IDC_PLAYLOG_VIEW_TAB, &CPlayLogStatDlg::OnTabSelChange)
     ON_MESSAGE(WM_STAT_RECORD_APPENDED, &CPlayLogStatDlg::OnRecordAppended)
+    // 「关闭」按钮用 IDCLOSE：CBaseDialog 会把它翻成 TXT_CLOSE（关闭 / Close）。
+    // 用 IDCANCEL 的话会被强制翻成 TXT_CANCEL（取消），rc 里写「关闭」根本不管用 ——
+    // 这就是之前明明写着关闭、显示出来却是取消的原因。
+    // IDCLOSE 不是 MFC 默认的关闭键，得自己接上；ESC 走的仍是 IDCANCEL。
+    ON_BN_CLICKED(IDCLOSE, &CPlayLogStatDlg::OnCancel)
 END_MESSAGE_MAP()
 
 BOOL CPlayLogStatDlg::OnInitDialog()

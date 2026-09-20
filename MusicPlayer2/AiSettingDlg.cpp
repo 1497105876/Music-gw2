@@ -82,6 +82,7 @@ BEGIN_MESSAGE_MAP(CAiSettingDlg, CTabDlg)
     ON_NOTIFY(NM_DBLCLK, IDC_AI_MODEL_LIST, &CAiSettingDlg::OnModelListDblClk)
     ON_NOTIFY(NM_CLICK, IDC_AI_PROMPT_HIST_LIST, &CAiSettingDlg::OnHistItemClick)
     ON_MESSAGE(WM_AI_TEST_DONE, &CAiSettingDlg::OnTestDone)
+    ON_WM_SIZE()        // 窗口尺寸定下来后重算列宽（见 ApplyColumnWidths 的注释）
 END_MESSAGE_MAP()
 
 BOOL CAiSettingDlg::OnInitDialog()
@@ -136,6 +137,59 @@ BOOL CAiSettingDlg::OnInitDialog()
 
 // ───────────────────────── 填界面 ─────────────────────────
 
+// 只改列宽，不重建列、不动数据 —— 所以能反复调（窗口尺寸一变就调一次）。
+//
+// 为什么需要它：算列宽的 InitModelList 是在 InitializeControls() 里跑的，
+// 而那个时机**窗口尺寸还没还原**（BaseDialog::OnInitDialog 是先调 InitializeControls、
+// 再恢复窗口大小）。按临时宽度算出来的列宽，等窗口尺寸真正定下来就对不上了 ——
+// 四列加起来超出客户区，列表右下角就会冒出横向滚动条（内容明明没超）。
+void CAiSettingDlg::ApplyColumnWidths()
+{
+    if (m_model_list.GetSafeHwnd() != nullptr &&
+        m_model_list.GetHeaderCtrl() != nullptr && m_model_list.GetHeaderCtrl()->GetItemCount() > 0)
+    {
+        CRect rc;
+        m_model_list.GetClientRect(rc);
+        int total = rc.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - theApp.DPI(4);
+        if (total < theApp.DPI(160)) total = theApp.DPI(160);
+
+        int w[4];
+        w[kColStatus]   = theApp.DPI(52);
+        w[kColProvider] = theApp.DPI(64);
+        w[kColModel]    = total * 32 / 100;                     // 模型名通常最长
+        w[kColName]     = total - w[kColStatus] - w[kColProvider] - w[kColModel];
+        if (w[kColName] < theApp.DPI(56))                       // 备注名不能被挤没
+        {
+            w[kColName] = theApp.DPI(56);
+            w[kColModel] = total - w[kColName] - w[kColProvider] - w[kColStatus];
+            if (w[kColModel] < theApp.DPI(56)) w[kColModel] = theApp.DPI(56);
+        }
+        m_model_list.SetColumnWidth(kColName, w[kColName]);
+        m_model_list.SetColumnWidth(kColProvider, w[kColProvider]);
+        m_model_list.SetColumnWidth(kColModel, w[kColModel]);
+        m_model_list.SetColumnWidth(kColStatus, w[kColStatus]);
+    }
+
+    if (m_hist_list.GetSafeHwnd() != nullptr &&
+        m_hist_list.GetHeaderCtrl() != nullptr && m_hist_list.GetHeaderCtrl()->GetItemCount() > 0)
+    {
+        CRect rc;
+        m_hist_list.GetClientRect(rc);
+        const int w_time = theApp.DPI(90);
+        int w_text = rc.Width() - w_time - ::GetSystemMetrics(SM_CXVSCROLL) - theApp.DPI(4);
+        if (w_text < theApp.DPI(80)) w_text = theApp.DPI(80);
+        m_hist_list.SetColumnWidth(0, w_time);
+        m_hist_list.SetColumnWidth(1, w_text);
+    }
+}
+
+void CAiSettingDlg::OnSize(UINT nType, int cx, int cy)
+{
+    CTabDlg::OnSize(nType, cx, cy);
+    if (nType != SIZE_MINIMIZED)
+        ApplyColumnWidths();
+}
+
 void CAiSettingDlg::InitModelList()
 {
     // 用**客户区**算，而不是窗口矩形 —— 窗口矩形没扣掉边框和垂直滚动条，
@@ -163,6 +217,8 @@ void CAiSettingDlg::InitModelList()
     m_model_list.InsertColumn(kColStatus, L"状态", LVCFMT_LEFT, w[kColStatus]);
     m_model_list.SetExtendedStyle(m_model_list.GetExtendedStyle()
         | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER | LVS_EX_LABELTIP);
+
+    ApplyColumnWidths();        // 按当前客户区统一校正一次（尺寸定下来后 OnSize 还会再调）
 }
 
 void CAiSettingDlg::FillModelList()
@@ -228,6 +284,8 @@ void CAiSettingDlg::InitPromptHistoryList()
     m_hist_list.InsertColumn(1, L"内容", LVCFMT_LEFT, w_text);
     m_hist_list.SetExtendedStyle(m_hist_list.GetExtendedStyle()
         | LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_LABELTIP);
+
+    ApplyColumnWidths();
 }
 
 void CAiSettingDlg::FillPromptHistory()

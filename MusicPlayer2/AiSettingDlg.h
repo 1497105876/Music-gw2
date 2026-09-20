@@ -30,6 +30,9 @@ protected:
     void InitModelList();
     void FillModelList();
     void InitPromptHistoryList();
+    // 只按当前客户区重算两个列表的列宽（不重建列、不动数据）。
+    // 窗口尺寸变化时要跟着走，否则列宽和客户区对不上，列表右下角会冒出横向滚动条。
+    void ApplyColumnWidths();
     void FillPromptHistory();
     void InitProxyCombo();
     void FillRequestPart();
@@ -71,4 +74,5 @@ public:
     afx_msg void OnModelListDblClk(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnHistItemClick(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg LRESULT OnTestDone(WPARAM wParam, LPARAM lParam);
+    afx_msg void OnSize(UINT nType, int cx, int cy);
 };
